@@ -1,0 +1,30 @@
+source:
+  name: 全国公共资源交易平台
+  baseUrl: http://www.ggzy.gov.cn
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 1
+  scheduleCron: 0 */2 * * *
+lists:
+  - type: NOTICE
+    mode: html
+    firstPageUrl: http://www.ggzy.gov.cn/information/html/a/trade.html
+    url: http://www.ggzy.gov.cn/information/html/a/trade.html
+    parse:
+      itemSelector: ul.publicont > li
+      fields:
+        title:
+          selector: a
+          attr: text
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: span.time
+          attr: text
+          regex: \d{4}-\d{2}-\d{2}
+    detail:
+      contentSelector: div.detail-content
+      removeSelector: script, style

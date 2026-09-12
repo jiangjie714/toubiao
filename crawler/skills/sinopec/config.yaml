@@ -1,0 +1,30 @@
+source:
+  name: 中国石化物资招标投标网
+  baseUrl: https://bidding.sinopec.com
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 1
+  scheduleCron: 0 */2 * * *
+lists:
+  - type: NOTICE
+    mode: html
+    firstPageUrl: https://bidding.sinopec.com/bidding/bidNoticeList.html
+    url: https://bidding.sinopec.com/bidding/bidNoticeList.html
+    parse:
+      itemSelector: table.list_table tr:gt(0)
+      fields:
+        title:
+          selector: a
+          attr: text
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: td:eq(3)
+          attr: text
+          regex: \d{4}-\d{2}-\d{2}
+    detail:
+      contentSelector: div.article-content
+      removeSelector: script, style

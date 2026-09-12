@@ -1,0 +1,123 @@
+# 中国政府采购网 - 地方单位采购公告
+source:
+  name: 中国政府采购网（地方）
+  baseUrl: http://www.ccgp.gov.cn
+
+settings:
+  requestDelayMs: 1200
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 1
+
+lists:
+  - type: NOTICE
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/dfgg/gkzb/"
+    url: "http://www.ccgp.gov.cn/cggg/dfgg/gkzb/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  - type: RESULT
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/dfgg/zbgg/"
+    url: "http://www.ccgp.gov.cn/cggg/dfgg/zbgg/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  - type: RESULT
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/dfgg/cjgg/"
+    url: "http://www.ccgp.gov.cn/cggg/dfgg/cjgg/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  - type: CHANGE
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/dfgg/gzgg/"
+    url: "http://www.ccgp.gov.cn/cggg/dfgg/gzgg/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  - type: INQUIRY
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/dfgg/xjgg/"
+    url: "http://www.ccgp.gov.cn/cggg/dfgg/xjgg/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  - type: INQUIRY
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/dfgg/jzxtpgg/"
+    url: "http://www.ccgp.gov.cn/cggg/dfgg/jzxtpgg/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  - type: INQUIRY
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/dfgg/jzxcs/"
+    url: "http://www.ccgp.gov.cn/cggg/dfgg/jzxcs/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"

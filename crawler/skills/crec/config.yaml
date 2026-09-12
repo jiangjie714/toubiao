@@ -1,0 +1,30 @@
+source:
+  name: 中国中铁采购电子商务平台
+  baseUrl: https://www.crecgec.com
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 1
+  scheduleCron: 0 */2 * * *
+lists:
+  - type: NOTICE
+    mode: html
+    firstPageUrl: https://www.crecgec.com/cms/channel/purchase_notice/index.htm
+    url: https://www.crecgec.com/cms/channel/purchase_notice/index.htm
+    parse:
+      itemSelector: ul.notice-ul > li
+      fields:
+        title:
+          selector: a
+          attr: text
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: span
+          attr: text
+          regex: \d{4}-\d{2}-\d{2}
+    detail:
+      contentSelector: div.notice-info
+      removeSelector: script, style

@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: toubiao
+      POSTGRES_PASSWORD: toubiao
+      POSTGRES_DB: toubiao
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U toubiao"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npx prisma migrate deploy && npm run build && npm run start"
+    environment:
+      DATABASE_URL: postgresql://toubiao:toubiao@postgres:5432/toubiao?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:-change-me}
+      APP_URL: ${APP_URL:-http://127.0.0.1:3000}
+      NODE_ENV: production
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@example.com}
+      ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
+      ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
+      ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
+      ALIPAY_PUBLIC_CERT: ${ALIPAY_PUBLIC_CERT:-}
+      WECHAT_PAY_MERCHANT_CERT_SERIAL: ${WECHAT_PAY_MERCHANT_CERT_SERIAL:-}
+      WECHAT_PAY_MERCHANT_PRIVATE_KEY: ${WECHAT_PAY_MERCHANT_PRIVATE_KEY:-}
+      WECHAT_PAY_PLATFORM_CERT_SERIAL: ${WECHAT_PAY_PLATFORM_CERT_SERIAL:-}
+      WECHAT_PAY_PLATFORM_PUBLIC_KEY: ${WECHAT_PAY_PLATFORM_PUBLIC_KEY:-}
+      WECHAT_PAY_PLATFORM_CERT: ${WECHAT_PAY_PLATFORM_CERT:-}
+      WECHAT_PAY_API_V3_KEY: ${WECHAT_PAY_API_V3_KEY:-}
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  push-worker:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npx prisma migrate deploy && npm run push:worker"
+    environment:
+      DATABASE_URL: postgresql://toubiao:toubiao@postgres:5432/toubiao?schema=public
+      APP_URL: ${APP_URL:-http://127.0.0.1:3000}
+      PUSH_CRON: ${PUSH_CRON:-0 8 * * *}
+      NODE_ENV: production
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@example.com}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npx prisma migrate deploy && npm run crawl:worker"
+    environment:
+      DATABASE_URL: postgresql://toubiao:toubiao@postgres:5432/toubiao?schema=public
+      NODE_ENV: production
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - storage-data:/app/.data/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  storage-data:

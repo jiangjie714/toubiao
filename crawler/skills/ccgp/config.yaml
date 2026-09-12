@@ -1,0 +1,131 @@
+# 中国政府采购网 - 中央单位采购公告
+# 结构说明见同目录 SKILL.md
+source:
+  name: 中国政府采购网（中央）
+  baseUrl: http://www.ccgp.gov.cn
+
+settings:
+  requestDelayMs: 1200
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 1
+
+lists:
+  # 招标公告（公开招标）
+  - type: NOTICE
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/zygg/gkzb/"
+    url: "http://www.ccgp.gov.cn/cggg/zygg/gkzb/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  # 中标公告
+  - type: RESULT
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/zygg/zbgg/"
+    url: "http://www.ccgp.gov.cn/cggg/zygg/zbgg/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  # 成交公告
+  - type: RESULT
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/zygg/cjgg/"
+    url: "http://www.ccgp.gov.cn/cggg/zygg/cjgg/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  # 更正公告
+  - type: CHANGE
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/zygg/gzgg/"
+    url: "http://www.ccgp.gov.cn/cggg/zygg/gzgg/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  # 询价公告
+  - type: INQUIRY
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/zygg/xjgg/"
+    url: "http://www.ccgp.gov.cn/cggg/zygg/xjgg/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  # 竞争性谈判公告
+  - type: INQUIRY
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/zygg/jzxtpgg/"
+    url: "http://www.ccgp.gov.cn/cggg/zygg/jzxtpgg/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
+  # 竞争性磋商公告
+  - type: INQUIRY
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/zygg/jzxcs/"
+    url: "http://www.ccgp.gov.cn/cggg/zygg/jzxcs/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"

@@ -1,0 +1,579 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int                      @id @default(autoincrement())
+  username           String                   @unique
+  passwordHash       String
+  name               String
+  role               String                   @default("USER")
+  status             String                   @default("ACTIVE")
+  email              String?                  @unique
+  emailVerified      Boolean                  @default(false)
+  lastLoginAt        DateTime?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  subscription       Subscription?
+  orders             Order[]
+  quotaLedgers       QuotaLedger[]
+  verificationTokens EmailVerificationToken[]
+  pushWatches        PushWatch[]
+  pushRecords        PushRecord[]
+  exportAudits       ExportAudit[]
+  feedbacks          TenderFeedback[]
+  companyProfile     CompanyProfile?
+  tenderFollows      TenderFollow[]
+  apiKeys            ApiKey[]
+  ownedTeam          Team?                    @relation("TeamOwner")
+  teamMembership     TeamMember?
+  invoices           Invoice[]
+  invoiceProfiles    InvoiceProfile[]
+  followComments     TenderFollowComment[]
+}
+
+
+
+model Region {
+  code       String  @id
+  name       String
+  level      Int
+  parentCode String?
+
+  @@index([parentCode])
+}
+
+model IndustryDict {
+  id       Int            @id @default(autoincrement())
+  code     String         @unique
+  name     String
+  parentId Int?
+  parent   IndustryDict?  @relation("IndustryHierarchy", fields: [parentId], references: [id])
+  children IndustryDict[] @relation("IndustryHierarchy")
+
+  @@index([parentId])
+}
+
+model Project {
+  id             Int      @id @default(autoincrement())
+  projectNo      String?  @unique
+  canonicalTitle String
+  provinceCode   String?
+  firstSeenAt    DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  notices        Tender[]
+}
+
+model Tender {
+  id               Int          @id @default(autoincrement())
+  title            String
+  type             String
+  provinceCode     String?
+  cityCode         String?
+  publishDate      DateTime
+  expireDate       DateTime?
+  purchaser        String?
+  agency           String?
+  sourceName       String       @default("手动录入")
+  sourceUrl        String?      @unique
+  content          String
+  projectNo        String?
+  budgetAmount     Decimal?     @db.Decimal(14, 2)
+  awardAmount      Decimal?     @db.Decimal(14, 2)
+  openTime         DateTime?
+  industryCode     String?
+  winningSupplier  String?
+  contentHtml      String?
+  projectRefId     Int?
+  project          Project?     @relation(fields: [projectRefId], references: [id])
+  fieldsConfidence Json?
+  fieldSources     Json?
+  attachments      Attachment[]
+  orgContacts      OrgContact[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  pushRecords      PushRecord[]
+  feedbacks        TenderFeedback[]
+  aiAnalysis       TenderAiAnalysis?
+  follows          TenderFollow[]
+
+  @@index([projectNo])
+
+  @@index([projectRefId])
+  @@index([publishDate, type])
+  @@index([type])
+  @@index([provinceCode, cityCode])
+}
+
+model Attachment {
+  id          Int      @id @default(autoincrement())
+  tenderId    Int
+  tender      Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  name        String
+  sourceUrl   String
+  storageKey  String?
+  size        Int?
+  contentType String?
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+
+  @@index([tenderId])
+}
+
+model OrgContact {
+  id       Int     @id @default(autoincrement())
+  orgName  String
+  role     String
+  phone    String?
+  email    String?
+  address  String?
+  source   String  @default("extracted")
+  tenderId Int?
+  tender   Tender? @relation(fields: [tenderId], references: [id], onDelete: SetNull)
+
+  @@index([orgName])
+}
+
+model CrawlSource {
+  id                  Int             @id @default(autoincrement())
+  name                String
+  skillCode           String          @unique
+  enabled             Boolean         @default(true)
+  scheduleCron        String          @default("0 */2 * * *")
+  nextRunAt           DateTime?
+  requestDelayMs      Int             @default(1200)
+  concurrency         Int             @default(1)
+  timeoutMs           Int             @default(20000)
+  retries             Int             @default(2)
+  maxPages            Int             @default(1)
+  proxyPolicy         String          @default("off")
+  priority            Int             @default(50)
+  healthScore         Int?
+  consecutiveFailures Int             @default(0)
+  configVersion       Int?
+  status              String?
+  lastMessage         String?
+  lastNewCount        Int             @default(0)
+  lastRunAt           DateTime?
+  lastSuccessAt       DateTime?
+  revisions           SkillRevision[]
+}
+
+model SkillRevision {
+  id         Int         @id @default(autoincrement())
+  sourceId   Int
+  source     CrawlSource @relation(fields: [sourceId], references: [id])
+  skillCode  String
+  version    Int
+  configYaml String
+  config     Json
+  changedBy  String      @default("system")
+  note       String?
+  createdAt  DateTime    @default(now())
+
+  @@unique([skillCode, version])
+}
+
+model CrawlLog {
+  id           Int      @id @default(autoincrement())
+  sourceId     Int
+  sourceName   String
+  status       String
+  trigger      String   @default("manual")
+  newCount     Int      @default(0)
+  httpOk       Int      @default(0)
+  httpFail     Int      @default(0)
+  itemsParsed  Int      @default(0)
+  avgLatencyMs Int      @default(0)
+  durationMs   Int      @default(0)
+  message      String?
+  startedAt    DateTime
+  finishedAt   DateTime
+
+  @@index([sourceId, startedAt])
+}
+
+model CrawlTask {
+  id          Int       @id @default(autoincrement())
+  skillCode   String
+  trigger     String    @default("manual")
+  status      String    @default("queued")
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  nextRetryAt DateTime?
+  payload     Json?
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  error       String?
+
+  @@index([status, nextRetryAt])
+}
+
+model AlertRule {
+  id              Int           @id @default(autoincrement())
+  scope           String        @default("global")
+  condition       String
+  threshold       Int
+  channel         String
+  target          String
+  enabled         Boolean       @default(true)
+  cooldownMinutes Int           @default(60)
+  records         AlertRecord[]
+
+  @@index([enabled, scope])
+}
+
+model AlertRecord {
+  id      Int       @id @default(autoincrement())
+  ruleId  Int
+  rule    AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  message String
+  firedAt DateTime  @default(now())
+
+  @@index([ruleId, firedAt])
+}
+
+model Plan {
+  id            Int            @id @default(autoincrement())
+  code          String         @unique
+  name          String
+  priceMonthly  Decimal?       @db.Decimal(10, 2)
+  priceYearly   Decimal?       @db.Decimal(10, 2)
+  features      Json
+  active        Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  subscriptions Subscription[]
+  orders        Order[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Subscription {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId       Int
+  plan         Plan      @relation(fields: [planId], references: [id])
+  status       String    @default("ACTIVE")
+  billingCycle String    @default("monthly")
+  startsAt     DateTime  @default(now())
+  endsAt       DateTime?
+  autoRenew    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId])
+}
+
+model Order {
+  id            Int       @id @default(autoincrement())
+  orderNo       String    @unique
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId        Int
+  plan          Plan      @relation(fields: [planId], references: [id])
+  billingCycle  String
+  amount        Decimal   @db.Decimal(10, 2)
+  channel       String    @default("bank")
+  status        String    @default("PENDING")
+  transactionNo String?     @unique
+  prepayCode    String?
+  prepayExpiresAt DateTime?
+  paidAt        DateTime?
+  invoiceStatus String    @default("NONE") // NONE | REQUESTED | ISSUED | REJECTED
+  note          String?
+  invoice       Invoice?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model ExportAudit {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filters      Json
+  matchedCount Int
+  exportedCount Int
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+model PaymentEvent {
+  id             Int        @id @default(autoincrement())
+  provider       String
+  providerEventId String
+  eventType      String?
+  orderNo        String?
+  status         String
+  payload        Json
+  receivedAt     DateTime   @default(now())
+  processedAt    DateTime?
+  error          String?
+
+  @@unique([provider, providerEventId])
+  @@index([orderNo, receivedAt])
+}
+
+model QuotaLedger {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  date      DateTime @db.Date
+  used      Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, kind, date])
+}
+
+model EmailVerificationToken {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model PushWatch {
+  id           Int          @id @default(autoincrement())
+  userId       Int
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  keyword      String
+  type         String?
+  provinceCode String?
+  cityCode     String?
+  frequency    String       @default("daily")
+  channels     Json         @default("[\"email\"]")
+  webhookUrl   String?
+  enabled      Boolean      @default(true)
+  lastPushAt   DateTime?
+  records      PushRecord[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([userId, enabled])
+}
+
+model PushRecord {
+  id       Int        @id @default(autoincrement())
+  userId   Int
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenderId Int
+  tender   Tender     @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  watchId  Int?
+  watch    PushWatch? @relation(fields: [watchId], references: [id], onDelete: SetNull)
+  channel  String     @default("email")
+  sentAt   DateTime   @default(now())
+
+  @@unique([userId, tenderId])
+  @@index([sentAt])
+}
+
+model TenderFeedback {
+  id          Int      @id @default(autoincrement())
+  tenderId    Int
+  tender      Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  issueType   String
+  description String
+  contact     String?
+  status      String   @default("PENDING")
+  adminNote   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenderId])
+  @@index([status, createdAt])
+}
+
+model TenderAiAnalysis {
+  id               Int      @id @default(autoincrement())
+  tenderId         Int      @unique
+  tender           Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  executiveSummary String   @db.Text
+  riskRadar        Json
+  scoringMethod    Json
+  timelineAndKey   Json
+  modelUsed        String   @default("builtin-heuristic-v1")
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  status           String   @default("COMPLETED")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model CompanyProfile {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName       String
+  registeredCapital String?
+  certifications    Json     @default("[]")
+  qualifications    Json     @default("[]")
+  keyCases          Json     @default("[]")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([companyName])
+}
+
+model TenderFollow {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenderId     Int
+  tender       Tender    @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  status       String    @default("EVALUATING") // EVALUATING | DECIDED | DRAFTING | SUBMITTED | WON | LOST
+  priority     String    @default("NORMAL")     // LOW | NORMAL | HIGH | URGENT
+  assignee     String?
+  targetAmount Decimal?  @db.Decimal(14, 2)
+  notes        String?   @db.Text
+  winRateScore Int?
+  remindDate   DateTime?
+  teamId       Int?
+  team         Team?                 @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  comments     TenderFollowComment[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, tenderId])
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([teamId, status])
+  @@index([teamId, createdAt])
+}
+
+model ApiKey {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  keyPrefix    String
+  keyHash      String    @unique
+  monthlyQuota Int       @default(10000)
+  usedCalls    Int       @default(0)
+  rateLimitRpm Int       @default(60)
+  status       String    @default("ACTIVE") // ACTIVE | REVOKED
+  lastUsedAt   DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([keyHash])
+}
+
+model Team {
+  id        Int          @id @default(autoincrement())
+  name      String
+  ownerId   Int          @unique
+  owner     User         @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  maxSeats  Int          @default(3)
+  members   TeamMember[]
+  follows   TenderFollow[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([ownerId])
+}
+
+model TeamMember {
+  id       Int      @id @default(autoincrement())
+  teamId   Int
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId   Int      @unique
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     String   @default("MEMBER") // OWNER | MANAGER | MEMBER
+  title    String?
+  joinedAt DateTime @default(now())
+
+  @@index([teamId])
+  @@index([userId])
+}
+
+model Invoice {
+  id               Int       @id @default(autoincrement())
+  orderId          Int       @unique
+  order            Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId           Int
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             String    @default("NORMAL") // NORMAL (增值税普通发票) | SPECIAL (增值税专用发票)
+  title            String    // 发票抬头
+  taxNumber        String    // 纳税人识别号 / 统一社会信用代码
+  bankName         String?   // 开户银行
+  bankAccount      String?   // 银行账号
+  address          String?   // 注册地址
+  phone            String?   // 联系电话
+  email            String    // 电子发票接收邮箱
+  amount           Decimal   @db.Decimal(10, 2) // 价税合计
+  taxRate          Decimal   @default(0.06) @db.Decimal(4, 2) // 适用税率 (6%)
+  taxAmount        Decimal   @db.Decimal(10, 2) // 税额
+  amountWithoutTax Decimal   @db.Decimal(10, 2) // 不含税金额
+  itemName         String    @default("*信息技术服务*软件信息技术服务")
+  invoiceCode      String?   // 全国发票代码
+  invoiceNumber    String?   // 发票号码
+  checkCode        String?   // 防伪校验码
+  status           String    @default("PENDING") // PENDING (待开具) | ISSUED (已开具) | REJECTED (已驳回)
+  rejectReason     String?
+  issuedAt         DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+model InvoiceProfile {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   @default("NORMAL") // NORMAL | SPECIAL
+  title       String   // 发票抬头
+  taxNumber   String   // 纳税人识别号
+  bankName    String?
+  bankAccount String?
+  address     String?
+  phone       String?
+  email       String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model TenderFollowComment {
+  id        Int          @id @default(autoincrement())
+  followId  Int
+  follow    TenderFollow @relation(fields: [followId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String       @db.Text
+  category  String       @default("GENERAL") // GENERAL (普通备忘) | RISK (风险提示) | COMPLIANCE (合规/一票否决) | ASSIGNMENT (任务分派)
+  createdAt DateTime     @default(now())
+
+  @@index([followId, createdAt])
+  @@index([userId])
+}
+

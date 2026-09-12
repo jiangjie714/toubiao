@@ -1,0 +1,30 @@
+source:
+  name: 华润守正电子招标平台
+  baseUrl: https://szb.crc.com.cn
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 1
+  scheduleCron: 0 */2 * * *
+lists:
+  - type: NOTICE
+    mode: html
+    firstPageUrl: https://szb.crc.com.cn/tzgg/index.jhtml
+    url: https://szb.crc.com.cn/tzgg/index.jhtml
+    parse:
+      itemSelector: ul.news-ul > li
+      fields:
+        title:
+          selector: a
+          attr: text
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: span.time
+          attr: text
+          regex: \d{4}-\d{2}-\d{2}
+    detail:
+      contentSelector: div.content_detail
+      removeSelector: script, style

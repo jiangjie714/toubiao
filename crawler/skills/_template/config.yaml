@@ -1,0 +1,32 @@
+# skill 抓取规则模板 —— 复制本目录后按目标站点修改
+# 字段含义见同目录 SKILL.md
+
+source:
+  name: 站点名称（写入公告的信息来源）
+  baseUrl: https://example.com
+
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 2
+  # headers:            # 可选，列表请求附加头
+  #   Referer: https://example.com/
+  # userAgent: "..."    # 可选，默认使用 Chrome UA
+
+lists:
+  - type: NOTICE               # NOTICE | RESULT | CHANGE | INQUIRY
+    mode: html
+    url: "https://example.com/list?page={page}"
+    startPage: 1
+    maxPages: 2
+    parse:
+      itemSelector: "ul.news-list > li"
+      fields:
+        title:  { selector: "a.title", attr: "text" }
+        url:    { selector: "a.title", attr: "href" }
+        date:   { selector: "span.date", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        hint:   { selector: "span.summary", attr: "text" }
+    detail:
+      contentSelector: "div.article-content"
+      removeSelector: "script, style"

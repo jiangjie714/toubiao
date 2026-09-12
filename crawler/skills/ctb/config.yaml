@@ -1,0 +1,30 @@
+source:
+  name: 中国电信阳光采购网
+  baseUrl: https://caigou.chinatelecom.com.cn
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 1
+  scheduleCron: 0 */2 * * *
+lists:
+  - type: NOTICE
+    mode: html
+    firstPageUrl: https://caigou.chinatelecom.com.cn/MSS-PORTAL/announcementBuy/list
+    url: https://caigou.chinatelecom.com.cn/MSS-PORTAL/announcementBuy/list
+    parse:
+      itemSelector: ul.announce-list > li
+      fields:
+        title:
+          selector: a
+          attr: text
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: span.date
+          attr: text
+          regex: \d{4}-\d{2}-\d{2}
+    detail:
+      contentSelector: div.main-text
+      removeSelector: script, style

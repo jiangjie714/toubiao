@@ -1,0 +1,32 @@
+source:
+  name: 河南省政府采购网
+  baseUrl: http://www.ccgp-henan.gov.cn
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 1
+  scheduleCron: 0 */2 * * *
+lists:
+  - type: NOTICE
+    mode: html
+    firstPageUrl: http://www.ccgp-henan.gov.cn/henan/ggcx
+    url: http://www.ccgp-henan.gov.cn/henan/ggcx
+    parse:
+      itemSelector: ul.List2 > li
+      fields:
+        title:
+          selector: a
+          attr: text
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: span.Date
+          attr: text
+          regex: \d{4}-\d{2}-\d{2}
+        province:
+          const: "41"
+    detail:
+      contentSelector: div.Content
+      removeSelector: script, style

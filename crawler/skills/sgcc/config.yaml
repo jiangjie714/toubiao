@@ -1,0 +1,30 @@
+source:
+  name: 国家电网新一代电子商务平台
+  baseUrl: https://ecp.sgcc.com.cn
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 1
+  scheduleCron: 0 */2 * * *
+lists:
+  - type: NOTICE
+    mode: html
+    firstPageUrl: https://ecp.sgcc.com.cn/ecp2.0/portal/#/doc/doci-win/2018060571151651_2018060501171107
+    url: https://ecp.sgcc.com.cn/ecp2.0/portal/#/doc/doci-win/2018060571151651_2018060501171107
+    parse:
+      itemSelector: div.el-table__row
+      fields:
+        title:
+          selector: a
+          attr: text
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: td:eq(3)
+          attr: text
+          regex: \d{4}-\d{2}-\d{2}
+    detail:
+      contentSelector: div.detail-main
+      removeSelector: script, style

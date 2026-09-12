@@ -1,0 +1,32 @@
+source:
+  name: 湖南省政府采购网
+  baseUrl: http://www.ccgp-hunan.gov.cn
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 1
+  scheduleCron: 0 */2 * * *
+lists:
+  - type: NOTICE
+    mode: html
+    firstPageUrl: http://www.ccgp-hunan.gov.cn/mvc/getNoticeList4Web.do
+    url: http://www.ccgp-hunan.gov.cn/mvc/getNoticeList4Web.do
+    parse:
+      itemSelector: ul.list_news > li
+      fields:
+        title:
+          selector: a
+          attr: text
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: span
+          attr: text
+          regex: \d{4}-\d{2}-\d{2}
+        province:
+          const: "43"
+    detail:
+      contentSelector: div.art-content
+      removeSelector: script, style
