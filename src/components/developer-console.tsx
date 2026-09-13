@@ -34,11 +34,21 @@ export default function DeveloperConsole({ initialData, userName }: Props) {
 
   // 交互式控制台状态
   const [selectedEndpoint, setSelectedEndpoint] = useState<
-    "/api/v1/tenders" | "/api/v1/tenders/:id" | "/api/v1/analytics/overview"
+    | "/api/v1/tenders"
+    | "/api/v1/tenders/:id"
+    | "/api/v1/projects"
+    | "/api/v1/projects/:id"
+    | "/api/v1/purchasers/:name"
+    | "/api/v1/suppliers/:name"
+    | "/api/v1/analytics/overview"
   >("/api/v1/tenders");
   const [testKeyword, setTestKeyword] = useState("医疗");
   const [testProvince, setTestProvince] = useState("");
   const [testTenderId, setTestTenderId] = useState("1");
+  const [testProjectId, setTestProjectId] = useState("1");
+  const [testPurchaserName, setTestPurchaserName] = useState("人民医院");
+  const [testSupplierName, setTestSupplierName] = useState("科技");
+  const [testStage, setTestStage] = useState("all");
   const [testingApiKey, setTestingApiKey] = useState("");
 
   // 调试结果
@@ -107,6 +117,7 @@ export default function DeveloperConsole({ initialData, userName }: Props) {
   };
 
   // 执行在线 API 调试测试
+  // 执行在线 API 调试测试
   const handleRunTest = async () => {
     setIsTesting(true);
     setTestResponse(null);
@@ -124,6 +135,18 @@ export default function DeveloperConsole({ initialData, userName }: Props) {
         url = `/api/v1/tenders?${params.toString()}`;
       } else if (selectedEndpoint === "/api/v1/tenders/:id") {
         url = `/api/v1/tenders/${testTenderId || "1"}`;
+      } else if (selectedEndpoint === "/api/v1/projects") {
+        const params = new URLSearchParams();
+        if (testKeyword) params.set("q", testKeyword);
+        if (testStage && testStage !== "all") params.set("stage", testStage);
+        params.set("pageSize", "3");
+        url = `/api/v1/projects?${params.toString()}`;
+      } else if (selectedEndpoint === "/api/v1/projects/:id") {
+        url = `/api/v1/projects/${testProjectId || "1"}`;
+      } else if (selectedEndpoint === "/api/v1/purchasers/:name") {
+        url = `/api/v1/purchasers/${encodeURIComponent(testPurchaserName || "人民医院")}`;
+      } else if (selectedEndpoint === "/api/v1/suppliers/:name") {
+        url = `/api/v1/suppliers/${encodeURIComponent(testSupplierName || "科技")}`;
       } else {
         url = `/api/v1/analytics/overview?days=30`;
       }
@@ -154,44 +177,57 @@ export default function DeveloperConsole({ initialData, userName }: Props) {
   const getSnippet = () => {
     const key = testingApiKey || "bx_live_your_api_key_here";
     const origin = typeof window !== "undefined" ? window.location.origin : "https://bxtong.com";
+
+    let reqPath = "/api/v1/tenders?q=" + encodeURIComponent(testKeyword) + "&pageSize=5";
+    let desc = "返回标讯列表";
+
+    if (selectedEndpoint === "/api/v1/tenders/:id") {
+      reqPath = `/api/v1/tenders/${testTenderId || "1"}`;
+      desc = "标讯单篇全景与结构化字段";
+    } else if (selectedEndpoint === "/api/v1/projects") {
+      reqPath = `/api/v1/projects?q=${encodeURIComponent(testKeyword)}&stage=${testStage}&pageSize=5`;
+      desc = "项目主数据全周期穿透列表";
+    } else if (selectedEndpoint === "/api/v1/projects/:id") {
+      reqPath = `/api/v1/projects/${testProjectId || "1"}`;
+      desc = "项目详情与历史公告时间线穿透";
+    } else if (selectedEndpoint === "/api/v1/purchasers/:name") {
+      reqPath = `/api/v1/purchasers/${encodeURIComponent(testPurchaserName || "人民医院")}`;
+      desc = "买方采购人商业画像与合作网络";
+    } else if (selectedEndpoint === "/api/v1/suppliers/:name") {
+      reqPath = `/api/v1/suppliers/${encodeURIComponent(testSupplierName || "科技")}`;
+      desc = "供应商中标竞争力画像与胜标客户网络";
+    } else if (selectedEndpoint === "/api/v1/analytics/overview") {
+      reqPath = "/api/v1/analytics/overview?days=30";
+      desc = "全网招投标大数据大盘指标";
+    }
+
     if (activeLangTab === "curl") {
-      return `curl -X GET "${origin}/api/v1/tenders?q=${encodeURIComponent(
-        testKeyword
-      )}&pageSize=5" \\
+      return `curl -X GET "${origin}${reqPath}" \\
   -H "Authorization: Bearer ${key}"`;
     }
     if (activeLangTab === "python") {
       return `import requests
 
-url = "${origin}/api/v1/tenders"
+url = "${origin}${reqPath}"
 headers = {
     "Authorization": "Bearer ${key}"
 }
-params = {
-    "q": "${testKeyword}",
-    "pageSize": 5
-}
 
-response = requests.get(url, headers=headers, params=params)
+response = requests.get(url, headers=headers)
 data = response.json()
-print("Total found:", data["data"]["total"])
-for item in data["data"]["items"]:
-    print(item["title"], item["publishDate"])`;
+print("Code:", data.get("code"), "Message:", data.get("message"))
+print("Data:", data.get("data"))`;
     }
     if (activeLangTab === "node") {
-      return `// Node.js 18+ 原生 fetch 示例
-const url = new URL("${origin}/api/v1/tenders");
-url.searchParams.set("q", "${testKeyword}");
-url.searchParams.set("pageSize", "5");
-
-const res = await fetch(url.toString(), {
+      return `// Node.js 18+ 原生 fetch 示例 (${desc})
+const res = await fetch("${origin}${reqPath}", {
   headers: {
     "Authorization": "Bearer ${key}",
   },
 });
 
 const json = await res.json();
-console.log("返回标讯列表:", json.data.items);`;
+console.log("返回数据:", json.data);`;
     }
     return `package main
 
@@ -202,7 +238,7 @@ import (
 )
 
 func main() {
-    url := "${origin}/api/v1/tenders?q=${encodeURIComponent(testKeyword)}&pageSize=5"
+    url := "${origin}${reqPath}"
     req, _ := http.NewRequest("GET", url, nil)
     req.Header.Set("Authorization", "Bearer ${key}")
 
@@ -417,6 +453,10 @@ func main() {
                   e.target.value as
                     | "/api/v1/tenders"
                     | "/api/v1/tenders/:id"
+                    | "/api/v1/projects"
+                    | "/api/v1/projects/:id"
+                    | "/api/v1/purchasers/:name"
+                    | "/api/v1/suppliers/:name"
                     | "/api/v1/analytics/overview"
                 )
               }
@@ -424,7 +464,11 @@ func main() {
             >
               <option value="/api/v1/tenders">GET /api/v1/tenders (标讯列表检索)</option>
               <option value="/api/v1/tenders/:id">GET /api/v1/tenders/:id (标讯单篇详情)</option>
-              <option value="/api/v1/analytics/overview">GET /api/v1/analytics/overview (大盘概览)</option>
+              <option value="/api/v1/projects">GET /api/v1/projects (项目全生命周期检索)</option>
+              <option value="/api/v1/projects/:id">GET /api/v1/projects/:id (单项目穿透与时间线)</option>
+              <option value="/api/v1/purchasers/:name">GET /api/v1/purchasers/:name (买方采购人商业画像)</option>
+              <option value="/api/v1/suppliers/:name">GET /api/v1/suppliers/:name (供应商中标竞争力画像)</option>
+              <option value="/api/v1/analytics/overview">GET /api/v1/analytics/overview (全网数据大盘概览)</option>
             </select>
           </div>
 
@@ -492,6 +536,75 @@ func main() {
                 value={testTenderId}
                 onChange={(e) => setTestTenderId(e.target.value)}
                 placeholder="标讯 ID（数字）"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-primary focus:outline-none"
+              />
+            </div>
+          )}
+
+          {selectedEndpoint === "/api/v1/projects" && (
+            <>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">项目关键词 q</label>
+                <input
+                  type="text"
+                  value={testKeyword}
+                  onChange={(e) => setTestKeyword(e.target.value)}
+                  placeholder="项目名称或编号"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">生命周期阶段</label>
+                <select
+                  value={testStage}
+                  onChange={(e) => setTestStage(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-primary focus:outline-none"
+                >
+                  <option value="all">全部阶段</option>
+                  <option value="INTENTION">意向预告</option>
+                  <option value="BIDDING">正在招标</option>
+                  <option value="CLARIFYING">更正澄清</option>
+                  <option value="AWARDED">已中标</option>
+                  <option value="TERMINATED">流标终止</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {selectedEndpoint === "/api/v1/projects/:id" && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">项目主数据 ID</label>
+              <input
+                type="text"
+                value={testProjectId}
+                onChange={(e) => setTestProjectId(e.target.value)}
+                placeholder="项目主数据 ID（数字）"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-primary focus:outline-none"
+              />
+            </div>
+          )}
+
+          {selectedEndpoint === "/api/v1/purchasers/:name" && (
+            <div className="space-y-1 lg:col-span-2">
+              <label className="text-xs font-medium text-slate-600">采购人/买方机构全称</label>
+              <input
+                type="text"
+                value={testPurchaserName}
+                onChange={(e) => setTestPurchaserName(e.target.value)}
+                placeholder="如：人民医院、教育局、公安局"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-primary focus:outline-none"
+              />
+            </div>
+          )}
+
+          {selectedEndpoint === "/api/v1/suppliers/:name" && (
+            <div className="space-y-1 lg:col-span-2">
+              <label className="text-xs font-medium text-slate-600">中标供应商/企业全称</label>
+              <input
+                type="text"
+                value={testSupplierName}
+                onChange={(e) => setTestSupplierName(e.target.value)}
+                placeholder="如：科技、工程、建筑"
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-primary focus:outline-none"
               />
             </div>
