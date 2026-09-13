@@ -8,9 +8,14 @@ const LINKS = [
   { href: "/list?type=NOTICE", label: "招标公告", type: "NOTICE" },
   { href: "/list?type=RESULT", label: "中标公告", type: "RESULT" },
   { href: "/suppliers", label: "竞对情报", type: "" },
+  { href: "/purchasers", label: "买方画像", type: "" },
+  { href: "/projects", label: "项目大盘", type: "" },
+  { href: "/industries", label: "重点赛道", type: "" },
+  { href: "/regions", label: "区域大盘", type: "" },
   { href: "/analytics", label: "行业情报", type: "" },
   { href: "/tracker", label: "跟进看板", type: "" },
   { href: "/watches", label: "关键词订阅", type: "" },
+  { href: "/exports", label: "商机导出", type: "" },
   { href: "/developer", label: "开放API", type: "" },
   { href: "/team", label: "团队席位", type: "" },
   { href: "/invoices", label: "财务发票", type: "" },
@@ -36,10 +41,20 @@ export default function SiteNav() {
           active = pathname.startsWith("/developer");
         } else if (item.href === "/watches") {
           active = pathname.startsWith("/watches");
+        } else if (item.href === "/exports") {
+          active = pathname.startsWith("/exports");
         } else if (item.href === "/tracker") {
           active = pathname.startsWith("/tracker");
         } else if (item.href === "/suppliers") {
           active = pathname.startsWith("/suppliers");
+        } else if (item.href === "/purchasers") {
+          active = pathname.startsWith("/purchasers");
+        } else if (item.href === "/projects") {
+          active = pathname.startsWith("/projects");
+        } else if (item.href === "/industries") {
+          active = pathname.startsWith("/industries");
+        } else if (item.href === "/regions") {
+          active = pathname.startsWith("/regions");
         } else if (item.href === "/analytics") {
           active = pathname.startsWith("/analytics") || pathname.startsWith("/brief");
         } else if (item.href === "/list") {

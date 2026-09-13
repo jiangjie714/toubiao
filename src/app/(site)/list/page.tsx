@@ -111,13 +111,29 @@ export default async function ListPage({
                 <span className="tnum">{quotaLabel}</span>
                 <span className="text-accent underline group-hover:text-primary">升级</span>
               </Link>
-              {exportEnabled && exportQuota?.allowed && (
-                <a
-                  href={exportHref}
-                  className="cursor-pointer rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-primary transition-colors duration-200 hover:bg-blue-50"
+              {exportEnabled && exportQuota?.allowed ? (
+                <div className="flex items-center gap-1.5">
+                  <a
+                    href={exportHref}
+                    className="cursor-pointer rounded-lg border border-blue-200 bg-blue-50/50 px-3 py-1.5 text-xs font-semibold text-primary transition-colors duration-200 hover:bg-blue-100"
+                  >
+                    ⚡️ 快速导出 Excel
+                  </a>
+                  <Link
+                    href={`/exports?${buildQueryString(sp, { page: undefined })}`}
+                    className="cursor-pointer rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-primary hover:bg-slate-50 transition-colors"
+                    title="前往导出中心自定义字段与联系人"
+                  >
+                    自定义字段
+                  </Link>
+                </div>
+              ) : (
+                <Link
+                  href="/exports"
+                  className="cursor-pointer inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
                 >
-                  导出 Excel
-                </a>
+                  <span>📥 批量导出商机 (VIP)</span>
+                </Link>
               )}
             </div>
           </div>

@@ -12,6 +12,7 @@ import {
   BoltIcon,
   ChatBubbleIcon,
   DocumentTextIcon,
+  TrophyIcon,
 } from "@/components/icons";
 
 export const ADMIN_NAV = [
@@ -20,6 +21,7 @@ export const ADMIN_NAV = [
   { href: "/admin/feedbacks", label: "数据反馈", Icon: ChatBubbleIcon },
   { href: "/admin/users", label: "用户管理", Icon: UsersIcon },
   { href: "/admin/orders", label: "订单管理", Icon: ClipboardIcon },
+  { href: "/admin/subscriptions", label: "订阅分析", Icon: TrophyIcon },
   { href: "/admin/invoices", label: "发票审核", Icon: DocumentTextIcon },
   { href: "/admin/payment-events", label: "支付事件", Icon: BoltIcon },
   { href: "/admin/audits/exports", label: "导出审计", Icon: ShieldCheckIcon },

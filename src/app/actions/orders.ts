@@ -34,13 +34,14 @@ export async function createBankOrderAction(formData: FormData): Promise<void> {
       userId: user.uid,
       planId: plan.id,
       billingCycle,
+      channel: "bank",
       status: "PENDING",
     },
-    select: { id: true },
+    select: { id: true, orderNo: true },
   });
 
   const order = pending
-    ? { id: pending.id }
+    ? pending
     : await prisma.order.create({
         data: {
           orderNo: makeOrderNo(),
@@ -50,12 +51,11 @@ export async function createBankOrderAction(formData: FormData): Promise<void> {
           amount,
           channel: "bank",
           status: "PENDING",
-          note: process.env.BANK_TRANSFER_INFO ?? "对公转账，请联系商务确认到账",
         },
-        select: { id: true },
+        select: { id: true, orderNo: true },
       });
 
   revalidatePath("/pricing");
   revalidatePath("/admin/orders");
-  redirect(`/pricing?submitted=${order.id}`);
+  redirect(`/pay/${order.orderNo}`);
 }

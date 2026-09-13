@@ -24,7 +24,11 @@ import {
   ClipboardIcon,
   ShieldCheckIcon,
   DatabaseIcon,
+  BriefcaseIcon,
+  ChartBarIcon,
+  MapPinIcon,
 } from "@/components/icons";
+import { INDUSTRY_META } from "@/lib/industry";
 
 const KIND_ICONS: Record<SectionKind, React.ComponentType<{ className?: string }>> = {
   project: BuildingIcon,
@@ -71,6 +75,14 @@ export default async function TenderDetailPage({
   ]);
   if (!tender) notFound();
 
+  const province = tender.provinceCode
+    ? await prisma.region.findFirst({
+        where: { code: tender.provinceCode, level: 1 },
+        select: { name: true },
+      })
+    : null;
+  const provinceName = province?.name ?? null;
+
   const user = await getSession();
   const entitlement = user ? await getEntitlement(user.uid) : null;
   const canViewFullText = entitlement?.features.fullText ?? false;
@@ -89,8 +101,31 @@ export default async function TenderDetailPage({
       value: tender.expireDate ? formatDate(tender.expireDate) : null,
       Icon: ClockIcon,
     },
-    { label: "采购人/招标人", value: tender.purchaser, Icon: BuildingIcon },
+    {
+      label: "采购人/招标人",
+      value: tender.purchaser,
+      Icon: BuildingIcon,
+      href: tender.purchaser ? `/purchasers/${encodeURIComponent(tender.purchaser)}` : undefined,
+    },
     { label: "代理机构", value: tender.agency, Icon: ClipboardIcon },
+    {
+      label: "所属项目",
+      value: tender.projectNo ? `${tender.projectNo}` : (timeline.projectId ? "查看生命周期" : null),
+      Icon: BriefcaseIcon,
+      href: timeline.projectId ? `/projects/${timeline.projectId}` : undefined,
+    },
+    {
+      label: "垂直赛道",
+      value: tender.industryCode && INDUSTRY_META[tender.industryCode] ? INDUSTRY_META[tender.industryCode].name : null,
+      Icon: ChartBarIcon,
+      href: tender.industryCode ? `/industries/${tender.industryCode}` : undefined,
+    },
+    {
+      label: "行政战区",
+      value: provinceName,
+      Icon: MapPinIcon,
+      href: tender.provinceCode ? `/regions/${tender.provinceCode}` : undefined,
+    },
   ].filter((f) => f.value);
 
   const isWatchedSupplier = user && tender.winningSupplier
@@ -141,13 +176,37 @@ export default async function TenderDetailPage({
 
       {/* 公告主体 */}
       <article className="overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-xs print:border-none print:shadow-none">
-        {/* 头部：类型 + 标题 */}
+        {/* 头部：类型 + 行业 + 标题 */}
         <header className="border-b border-slate-100 bg-gradient-to-r from-blue-50/70 to-transparent px-7 py-6 print:bg-none print:px-0">
-          <span
-            className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${tenderTypeColor(tender.type)} print:border print:border-slate-300`}
-          >
-            {tenderTypeLabel(tender.type)}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${tenderTypeColor(tender.type)} print:border print:border-slate-300`}
+            >
+              {tenderTypeLabel(tender.type)}
+            </span>
+            {tender.industryCode && INDUSTRY_META[tender.industryCode] && (
+              <Link
+                href={`/industries/${tender.industryCode}`}
+                className="inline-flex items-center gap-1 rounded-md bg-blue-50/80 px-2.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 transition hover:bg-blue-100"
+                title="查看该垂直赛道招投标宏观大盘与金主标王榜单"
+              >
+                <ChartBarIcon className="h-3 w-3" />
+                <span>{INDUSTRY_META[tender.industryCode].name}</span>
+                <span className="text-[10px] text-blue-500">赛道大盘 →</span>
+              </Link>
+            )}
+            {provinceName && tender.provinceCode && (
+              <Link
+                href={`/regions/${tender.provinceCode}`}
+                className="inline-flex items-center gap-1 rounded-md bg-emerald-50/80 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20 transition hover:bg-emerald-100"
+                title={`查看${provinceName}招投标区域作战大盘与金主标王`}
+              >
+                <MapPinIcon className="h-3 w-3" />
+                <span>{provinceName}</span>
+                <span className="text-[10px] text-emerald-500">区域大盘 →</span>
+              </Link>
+            )}
+          </div>
           <h1 className="mt-3 text-xl font-bold leading-relaxed tracking-tight text-slate-900">
             {tender.title}
           </h1>
@@ -162,12 +221,22 @@ export default async function TenderDetailPage({
                   <f.Icon className="h-3.5 w-3.5" />
                   {f.label}
                 </div>
-                <div
-                  className="mt-1.5 truncate text-sm font-semibold text-slate-800 tnum"
-                  title={f.value ?? undefined}
-                >
-                  {f.value}
-                </div>
+                {f.href ? (
+                  <Link
+                    href={f.href}
+                    className="mt-1.5 block truncate text-sm font-semibold text-primary hover:underline tnum"
+                    title={`${f.value}（点击穿透查看买方发包全貌与首选供应商）`}
+                  >
+                    {f.value}
+                  </Link>
+                ) : (
+                  <div
+                    className="mt-1.5 truncate text-sm font-semibold text-slate-800 tnum"
+                    title={f.value ?? undefined}
+                  >
+                    {f.value}
+                  </div>
+                )}
               </div>
             ))}
           </div>

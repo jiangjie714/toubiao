@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 import { prisma } from "@/lib/prisma";
 import { loadCompiledConfig } from "@/../crawler/config-loader";
 import { fetchText } from "@/../crawler/fetcher";
+import { dispatchAlerts } from "@/../crawler/alerts";
 
 export interface ProbeResult {
   skillCode: string;
@@ -158,21 +159,15 @@ async function updateSourceHealth(
       },
     });
 
-    // 若评分低于 70 分，且配置了告警规则，触发告警留痕
-    if (healthScore < 70) {
-      const alertRule = await prisma.alertRule.findFirst({
-        where: { scope: "global", enabled: true },
-      });
-
-      if (alertRule) {
-        await prisma.alertRecord.create({
-          data: {
-            ruleId: alertRule.id,
-            message: `[数据源预警] 数据源【${source.name}】健康评分降至 ${healthScore} 分，原因：${message}`,
-          },
-        });
-      }
-    }
+    // 若健康分发生变化或处于报警条件，调用全平台告警分发网络（含防刷静默期与多通道推送）
+    await dispatchAlerts({
+      sourceId: source.id,
+      skillCode: source.skillCode,
+      healthScore,
+      status,
+      itemsParsed: -1, // 探针探测
+      consecutiveFailures: status === "ERROR" ? 1 : 0,
+    });
   } catch (err) {
     console.error("updateSourceHealth error:", err);
   }

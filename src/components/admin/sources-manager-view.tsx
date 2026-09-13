@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
+import Link from "next/link";
 import {
   probeSingleSourceAction,
   probeAllSourcesAction,
@@ -14,6 +15,7 @@ import {
   BoltIcon,
   SearchIcon,
   ExternalLinkIcon,
+  BellIcon,
 } from "@/components/icons";
 
 export interface SourceRow {
@@ -200,7 +202,21 @@ export default function SourcesManagerView({ initialSources }: Props) {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              href="/admin/sources/tasks"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/60 px-3.5 py-2.5 text-xs font-semibold text-primary shadow-xs hover:bg-blue-100 transition-colors"
+            >
+              <BoltIcon className="h-4 w-4" />
+              <span>任务调度队列</span>
+            </Link>
+            <Link
+              href="/admin/sources/alerts"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/60 px-3.5 py-2.5 text-xs font-semibold text-rose-700 shadow-xs hover:bg-rose-100 transition-colors"
+            >
+              <BellIcon className="h-4 w-4" />
+              <span>告警规则与机器人配置</span>
+            </Link>
             <button
               disabled={isPending}
               onClick={handleProbeAll}
@@ -405,6 +421,16 @@ export default function SourcesManagerView({ initialSources }: Props) {
 
                   <td className="px-5 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      {/* 版本管理与在线编辑 */}
+                      <Link
+                        href={`/admin/sources/${s.id}/revisions`}
+                        title="查看历史版本、在线编辑 YAML 与一键回滚"
+                        className="cursor-pointer inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:border-primary hover:text-primary transition-colors"
+                      >
+                        <DatabaseIcon className="h-3 w-3 text-slate-400" />
+                        <span className="font-mono">v{s.configVersion || 1}</span>
+                      </Link>
+
                       {/* 单源即时拨测 */}
                       <button
                         disabled={isProbing || isPending}

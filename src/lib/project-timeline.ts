@@ -16,6 +16,7 @@ export interface ProjectTimelineData {
   hasMultipleNotices: boolean;
   projectNo: string | null;
   projectName: string;
+  projectId?: number | null;
   notices: TimelineNotice[];
 }
 
@@ -104,10 +105,20 @@ export async function getProjectTimeline(tenderId: number): Promise<ProjectTimel
     };
   });
 
+  let resolvedProjectId = current.projectRefId;
+  if (!resolvedProjectId && current.projectNo) {
+    const p = await prisma.project.findUnique({
+      where: { projectNo: current.projectNo.trim() },
+      select: { id: true },
+    });
+    if (p) resolvedProjectId = p.id;
+  }
+
   return {
     hasMultipleNotices: timelineNotices.length > 1,
     projectNo: current.projectNo,
     projectName: current.title,
+    projectId: resolvedProjectId,
     notices: timelineNotices,
   };
 }

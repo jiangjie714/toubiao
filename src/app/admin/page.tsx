@@ -7,6 +7,7 @@ import {
   ClipboardIcon,
   ChartBarIcon,
   ArrowRightIcon,
+  TrophyIcon,
 } from "@/components/icons";
 
 export const metadata = { title: "仪表盘" };
@@ -15,12 +16,14 @@ export default async function AdminDashboard() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [total, todayCount, byType, recentLogs, failedSources] = await Promise.all([
+  const [total, todayCount, byType, recentLogs, failedSources, activeSubs, paidOrders] = await Promise.all([
     prisma.tender.count(),
     prisma.tender.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.tender.groupBy({ by: ["type"], _count: { _all: true } }),
     prisma.crawlLog.findMany({ orderBy: { startedAt: "desc" }, take: 5 }),
     prisma.crawlSource.count({ where: { enabled: true, status: "FAILED" } }),
+    prisma.subscription.count({ where: { status: "ACTIVE" } }),
+    prisma.order.count({ where: { status: "PAID" } }),
   ]);
 
   const maxTypeCount = Math.max(1, ...byType.map((x) => x._count._all));
@@ -61,6 +64,40 @@ export default async function AdminDashboard() {
             </div>
           </div>
         ))}
+      </section>
+
+      {/* 商业化与订阅大盘快捷入口 */}
+      <section className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-white shadow-xs">
+              <TrophyIcon className="h-5 w-5" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-900">商业化订阅与流失看板</h2>
+                <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                  {activeSubs} 家生效会员
+                </span>
+                <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                  {paidOrders} 笔已付订单
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-500">
+                实时测算全站 MRR/ARR 经常性收入、7天/30天到期流失预警队列与客户成功延期
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/admin/subscriptions"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-primary-strong"
+            >
+              <span>进入订阅分析</span>
+              <ArrowRightIcon className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
       </section>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

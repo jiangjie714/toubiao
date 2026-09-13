@@ -169,3 +169,44 @@ export async function toggleSourceAction(formData: FormData): Promise<void> {
   });
   revalidatePath("/admin/sources");
 }
+
+/* ---------------- 订阅管理与客户成功 ---------------- */
+
+export async function adminExtendSubscriptionAction(
+  formData: FormData
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  const userId = Number(formData.get("userId"));
+  const days = Number(formData.get("days"));
+  const reason = String(formData.get("reason") ?? "").trim() || "管理员人工调整";
+
+  if (!userId || isNaN(userId) || !days || isNaN(days) || days <= 0) {
+    return { success: false, error: "参数不合法" };
+  }
+
+  const { extendSubscriptionDays } = await import("@/lib/subscription-analytics");
+  const res = await extendSubscriptionDays(userId, days, reason);
+  revalidatePath("/admin/subscriptions");
+  revalidatePath("/admin/users");
+  return res;
+}
+
+export async function adminChangePlanAction(
+  formData: FormData
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  const userId = Number(formData.get("userId"));
+  const planCode = String(formData.get("planCode") ?? "");
+  const billingCycle = String(formData.get("billingCycle") ?? "monthly") as "monthly" | "yearly";
+
+  if (!userId || !planCode) {
+    return { success: false, error: "参数不合法" };
+  }
+
+  const { changeSubscriptionPlan } = await import("@/lib/subscription-analytics");
+  const res = await changeSubscriptionPlan(userId, planCode, billingCycle);
+  revalidatePath("/admin/subscriptions");
+  revalidatePath("/admin/users");
+  return res;
+}
+

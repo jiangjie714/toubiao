@@ -21,11 +21,22 @@ export default function TenderProjectTimeline({ data }: Props) {
             项目全生命周期追踪 (招标 ➔ 变更 ➔ 中标全链穿透)
           </h3>
         </div>
-        {data.projectNo && (
-          <span className="rounded-md bg-white px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200 tnum">
-            项目编号: {data.projectNo}
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {data.projectNo && (
+            <span className="rounded-md bg-white px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200 tnum">
+              项目编号: {data.projectNo}
+            </span>
+          )}
+          {data.projectId && (
+            <Link
+              href={`/projects/${data.projectId}`}
+              className="cursor-pointer inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-primary hover:bg-blue-100 transition-colors"
+            >
+              <span>360° 项目全生命周期穿透</span>
+              <ArrowRightIcon className="h-3 w-3" />
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="mt-4">

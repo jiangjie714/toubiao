@@ -49,7 +49,7 @@ export async function createOnlineOrderAction(formData: FormData): Promise<void>
   const billingCycle = String(formData.get("billingCycle") ?? "monthly");
   const channel = String(formData.get("channel") ?? "");
   if (!["monthly", "yearly"].includes(billingCycle)) redirect("/pricing?error=cycle");
-  if (!["wechat", "alipay"].includes(channel)) redirect("/pricing?error=channel");
+  if (!["wechat", "alipay", "bank"].includes(channel)) redirect("/pricing?error=channel");
 
   const plan = await prisma.plan.findUnique({ where: { code: planCode } });
   if (!plan || !plan.active || plan.code === "FREE") redirect("/pricing?error=plan");
@@ -79,7 +79,7 @@ export async function createOnlineOrderAction(formData: FormData): Promise<void>
   });
 
   const order =
-    pending && isPrepayUsable(pending)
+    pending && (channel === "bank" || isPrepayUsable(pending))
       ? pending
       : pending ?? (await prisma.order.create({
           data: {
@@ -104,7 +104,9 @@ export async function createOnlineOrderAction(formData: FormData): Promise<void>
         }));
 
   let prepayError: string | null = null;
-  if (!isPrepayUsable(order)) prepayError = await preparePrepay(order);
+  if (channel !== "bank" && !isPrepayUsable(order)) {
+    prepayError = await preparePrepay(order);
+  }
 
   revalidatePath("/pricing");
   revalidatePath("/admin/orders");
@@ -137,4 +139,51 @@ export async function refreshPrepayAction(formData: FormData): Promise<void> {
   const prepayError = await preparePrepay(order);
   revalidatePath(`/pay/${order.orderNo}`);
   redirect(`/pay/${order.orderNo}${prepayError ? "?error=prepay" : ""}`);
+}
+
+export async function submitBankProofAction(
+  formData: FormData
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getSession();
+    if (!user) return { success: false, error: "未登录" };
+
+    const orderNo = String(formData.get("orderNo") ?? "").trim();
+    const bankName = String(formData.get("bankName") ?? "").trim();
+    const payerName = String(formData.get("payerName") ?? "").trim();
+    const transactionRef = String(formData.get("transactionRef") ?? "").trim();
+    const note = String(formData.get("note") ?? "").trim();
+
+    if (!orderNo) return { success: false, error: "订单号缺失" };
+    if (!payerName || !transactionRef) {
+      return { success: false, error: "请填写汇款户名与银行流水号/参考号" };
+    }
+
+    const order = await prisma.order.findFirst({
+      where: { orderNo, userId: user.uid },
+    });
+
+    if (!order) return { success: false, error: "未找到对应订单" };
+    if (order.status !== "PENDING") {
+      return { success: false, error: "当前订单状态不可提交凭证" };
+    }
+
+    const proofNote = `【对公汇款凭证】汇款户名: ${payerName} | 汇款银行: ${bankName || "未填"} | 银行流水号: ${transactionRef}${note ? ` | 备注: ${note}` : ""}`;
+
+    await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        note: proofNote,
+      },
+    });
+
+    revalidatePath(`/pay/${orderNo}`);
+    revalidatePath("/admin/orders");
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "提交打款凭证失败",
+    };
+  }
 }

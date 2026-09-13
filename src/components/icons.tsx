@@ -307,6 +307,43 @@ export function RadarIcon(p: IconProps) {
   );
 }
 
+export function BriefcaseIcon(p: IconProps) {
+  return (
+    <Base {...p}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.25v4.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25v-4.25m16.5 0a2.25 2.25 0 0 0-2.25-2.25H16.5m3.75 2.25H16.5m-9 0H3.75a2.25 2.25 0 0 1-2.25-2.25m5.25 2.25H3.75m12.75-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25h-4.5a2.25 2.25 0 0 0-2.25 2.25v5.25m9 0h-9m9 0a2.25 2.25 0 0 1-2.25 2.25h-4.5a2.25 2.25 0 0 1-2.25-2.25" />
+    </Base>
+  );
+}
 
+export function MailIcon(p: IconProps) {
+  return (
+    <Base {...p}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H4.5a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5H4.5a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+    </Base>
+  );
+}
 
+export function ArrowDownTrayIcon(p: IconProps) {
+  return (
+    <Base {...p}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </Base>
+  );
+}
+
+export function ArrowPathIcon(p: IconProps) {
+  return (
+    <Base {...p}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+    </Base>
+  );
+}
+
+export function BellIcon(p: IconProps) {
+  return (
+    <Base {...p}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+    </Base>
+  );
+}
 
