@@ -3,9 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { consumeSearchQuota, getEntitlement, getExportQuota } from "@/lib/quota";
 import FilterBar from "@/components/filter-bar";
-import { buildWhere, buildQueryString, PAGE_SIZE, type ListSearchParams } from "@/lib/query";
+import {
+  buildWhere,
+  buildQueryString,
+  tokenizeHighlight,
+  PAGE_SIZE,
+  type ListSearchParams,
+} from "@/lib/query";
 import { tenderTypeLabel, tenderTypeColor, formatDate } from "@/lib/constants";
-import { MapPinIcon, CalendarIcon, BuildingIcon, DatabaseIcon, SearchIcon } from "@/components/icons";
+import {
+  MapPinIcon,
+  CalendarIcon,
+  BuildingIcon,
+  DatabaseIcon,
+  SearchIcon,
+} from "@/components/icons";
 
 export const metadata = { title: "信息检索" };
 
@@ -25,6 +37,10 @@ export default async function ListPage({
     page: typeof raw.page === "string" ? raw.page : "1",
     purchaser: typeof raw.purchaser === "string" ? raw.purchaser : "",
     winningSupplier: typeof raw.winningSupplier === "string" ? raw.winningSupplier : "",
+    minBudget: typeof raw.minBudget === "string" ? raw.minBudget : "",
+    maxBudget: typeof raw.maxBudget === "string" ? raw.maxBudget : "",
+    industryCode: typeof raw.industryCode === "string" ? raw.industryCode : "",
+    hasAttachment: typeof raw.hasAttachment === "string" ? raw.hasAttachment : "",
   };
 
   const user = await getSession();
@@ -45,29 +61,39 @@ export default async function ListPage({
   const where = quota.allowed ? buildWhere(sp) : undefined;
   const page = Math.max(1, parseInt(sp.page || "1", 10) || 1);
 
-  const [total, items, provinces, cities] = quota.allowed
+  const [total, items, provinces, cities, industries] = quota.allowed
     ? await Promise.all([
         prisma.tender.count({ where }),
         prisma.tender.findMany({
           where,
+          include: {
+            _count: {
+              select: { attachments: true },
+            },
+          },
           orderBy: { publishDate: "desc" },
           skip: (page - 1) * PAGE_SIZE,
           take: PAGE_SIZE,
         }),
         prisma.region.findMany({ where: { level: 1 }, orderBy: { code: "asc" } }),
         prisma.region.findMany({ where: { level: 2 }, orderBy: { code: "asc" } }),
+        prisma.industryDict.findMany({ where: { parentId: null }, orderBy: { id: "asc" } }),
       ])
     : await Promise.all([
         Promise.resolve(0),
         Promise.resolve([]),
         prisma.region.findMany({ where: { level: 1 }, orderBy: { code: "asc" } }),
         prisma.region.findMany({ where: { level: 2 }, orderBy: { code: "asc" } }),
+        prisma.industryDict.findMany({ where: { parentId: null }, orderBy: { id: "asc" } }),
       ]);
 
   const regionName = (code: string | null) =>
     provinces.find((p) => p.code === code)?.name ??
     cities.find((c) => c.code === code)?.name ??
     "";
+
+  const industryMap = new Map(industries.map((ind) => [ind.code, ind.name]));
+
   const totalPages = quota.allowed ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : 1;
   const qs = (overrides: Record<string, string | undefined>) =>
     buildQueryString(sp, overrides);
@@ -86,6 +112,7 @@ export default async function ListPage({
           name: c.name,
           parentCode: c.parentCode ?? "",
         }))}
+        industries={industries.map((i) => ({ code: i.code, name: i.name }))}
         defaults={{
           q: sp.q ?? "",
           type: sp.type ?? "",
@@ -93,15 +120,27 @@ export default async function ListPage({
           city: sp.city ?? "",
           from: sp.from ?? "",
           to: sp.to ?? "",
+          minBudget: sp.minBudget ?? "",
+          maxBudget: sp.maxBudget ?? "",
+          industryCode: sp.industryCode ?? "",
+          hasAttachment: sp.hasAttachment ?? "",
         }}
       />
 
       {quota.allowed ? (
-        <div className="rounded-xl border border-slate-200 bg-surface">
+        <div className="rounded-2xl border border-slate-200 bg-surface shadow-xs">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 text-sm">
-            <span className="text-slate-500">
-              共 <b className="font-semibold text-primary tnum">{total}</b> 条结果
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 text-xs sm:text-sm">
+                共找到 <b className="font-bold text-primary tnum">{total}</b> 篇精准标讯
+              </span>
+              {sp.q && (
+                <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs text-primary font-mono">
+                  “{sp.q}”
+                </span>
+              )}
+            </div>
+
             <div className="flex items-center gap-3">
               <Link
                 href="/pricing"
@@ -137,54 +176,113 @@ export default async function ListPage({
               )}
             </div>
           </div>
+
           <ul className="divide-y divide-slate-100">
-            {items.map((t) => (
-              <li key={t.id} className="px-5 py-4 transition-colors duration-150 hover:bg-blue-50/40">
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className={`inline-flex shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${tenderTypeColor(t.type)}`}
-                  >
-                    {tenderTypeLabel(t.type)}
-                  </span>
-                  <Link
-                    href={`/tender/${t.id}`}
-                    className="flex-1 cursor-pointer truncate text-sm font-medium text-slate-800 transition-colors duration-150 hover:text-primary"
-                  >
-                    {t.title}
-                  </Link>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                  <span className="flex items-center gap-1 tnum">
-                    <CalendarIcon className="h-3.5 w-3.5" />
-                    {formatDate(t.publishDate)}
-                  </span>
-                  {(t.provinceCode || t.cityCode) && (
+            {items.map((t) => {
+              const titleSegments = tokenizeHighlight(t.title, sp.q);
+              const indName = t.industryCode ? industryMap.get(t.industryCode) : null;
+              const attachmentCount = t._count?.attachments ?? 0;
+
+              return (
+                <li
+                  key={t.id}
+                  className="px-5 py-4 transition-colors duration-150 hover:bg-blue-50/30"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span
+                          className={`inline-flex shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${tenderTypeColor(
+                            t.type
+                          )}`}
+                        >
+                          {tenderTypeLabel(t.type)}
+                        </span>
+
+                        {indName && (
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 border border-slate-200">
+                            {indName}
+                          </span>
+                        )}
+
+                        {t.budgetAmount && (
+                          <span className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700 border border-blue-200 tnum">
+                            ¥{(Number(t.budgetAmount) / 10000).toFixed(2)}万 预算
+                          </span>
+                        )}
+
+                        {t.awardAmount && (
+                          <span className="rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200 tnum">
+                            ¥{(Number(t.awardAmount) / 10000).toFixed(2)}万 中标
+                          </span>
+                        )}
+
+                        {attachmentCount > 0 && (
+                          <span className="rounded bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 border border-purple-200">
+                            📎 含 {attachmentCount} 个附件
+                          </span>
+                        )}
+                      </div>
+
+                      <Link
+                        href={`/tender/${t.id}`}
+                        className="cursor-pointer text-sm font-semibold text-slate-900 transition-colors duration-150 hover:text-primary leading-snug line-clamp-2"
+                      >
+                        {titleSegments.map((seg, sIdx) =>
+                          seg.highlight ? (
+                            <mark
+                              key={sIdx}
+                              className="rounded bg-amber-100 px-0.5 font-bold text-amber-900"
+                            >
+                              {seg.text}
+                            </mark>
+                          ) : (
+                            <span key={sIdx}>{seg.text}</span>
+                          )
+                        )}
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                    <span className="flex items-center gap-1 tnum">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {formatDate(t.publishDate)}
+                    </span>
+                    {(t.provinceCode || t.cityCode) && (
+                      <span className="flex items-center gap-1">
+                        <MapPinIcon className="h-3.5 w-3.5" />
+                        {[regionName(t.provinceCode), regionName(t.cityCode)]
+                          .filter(Boolean)
+                          .join(" / ")}
+                      </span>
+                    )}
+                    {t.purchaser && (
+                      <span className="flex max-w-[240px] items-center gap-1 truncate" title={t.purchaser}>
+                        <BuildingIcon className="h-3.5 w-3.5 shrink-0" />
+                        <span>买方: {t.purchaser}</span>
+                      </span>
+                    )}
+                    {t.winningSupplier && (
+                      <span className="flex max-w-[240px] items-center gap-1 truncate text-emerald-700" title={t.winningSupplier}>
+                        <span>中标: {t.winningSupplier}</span>
+                      </span>
+                    )}
                     <span className="flex items-center gap-1">
-                      <MapPinIcon className="h-3.5 w-3.5" />
-                      {[regionName(t.provinceCode), regionName(t.cityCode)]
-                        .filter(Boolean)
-                        .join(" / ")}
+                      <DatabaseIcon className="h-3.5 w-3.5" />
+                      {t.sourceName}
                     </span>
-                  )}
-                  {t.purchaser && (
-                    <span className="flex max-w-[240px] items-center gap-1 truncate">
-                      <BuildingIcon className="h-3.5 w-3.5 shrink-0" />
-                      {t.purchaser}
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1">
-                    <DatabaseIcon className="h-3.5 w-3.5" />
-                    {t.sourceName}
-                  </span>
-                </div>
-              </li>
-            ))}
+                  </div>
+                </li>
+              );
+            })}
+
             {items.length === 0 && (
               <li className="flex flex-col items-center gap-2 px-5 py-16">
                 <SearchIcon className="h-8 w-8 text-slate-300" />
-                <p className="text-sm text-slate-600">没有符合条件的公告</p>
+                <p className="text-sm font-medium text-slate-600">没有找到符合条件的标讯公告</p>
                 <p className="text-xs text-slate-500">
-                  试试放宽关键字或扩大日期范围，也可以
+                  试试放宽关键词、清空金额区间或扩大日期范围，也可以
                   <a href="/list" className="mx-1 cursor-pointer text-accent hover:underline">
                     清除全部筛选条件
                   </a>
@@ -195,7 +293,7 @@ export default async function ListPage({
           </ul>
         </div>
       ) : (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-6 py-10 text-center">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/60 px-6 py-10 text-center">
           <h2 className="text-lg font-bold text-slate-900">今日免费搜索次数已用完</h2>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-600">
             免费版每日可搜索 {quota.quota} 次。升级黄金会员可获得正文全文与每日 20 次搜索；
@@ -204,13 +302,13 @@ export default async function ListPage({
           <div className="mt-5 flex justify-center gap-3">
             <Link
               href="/pricing"
-              className="cursor-pointer rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-strong"
+              className="cursor-pointer rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-strong"
             >
               查看套餐并升级
             </Link>
             <Link
               href="/list"
-              className="cursor-pointer rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors duration-200 hover:border-blue-300"
+              className="cursor-pointer rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors duration-200 hover:border-blue-300"
             >
               明日再试
             </Link>
