@@ -16,6 +16,7 @@ import {
   MapPinIcon,
   MenuIcon,
   SearchIcon,
+  SparklesIcon,
   TargetIcon,
   XMarkIcon,
 } from "@/components/icons";
@@ -35,9 +36,11 @@ const SEARCH_ITEMS = [
   { href: "/list?type=RESULT", label: "中标公告", type: "RESULT" },
   { href: "/list?type=CHANGE", label: "变更公告", type: "CHANGE" },
   { href: "/list?type=INQUIRY", label: "询价公告", type: "INQUIRY" },
+  { href: "/intentions", label: "采购意向", type: "INTENTION" },
 ] as const;
 
 const INTEL_ITEMS: NavItem[] = [
+  { href: "/intentions", label: "意向雷达", desc: "提前 30~90 天锁定潜在商机", icon: SparklesIcon, match: ["/intentions"] },
   { href: "/suppliers", label: "竞对情报", desc: "竞对中标动态与竞争格局", icon: TargetIcon, match: ["/suppliers"] },
   { href: "/purchasers", label: "买方画像", desc: "采购单位画像与采购偏好", icon: BuildingIcon, match: ["/purchasers"] },
   { href: "/projects", label: "项目大盘", desc: "重点项目全过程进展", icon: FolderIcon, match: ["/projects"] },

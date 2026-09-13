@@ -121,3 +121,21 @@ lists:
     detail:
       contentSelector: "div.vF_detail_content"
       removeSelector: "script, style"
+
+  # 地方采购意向公告
+  - type: INTENTION
+    mode: html
+    firstPageUrl: "http://www.ccgp.gov.cn/cggg/dfgg/cgyx/"
+    url: "http://www.ccgp.gov.cn/cggg/dfgg/cgyx/index_{page-1}.htm"
+    parse:
+      itemSelector: "ul.c_list_bid > li"
+      fields:
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { selector: "em:eq(1)", attr: "text" }
+        purchaser: { selector: "em:eq(2)", attr: "text" }
+    detail:
+      contentSelector: "div.vF_detail_content"
+      removeSelector: "script, style"
+
