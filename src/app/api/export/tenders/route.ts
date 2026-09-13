@@ -3,9 +3,12 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { consumeExportQuota, getEntitlement } from "@/lib/quota";
 import { buildWhere, type ListSearchParams } from "@/lib/query";
 import { tenderTypeLabel } from "@/lib/constants";
+import { parseEstimatedProcurementDate, calculateIntentionWindow } from "@/lib/intention";
+import { calculateProjectStage, projectStageLabel } from "@/lib/project";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -39,11 +42,14 @@ export async function GET(request: NextRequest) {
     city: params.get("city") ?? undefined,
     from: params.get("from") ?? undefined,
     to: params.get("to") ?? undefined,
+    minBudget: params.get("minBudget") ?? undefined,
+    maxBudget: params.get("maxBudget") ?? undefined,
+    industryCode: params.get("industryCode") ?? undefined,
+    hasAttachment: params.get("hasAttachment") ?? undefined,
   };
 
   const hasBudget = params.get("hasBudget") === "true";
   const hasWinner = params.get("hasWinner") === "true";
-  const minBudget = params.get("minBudget") ? parseFloat(params.get("minBudget")!) : undefined;
   const requestedFields = params.get("fields")?.split(",").map((f) => f.trim()).filter(Boolean);
 
   const where = buildWhere(searchParams);
@@ -54,18 +60,14 @@ export async function GET(request: NextRequest) {
   if (hasWinner) {
     where.winningSupplier = { not: null };
   }
-  if (minBudget && !isNaN(minBudget)) {
-    where.budgetAmount = { gte: minBudget };
-  }
 
-  const filters = Object.fromEntries(
+  const filters: Prisma.JsonObject = Object.fromEntries(
     Object.entries({
       ...searchParams,
       hasBudget: hasBudget ? "true" : undefined,
       hasWinner: hasWinner ? "true" : undefined,
-      minBudget: minBudget ? String(minBudget) : undefined,
     }).filter(([, value]) => typeof value === "string" && value !== "")
-  ) as Record<string, string>;
+  );
 
   const total = await prisma.tender.count({ where });
   if (total === 0) {
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const [tenders, regions] = await Promise.all([
+  const [tenders, regions, industries] = await Promise.all([
     prisma.tender.findMany({
       where,
       orderBy: { publishDate: "desc" },
@@ -90,15 +92,30 @@ export async function GET(request: NextRequest) {
           take: 1,
           select: { role: true, phone: true, email: true, address: true },
         },
+        attachments: {
+          select: { id: true },
+        },
+        project: {
+          select: {
+            id: true,
+            notices: {
+              select: { id: true, title: true, type: true },
+            },
+          },
+        },
       },
     }),
     prisma.region.findMany({
       where: { level: 1 },
       select: { code: true, name: true },
     }),
+    prisma.industryDict.findMany({
+      select: { code: true, name: true },
+    }),
   ]);
 
   const regionMap = new Map(regions.map((r) => [r.code, r.name]));
+  const industryMap = new Map(industries.map((ind) => [ind.code, ind.name]));
 
   // 权限检查：是否可以明文导出采购人联系方式
   const canExportContacts =
@@ -115,16 +132,21 @@ export async function GET(request: NextRequest) {
     id: { header: "公告ID", width: 10, key: "id" },
     title: { header: "标讯标题", width: 42, key: "title" },
     type: { header: "标讯类型", width: 14, key: "type" },
+    industry: { header: "所属行业", width: 16, key: "industry" },
     publishDate: { header: "发布日期", width: 14, key: "publishDate" },
     expireDate: { header: "投标截止时间", width: 16, key: "expireDate" },
+    estimatedProcurement: { header: "预计采购月份(意向)", width: 20, key: "estimatedProcurement" },
+    windowPhase: { header: "窗口期状态", width: 18, key: "windowPhase" },
     region: { header: "所属区域", width: 18, key: "region" },
     projectNo: { header: "项目编号", width: 22, key: "projectNo" },
+    projectStage: { header: "全生命周期阶段", width: 16, key: "projectStage" },
     purchaser: { header: "采购人(发包单位)", width: 28, key: "purchaser" },
     agency: { header: "招标代理机构", width: 26, key: "agency" },
     budgetAmount: { header: "预算金额(万元)", width: 16, key: "budgetAmount" },
     winningSupplier: { header: "中标供应商", width: 30, key: "winningSupplier" },
     awardAmount: { header: "中标成交金额(万元)", width: 18, key: "awardAmount" },
     savingsRate: { header: "节资率(%)", width: 12, key: "savingsRate" },
+    attachmentCount: { header: "官方附件数", width: 12, key: "attachmentCount" },
     contactRole: { header: "官方项目联络人", width: 18, key: "contactRole" },
     phone: { header: "采购人联系电话", width: 18, key: "phone" },
     email: { header: "电子邮箱", width: 22, key: "email" },
@@ -206,20 +228,45 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 采购意向预计月份与窗口期状态
+    let estMonthStr = "";
+    let windowPhaseStr = "";
+    if (tender.type === "INTENTION") {
+      const { estimatedDate, rawText } = parseEstimatedProcurementDate(tender.content, tender.title, tender.publishDate);
+      estMonthStr = rawText;
+      const convertedNotice = tender.project?.notices?.find((n: { id: number; title: string; type: string }) => ["NOTICE", "RESULT"].includes(n.type)) || null;
+      const win = calculateIntentionWindow(tender.publishDate, estimatedDate, rawText, convertedNotice);
+      windowPhaseStr = win.phaseLabel;
+    }
+
+    // 全生命周期阶段
+    let projectStageStr = "";
+    if (tender.project?.notices && tender.project.notices.length > 0) {
+      const stage = calculateProjectStage(tender.project.notices);
+      projectStageStr = projectStageLabel(stage);
+    } else {
+      projectStageStr = tenderTypeLabel(tender.type);
+    }
+
     const rowData: Record<string, unknown> = {
       id: tender.id,
       title: tender.title,
       type: tenderTypeLabel(tender.type),
+      industry: tender.industryCode ? industryMap.get(tender.industryCode) ?? tender.industryCode : "",
       publishDate: dateOnly(tender.publishDate),
       expireDate: tender.expireDate ? dateOnly(tender.expireDate) : "",
+      estimatedProcurement: estMonthStr,
+      windowPhase: windowPhaseStr,
       region: regionStr || tender.provinceCode || "",
       projectNo: tender.projectNo ?? "",
+      projectStage: projectStageStr,
       purchaser: tender.purchaser ?? "",
       agency: tender.agency ?? "",
       budgetAmount: budget !== null ? budget : "",
       winningSupplier: tender.winningSupplier ?? "",
       awardAmount: award !== null ? award : "",
       savingsRate: savingsRateStr,
+      attachmentCount: tender.attachments.length > 0 ? `${tender.attachments.length}个` : "无",
       contactRole: contact?.role ?? "",
       phone: phoneStr,
       email: emailStr,
@@ -255,6 +302,16 @@ export async function GET(request: NextRequest) {
 
   const buffer = await workbook.xlsx.writeBuffer();
   const forwardedFor = request.headers.get("x-forwarded-for");
+
+  // 审计增加敏感字段与导出格式标记
+  filters.format = "xlsx";
+  const hasSensitiveContacts = Boolean(
+    canExportContacts && (activeFieldKeys.includes("phone") || activeFieldKeys.includes("email"))
+  );
+  if (hasSensitiveContacts) {
+    filters.exportedSensitiveContacts = true;
+  }
+
   await prisma.exportAudit.create({
     data: {
       userId: user.uid,

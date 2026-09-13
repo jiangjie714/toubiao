@@ -15,6 +15,9 @@ export interface ExportFilterParams {
   hasBudget?: boolean;
   hasWinner?: boolean;
   minBudget?: number;
+  maxBudget?: number;
+  industryCode?: string;
+  hasAttachment?: boolean;
 }
 
 export interface UserExportQuotaInfo {
@@ -48,6 +51,10 @@ export async function getExportPreviewCountAction(
       city: filters.city,
       from: filters.from,
       to: filters.to,
+      minBudget: filters.minBudget !== undefined ? String(filters.minBudget) : undefined,
+      maxBudget: filters.maxBudget !== undefined ? String(filters.maxBudget) : undefined,
+      industryCode: filters.industryCode,
+      hasAttachment: filters.hasAttachment ? "1" : undefined,
     };
 
     const where = buildWhere(searchParams);
@@ -57,9 +64,6 @@ export async function getExportPreviewCountAction(
     }
     if (filters.hasWinner) {
       where.winningSupplier = { not: null };
-    }
-    if (filters.minBudget && !isNaN(filters.minBudget)) {
-      where.budgetAmount = { gte: filters.minBudget };
     }
 
     const count = await prisma.tender.count({ where });

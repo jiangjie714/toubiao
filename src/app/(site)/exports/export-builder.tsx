@@ -61,6 +61,16 @@ const FIELD_GROUPS: ExportFieldGroup[] = [
     ],
   },
   {
+    groupName: "行业与全周期商机特征",
+    fields: [
+      { key: "industry", label: "所属行业门类", defaultChecked: true },
+      { key: "projectStage", label: "全生命周期阶段", defaultChecked: true },
+      { key: "attachmentCount", label: "官方标书附件数", defaultChecked: true },
+      { key: "estimatedProcurement", label: "预计采购月份(意向)", defaultChecked: false },
+      { key: "windowPhase", label: "窗口期状态(意向)", defaultChecked: false },
+    ],
+  },
+  {
     groupName: "采购人官方通讯录 (高价值特权)",
     fields: [
       { key: "contactRole", label: "项目经办人职务", defaultChecked: true, vip: true },
@@ -74,11 +84,13 @@ const FIELD_GROUPS: ExportFieldGroup[] = [
 export default function ExportBuilder({
   quotaInfo,
   provinces,
+  industries = [],
   initialHistory = [],
   initialParams = {},
 }: {
   quotaInfo: UserExportQuotaInfo;
   provinces: RegionItem[];
+  industries?: { code: string; name: string }[];
   initialHistory?: ExportHistoryItem[];
   initialParams?: {
     q?: string;
@@ -86,6 +98,10 @@ export default function ExportBuilder({
     province?: string;
     from?: string;
     to?: string;
+    minBudget?: string;
+    maxBudget?: string;
+    industryCode?: string;
+    hasAttachment?: string;
   };
 }) {
   // 筛选条件状态
@@ -96,7 +112,10 @@ export default function ExportBuilder({
   const [to, setTo] = useState(initialParams.to ?? "");
   const [hasBudget, setHasBudget] = useState(false);
   const [hasWinner, setHasWinner] = useState(false);
-  const [minBudget, setMinBudget] = useState("");
+  const [minBudget, setMinBudget] = useState(initialParams.minBudget ?? "");
+  const [maxBudget, setMaxBudget] = useState(initialParams.maxBudget ?? "");
+  const [industryCode, setIndustryCode] = useState(initialParams.industryCode ?? "");
+  const [hasAttachment, setHasAttachment] = useState(initialParams.hasAttachment === "1");
 
   // 选中的导出列字段
   const [selectedFields, setSelectedFields] = useState<Set<string>>(() => {
@@ -130,6 +149,9 @@ export default function ExportBuilder({
         hasBudget: hasBudget || undefined,
         hasWinner: hasWinner || undefined,
         minBudget: minBudget ? parseFloat(minBudget) : undefined,
+        maxBudget: maxBudget ? parseFloat(maxBudget) : undefined,
+        industryCode: industryCode || undefined,
+        hasAttachment: hasAttachment || undefined,
       });
       if (res.success) {
         setPreviewCount(res.count);
@@ -139,7 +161,7 @@ export default function ExportBuilder({
     } finally {
       setCalculating(false);
     }
-  }, [q, type, province, from, to, hasBudget, hasWinner, minBudget]);
+  }, [q, type, province, from, to, hasBudget, hasWinner, minBudget, maxBudget, industryCode, hasAttachment]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -213,6 +235,9 @@ export default function ExportBuilder({
       if (hasBudget) params.set("hasBudget", "true");
       if (hasWinner) params.set("hasWinner", "true");
       if (minBudget) params.set("minBudget", minBudget);
+      if (maxBudget) params.set("maxBudget", maxBudget);
+      if (industryCode) params.set("industryCode", industryCode);
+      if (hasAttachment) params.set("hasAttachment", "1");
 
       params.set("fields", Array.from(selectedFields).join(","));
 
@@ -338,8 +363,8 @@ export default function ExportBuilder({
               </div>
             </div>
 
-            {/* 标讯类型与区域 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* 标讯类型、行业分类与区域 */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700">
                   标讯类型
@@ -349,11 +374,30 @@ export default function ExportBuilder({
                   onChange={(e) => setType(e.target.value)}
                   className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-sm text-slate-700 focus:border-primary focus:bg-surface focus:outline-none"
                 >
-                  <option value="">全部类型 (招标/变更/中标/询价)</option>
+                  <option value="">全部类型 (招标/意向/中标/询价)</option>
                   <option value="NOTICE">招标公告 (NOTICE)</option>
+                  <option value="INTENTION">采购意向 (INTENTION)</option>
                   <option value="RESULT">中标公告 (RESULT)</option>
                   <option value="CHANGE">变更更正 (CHANGE)</option>
                   <option value="INQUIRY">询价竞谈 (INQUIRY)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700">
+                  行业门类分类
+                </label>
+                <select
+                  value={industryCode}
+                  onChange={(e) => setIndustryCode(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-sm text-slate-700 focus:border-primary focus:bg-surface focus:outline-none"
+                >
+                  <option value="">全部行业门类</option>
+                  {industries.map((ind) => (
+                    <option key={ind.code} value={ind.code}>
+                      {ind.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -441,7 +485,7 @@ export default function ExportBuilder({
                 精准商机限定
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-600">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs text-slate-600">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -449,7 +493,7 @@ export default function ExportBuilder({
                     onChange={(e) => setHasBudget(e.target.checked)}
                     className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
                   />
-                  <span>仅导出公布采购预算的标讯</span>
+                  <span>仅看公布预算标讯</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -459,22 +503,75 @@ export default function ExportBuilder({
                     onChange={(e) => setHasWinner(e.target.checked)}
                     className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
                   />
-                  <span>仅导出已产生中标供应商的标讯</span>
+                  <span>仅看已中标标讯</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={hasAttachment}
+                    onChange={(e) => setHasAttachment(e.target.checked)}
+                    className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                  />
+                  <span>仅看含标书附件</span>
                 </label>
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-xs text-slate-500 whitespace-nowrap">
-                  预算金额 ≥
-                </span>
-                <input
-                  type="number"
-                  value={minBudget}
-                  onChange={(e) => setMinBudget(e.target.value)}
-                  placeholder="例如 100"
-                  className="h-8 w-28 rounded-lg border border-slate-200 bg-surface px-2 text-xs text-slate-800 focus:border-primary focus:outline-none"
-                />
-                <span className="text-xs text-slate-500">万元</span>
+              {/* 预算区间输入与预设 */}
+              <div className="pt-2 border-t border-slate-200/60 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-slate-700">预算金额区间 (万元)</span>
+                  <div className="flex items-center gap-1 text-slate-500">
+                    <button
+                      type="button"
+                      onClick={() => { setMinBudget(""); setMaxBudget("100"); }}
+                      className="cursor-pointer hover:text-primary px-1"
+                    >
+                      &lt;100万
+                    </button>
+                    <span>|</span>
+                    <button
+                      type="button"
+                      onClick={() => { setMinBudget("100"); setMaxBudget("500"); }}
+                      className="cursor-pointer hover:text-primary px-1"
+                    >
+                      100-500万
+                    </button>
+                    <span>|</span>
+                    <button
+                      type="button"
+                      onClick={() => { setMinBudget("500"); setMaxBudget(""); }}
+                      className="cursor-pointer hover:text-primary px-1"
+                    >
+                      &gt;500万
+                    </button>
+                    <span>|</span>
+                    <button
+                      type="button"
+                      onClick={() => { setMinBudget(""); setMaxBudget(""); }}
+                      className="cursor-pointer hover:text-primary px-1"
+                    >
+                      不限
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={minBudget}
+                    onChange={(e) => setMinBudget(e.target.value)}
+                    placeholder="最低(万元)"
+                    className="h-8 w-full rounded-lg border border-slate-200 bg-surface px-2.5 text-xs text-slate-800 focus:border-primary focus:outline-none"
+                  />
+                  <span className="text-slate-400 text-xs">至</span>
+                  <input
+                    type="number"
+                    value={maxBudget}
+                    onChange={(e) => setMaxBudget(e.target.value)}
+                    placeholder="最高(万元)"
+                    className="h-8 w-full rounded-lg border border-slate-200 bg-surface px-2.5 text-xs text-slate-800 focus:border-primary focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
 

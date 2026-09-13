@@ -22,6 +22,10 @@ export default async function ExportsPage({
     province?: string;
     from?: string;
     to?: string;
+    minBudget?: string;
+    maxBudget?: string;
+    industryCode?: string;
+    hasAttachment?: string;
   }>;
 }) {
   const user = await getSession();
@@ -31,13 +35,17 @@ export default async function ExportsPage({
 
   const resolvedParams = await searchParams;
 
-  const [quotaRes, historyRes, provinces] = await Promise.all([
+  const [quotaRes, historyRes, provinces, industries] = await Promise.all([
     getUserExportQuotaAction(),
     getUserExportHistoryAction(),
     prisma.region.findMany({
       where: { level: 1 },
       select: { code: true, name: true },
       orderBy: { code: "asc" },
+    }),
+    prisma.industryDict.findMany({
+      orderBy: { code: "asc" },
+      select: { code: true, name: true },
     }),
   ]);
 
@@ -83,6 +91,7 @@ export default async function ExportsPage({
       <ExportBuilder
         quotaInfo={quotaInfo}
         provinces={provinces}
+        industries={industries}
         initialHistory={historyRes.data ?? []}
         initialParams={resolvedParams}
       />
