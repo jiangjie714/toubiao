@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSession, hashPassword } from "@/lib/auth";
 
+import {
+  adminCreateUserWithProfile,
+  adminUpdateUserProfile,
+  AdminUserProfileInput,
+} from "@/lib/user-admin-service";
+
 async function requireAdmin() {
   const user = await getSession();
   if (!user || user.role !== "ADMIN") throw new Error("需要管理员权限");
@@ -21,6 +27,9 @@ export async function createUserAction(
   const name = String(formData.get("name") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const role = String(formData.get("role") ?? "USER") === "ADMIN" ? "ADMIN" : "USER";
+  const email = String(formData.get("email") ?? "").trim();
+  const companyName = String(formData.get("companyName") ?? "").trim();
+  const planCode = String(formData.get("planCode") ?? "").trim();
 
   if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
     return { error: "用户名需为 3-20 位字母、数字或下划线" };
@@ -31,11 +40,39 @@ export async function createUserAction(
   const exists = await prisma.user.findUnique({ where: { username } });
   if (exists) return { error: "用户名已存在" };
 
-  await prisma.user.create({
-    data: { username, name, passwordHash: await hashPassword(password), role },
-  });
-  revalidatePath("/admin/users");
-  return {};
+  if (email) {
+    const emailExists = await prisma.user.findUnique({ where: { email } });
+    if (emailExists) return { error: "该邮箱已被绑定" };
+  }
+
+  try {
+    await adminCreateUserWithProfile({
+      username,
+      name,
+      password,
+      role,
+      email: email || undefined,
+      companyName: companyName || undefined,
+      planCode: planCode || undefined,
+    });
+    revalidatePath("/admin/users");
+    return {};
+  } catch (err: unknown) {
+    return { error: err instanceof Error ? err.message : "创建用户失败" };
+  }
+}
+
+export async function adminUpdateUserProfileAction(
+  payload: AdminUserProfileInput,
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  try {
+    await adminUpdateUserProfile(payload);
+    revalidatePath("/admin/users");
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "更新失败" };
+  }
 }
 
 export async function resetPasswordAction(formData: FormData): Promise<void> {
