@@ -2,8 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { ChatBubbleIcon, BoltIcon, ShieldCheckIcon, ClipboardIcon, ExternalLinkIcon } from "@/components/icons";
 import { updateFeedbackStatusAction } from "./actions";
+import TenderCorrectionModal from "@/components/admin/tender-correction-modal";
 
-export const metadata = { title: "数据反馈" };
+export const metadata = { title: "数据纠错与置信度保护 - 管理后台" };
 
 const ISSUE_TYPE_LABELS: Record<string, string> = {
   AMOUNT_ERROR: "金额不准",
@@ -26,7 +27,21 @@ export default async function AdminFeedbacksPage() {
     prisma.tenderFeedback.count({ where: { status: "RESOLVED" } }),
     prisma.tenderFeedback.findMany({
       include: {
-        tender: { select: { id: true, title: true, sourceName: true } },
+        tender: {
+          select: {
+            id: true,
+            title: true,
+            sourceName: true,
+            sourceUrl: true,
+            budgetAmount: true,
+            expireDate: true,
+            openTime: true,
+            projectNo: true,
+            winningSupplier: true,
+            purchaser: true,
+            fieldsConfidence: true,
+          },
+        },
         user: { select: { id: true, name: true, username: true } },
       },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
@@ -119,40 +134,61 @@ export default async function AdminFeedbacksPage() {
                   </td>
                   <td className="whitespace-nowrap px-5 py-4">
                     <div className="flex flex-col gap-2">
-                      <span
-                        className={`inline-flex w-fit rounded border px-2 py-0.5 text-xs font-semibold ${
-                          STATUS_BADGES[fb.status] ?? "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {fb.status === "PENDING" ? "待处理" : fb.status === "RESOLVED" ? "已修正" : "已驳回"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex w-fit rounded border px-2 py-0.5 text-xs font-semibold ${
+                            STATUS_BADGES[fb.status] ?? "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {fb.status === "PENDING"
+                            ? "待处理"
+                            : fb.status === "RESOLVED"
+                            ? "已修正 (置信度1.0)"
+                            : "已驳回"}
+                        </span>
+                      </div>
 
-                      {fb.status === "PENDING" && (
-                        <div className="flex items-center gap-1.5 pt-1">
-                          <form action={updateFeedbackStatusAction}>
-                            <input type="hidden" name="id" value={fb.id} />
-                            <input type="hidden" name="status" value="RESOLVED" />
-                            <input type="hidden" name="adminNote" value="已核实并修正数据" />
-                            <button
-                              type="submit"
-                              className="cursor-pointer rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-700"
-                            >
-                              标为已修正
-                            </button>
-                          </form>
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <TenderCorrectionModal
+                          feedbackId={fb.id}
+                          issueType={fb.issueType}
+                          issueLabel={ISSUE_TYPE_LABELS[fb.issueType] ?? fb.issueType}
+                          description={fb.description}
+                          userName={fb.user?.name || fb.user?.username}
+                          contact={fb.contact}
+                          tender={{
+                            id: fb.tender.id,
+                            title: fb.tender.title,
+                            sourceName: fb.tender.sourceName,
+                            sourceUrl: fb.tender.sourceUrl,
+                            budgetAmount: fb.tender.budgetAmount ? Number(fb.tender.budgetAmount) : null,
+                            expireDate: fb.tender.expireDate ? fb.tender.expireDate.toISOString() : null,
+                            openTime: fb.tender.openTime ? fb.tender.openTime.toISOString() : null,
+                            projectNo: fb.tender.projectNo,
+                            winningSupplier: fb.tender.winningSupplier,
+                            purchaser: fb.tender.purchaser,
+                            fieldsConfidence: (fb.tender.fieldsConfidence as Record<string, number>) || null,
+                          }}
+                        />
+
+                        {fb.status === "PENDING" && (
                           <form action={updateFeedbackStatusAction}>
                             <input type="hidden" name="id" value={fb.id} />
                             <input type="hidden" name="status" value="REJECTED" />
-                            <input type="hidden" name="adminNote" value="已核实，原文数据无误" />
+                            <input
+                              type="hidden"
+                              name="adminNote"
+                              value="已核实官方公告原文，现有数据与源站一致"
+                            />
                             <button
                               type="submit"
-                              className="cursor-pointer rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+                              className="cursor-pointer rounded border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
                             >
                               驳回
                             </button>
                           </form>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
