@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { loadCompiledConfig } from "@/../crawler/config-loader";
 import { fetchText } from "@/../crawler/fetcher";
 import { dispatchAlerts } from "@/../crawler/alerts";
+import { attemptAutoHealing } from "./circuit-breaker";
 
 export interface ProbeResult {
   skillCode: string;
@@ -150,24 +151,34 @@ async function updateSourceHealth(
     const source = await prisma.crawlSource.findUnique({ where: { skillCode } });
     if (!source) return;
 
-    await prisma.crawlSource.update({
-      where: { skillCode },
-      data: {
+    // 若原本处于熔断降级或异常，而本次探测恢复正常，执行自愈流程
+    if (
+      status === "OK" &&
+      (source.status === "CIRCUIT_DEGRADED" ||
+        source.status === "FAILED" ||
+        source.consecutiveFailures > 0)
+    ) {
+      await attemptAutoHealing(skillCode);
+    } else {
+      await prisma.crawlSource.update({
+        where: { skillCode },
+        data: {
+          healthScore,
+          status,
+          lastMessage: message,
+        },
+      });
+
+      // 若健康分发生变化或处于报警条件，调用全平台告警分发网络（含防刷静默期与多通道推送）
+      await dispatchAlerts({
+        sourceId: source.id,
+        skillCode: source.skillCode,
         healthScore,
         status,
-        lastMessage: message,
-      },
-    });
-
-    // 若健康分发生变化或处于报警条件，调用全平台告警分发网络（含防刷静默期与多通道推送）
-    await dispatchAlerts({
-      sourceId: source.id,
-      skillCode: source.skillCode,
-      healthScore,
-      status,
-      itemsParsed: -1, // 探针探测
-      consecutiveFailures: status === "ERROR" ? 1 : 0,
-    });
+        itemsParsed: -1, // 探针探测
+        consecutiveFailures: status === "ERROR" ? 1 : 0,
+      });
+    }
   } catch (err) {
     console.error("updateSourceHealth error:", err);
   }

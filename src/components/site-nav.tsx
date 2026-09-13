@@ -29,10 +29,12 @@ type NavItem = {
   match: string[];
 };
 
-const FLAT_ITEMS = [
-  { href: "/list", label: "信息检索", type: null },
+const SEARCH_ITEMS = [
+  { href: "/list", label: "全部公告", type: null },
   { href: "/list?type=NOTICE", label: "招标公告", type: "NOTICE" },
   { href: "/list?type=RESULT", label: "中标公告", type: "RESULT" },
+  { href: "/list?type=CHANGE", label: "变更公告", type: "CHANGE" },
+  { href: "/list?type=INQUIRY", label: "询价公告", type: "INQUIRY" },
 ] as const;
 
 const INTEL_ITEMS: NavItem[] = [
@@ -50,7 +52,16 @@ const WORKBENCH_ITEMS: NavItem[] = [
   { href: "/exports", label: "商机导出", desc: "筛选结果批量导出", icon: ArrowDownTrayIcon, match: ["/exports"] },
 ];
 
-const GROUPS: { id: string; label: string; items: NavItem[]; wide?: boolean }[] = [
+const GROUPS: {
+  id: string;
+  label: string;
+  /** 公告类型直链菜单（信息检索） */
+  links?: (typeof SEARCH_ITEMS)[number][];
+  /** 图标 + 说明的栏目菜单 */
+  items?: NavItem[];
+  wide?: boolean;
+}[] = [
+  { id: "search", label: "信息检索", links: [...SEARCH_ITEMS] },
   { id: "intel", label: "情报洞察", items: INTEL_ITEMS, wide: true },
   { id: "bench", label: "工作台", items: WORKBENCH_ITEMS },
 ];
@@ -122,22 +133,16 @@ export default function SiteNav() {
 
   return (
     <nav ref={rootRef} className="flex min-w-0 flex-1 items-center">
-      {/* 桌面端：高频直达 + 分组下拉 */}
+      {/* 桌面端：三个分组菜单 */}
       <div
-        className="hidden flex-1 items-center gap-1 lg:flex"
+        className="hidden flex-1 items-center justify-center gap-1 lg:flex"
         onMouseLeave={scheduleClose}
       >
-        {FLAT_ITEMS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={triggerCls(isListType(item.type))}
-          >
-            {item.label}
-          </Link>
-        ))}
         {GROUPS.map((group) => {
-          const active = group.items.some(itemActive);
+          const active =
+            group.id === "search"
+              ? pathname === "/list"
+              : (group.items?.some(itemActive) ?? false);
           const open = openMenu === group.id;
           return (
             <div
@@ -165,38 +170,57 @@ export default function SiteNav() {
               </button>
               {open && (
                 <div className="absolute left-0 top-full z-50 pt-2">
-                  <div
-                    className={`menu-pop rounded-2xl border border-slate-100 bg-white p-2 shadow-xl shadow-slate-900/10 ${
-                      group.wide ? "grid w-[34rem] grid-cols-2 gap-1" : "w-72"
-                    }`}
-                  >
-                    {group.items.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setOpenMenu(null)}
-                        className="group flex items-start gap-3 rounded-xl p-2.5 transition-colors duration-150 hover:bg-blue-50/70"
-                      >
-                        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-primary transition-colors duration-150 group-hover:bg-white">
-                          <item.icon className="h-4.5 w-4.5" />
-                        </span>
-                        <span className="min-w-0">
-                          <span
-                            className={`block text-sm ${
-                              itemActive(item)
-                                ? "font-semibold text-primary"
-                                : "font-medium text-slate-800"
-                            }`}
-                          >
-                            {item.label}
+                  {group.links ? (
+                    <div className="menu-pop w-44 rounded-xl border border-slate-100 bg-white p-1.5 shadow-xl shadow-slate-900/10">
+                      {group.links.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          onClick={() => setOpenMenu(null)}
+                          className={`block rounded-lg px-3 py-2 text-sm transition-colors duration-150 ${
+                            isListType(link.type)
+                              ? "bg-blue-50 font-semibold text-primary"
+                              : "font-medium text-slate-700 hover:bg-blue-50/70 hover:text-primary"
+                          }`}
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div
+                      className={`menu-pop rounded-2xl border border-slate-100 bg-white p-2 shadow-xl shadow-slate-900/10 ${
+                        group.wide ? "grid w-[34rem] grid-cols-2 gap-1" : "w-72"
+                      }`}
+                    >
+                      {group.items?.map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setOpenMenu(null)}
+                          className="group flex items-start gap-3 rounded-xl p-2.5 transition-colors duration-150 hover:bg-blue-50/70"
+                        >
+                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-primary transition-colors duration-150 group-hover:bg-white">
+                            <item.icon className="h-4.5 w-4.5" />
                           </span>
-                          <span className="mt-0.5 block text-xs leading-snug text-slate-500">
-                            {item.desc}
+                          <span className="min-w-0">
+                            <span
+                              className={`block text-sm ${
+                                itemActive(item)
+                                  ? "font-semibold text-primary"
+                                  : "font-medium text-slate-800"
+                              }`}
+                            >
+                              {item.label}
+                            </span>
+                            <span className="mt-0.5 block text-xs leading-snug text-slate-500">
+                              {item.desc}
+                            </span>
                           </span>
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -234,7 +258,7 @@ export default function SiteNav() {
             快速检索
           </p>
           <div className="mt-2 grid grid-cols-3 gap-1.5">
-            {FLAT_ITEMS.map((item) => (
+            {SEARCH_ITEMS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

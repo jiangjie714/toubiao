@@ -82,9 +82,9 @@ export default function UserMenu({ name, planName, isAdmin }: Props) {
         <div className="menu-pop absolute right-0 top-full z-50 mt-2 w-60 rounded-2xl border border-slate-100 bg-white p-2 shadow-xl shadow-slate-900/10">
           <div className="border-b border-slate-100 px-3 pb-2.5 pt-2">
             <p className="truncate text-sm font-semibold text-slate-900">{name}</p>
-            <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-              <TrophyIcon className="h-3 w-3" />
-              {planName}
+            <p className="mt-1.5 inline-flex max-w-full items-center gap-1 truncate rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+              <TrophyIcon className="h-3 w-3 shrink-0" />
+              <span className="truncate">{planName}</span>
             </p>
           </div>
           <div className="pt-1.5">

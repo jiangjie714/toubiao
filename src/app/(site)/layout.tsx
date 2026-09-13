@@ -28,7 +28,7 @@ export default async function SiteLayout({
           <form
             action="/list"
             role="search"
-            className="relative hidden w-48 shrink lg:block xl:w-60"
+            className="relative hidden w-44 shrink lg:block xl:w-56"
           >
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -43,7 +43,7 @@ export default async function SiteLayout({
             className="hidden shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition-colors duration-200 hover:bg-amber-100 xl:inline-flex"
           >
             <TrophyIcon className="h-3.5 w-3.5 text-amber-500" />
-            <span>{entitlement.planName}</span>
+            <span className="max-w-20 truncate">{entitlement.planName}</span>
             <span className="text-amber-300">·</span>
             <span className="text-amber-600">升级</span>
           </Link>

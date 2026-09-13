@@ -6,6 +6,7 @@ import { loadRegionMatcher } from "./regions";
 import { loadCompiledConfig } from "./config-loader";
 import { recalculateHealthScore } from "./health";
 import { dispatchAlerts } from "./alerts";
+import { handleFailureAndDegrade, attemptAutoHealing } from "@/lib/crawler/circuit-breaker";
 import {
   extractAttachments,
   extractBuiltinFields,
@@ -523,6 +524,11 @@ export async function runSourceWithLogging(
       consecutiveFailures: 0,
     });
 
+    // 成功抓取时，若原处于降级或有历史失败，尝试触发自愈与恢复通知
+    if (source.status === "CIRCUIT_DEGRADED" || source.consecutiveFailures > 0) {
+      await attemptAutoHealing(skillCode);
+    }
+
     return { ok: true, newCount: result.newCount, fetched: result.fetched, message };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -562,6 +568,9 @@ export async function runSourceWithLogging(
       itemsParsed: 0,
       consecutiveFailures,
     });
+
+    // 检查并触发熔断降级保护
+    await handleFailureAndDegrade(source.id, consecutiveFailures, message);
 
     return { ok: false, newCount: 0, fetched: 0, message };
   }

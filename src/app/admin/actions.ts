@@ -247,3 +247,18 @@ export async function adminChangePlanAction(
   return res;
 }
 
+export async function resetCircuitBreakerAction(
+  sourceId: number
+): Promise<{ success: boolean; error?: string }> {
+  await requireAdmin();
+  try {
+    const { manualResetCircuitBreaker } = await import("@/lib/crawler/circuit-breaker");
+    await manualResetCircuitBreaker(sourceId);
+    revalidatePath("/admin/sources");
+    revalidatePath("/admin/sources/tasks");
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "解除熔断失败" };
+  }
+}
+

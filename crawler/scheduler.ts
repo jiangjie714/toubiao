@@ -18,10 +18,15 @@ export async function scheduleDueSources(now = new Date()): Promise<number> {
       where: { skillCode: source.skillCode, status: { in: ["queued", "running"] } },
       select: { id: true },
     });
+    const nextRun =
+      source.status === "CIRCUIT_DEGRADED"
+        ? new Date(now.getTime() + 6 * 3600_000)
+        : getNextRunAt(source.scheduleCron, now);
+
     if (existing) {
       await prisma.crawlSource.update({
         where: { id: source.id },
-        data: { nextRunAt: getNextRunAt(source.scheduleCron, now) },
+        data: { nextRunAt: nextRun },
       });
       continue;
     }
@@ -29,7 +34,7 @@ export async function scheduleDueSources(now = new Date()): Promise<number> {
     await enqueueCrawlTask({ skillCode: source.skillCode, trigger: "cron" });
     await prisma.crawlSource.update({
       where: { id: source.id },
-      data: { nextRunAt: getNextRunAt(source.scheduleCron, now) },
+      data: { nextRunAt: nextRun },
     });
     enqueued++;
   }

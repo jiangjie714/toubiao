@@ -7,7 +7,7 @@ import {
   probeAllSourcesAction,
   debugCrawlAction,
 } from "@/app/admin/sources/actions";
-import { toggleSourceAction } from "@/app/admin/actions";
+import { toggleSourceAction, resetCircuitBreakerAction } from "@/app/admin/actions";
 import CrawlButton from "@/app/admin/sources/crawl-button";
 import { type DebugCrawlResult, type ProbeResult } from "@/lib/crawler/prober";
 import {
@@ -53,6 +53,33 @@ export default function SourcesManagerView({ initialSources }: Props) {
   // 沙盒诊断抽屉
   const [debugResult, setDebugResult] = useState<DebugCrawlResult | null>(null);
   const [isDebugLoading, setIsDebugLoading] = useState(false);
+
+  // 熔断解除状态
+  const [resettingId, setResettingId] = useState<number | null>(null);
+
+  const handleResetCircuitBreaker = (id: number) => {
+    setResettingId(id);
+    startTransition(async () => {
+      const res = await resetCircuitBreakerAction(id);
+      setResettingId(null);
+      if (res.success) {
+        setSources((prev) =>
+          prev.map((s) =>
+            s.id === id
+              ? {
+                  ...s,
+                  status: "OK",
+                  healthScore: 90,
+                  lastMessage: "已手动解除熔断并恢复调度",
+                }
+              : s,
+          ),
+        );
+      } else {
+        alert(res.error || "解除熔断失败");
+      }
+    });
+  };
 
   // 全量拨测
   const handleProbeAll = () => {
@@ -173,6 +200,13 @@ export default function SourcesManagerView({ initialSources }: Props) {
         <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-primary">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
           抓取中
+        </span>
+      );
+    if (s === "CIRCUIT_DEGRADED")
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-50 border border-purple-200 px-2 py-0.5 text-xs font-semibold text-purple-700">
+          <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />
+          熔断降级中
         </span>
       );
     return (
@@ -451,6 +485,19 @@ export default function SourcesManagerView({ initialSources }: Props) {
                         <SearchIcon className="h-3 w-3" />
                         <span>沙盒诊断</span>
                       </button>
+
+                      {/* 熔断恢复快捷入口 */}
+                      {(s.status === "CIRCUIT_DEGRADED" || s.status === "FAILED") && (
+                        <button
+                          disabled={resettingId === s.id || isPending}
+                          onClick={() => handleResetCircuitBreaker(s.id)}
+                          title="手动清除连续失败计数，解除熔断状态并立即恢复常规频次调度"
+                          className="cursor-pointer inline-flex items-center gap-1 rounded-lg border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-100 hover:border-purple-300 transition-colors disabled:opacity-50"
+                        >
+                          <BoltIcon className="h-3 w-3 text-purple-600" />
+                          <span>{resettingId === s.id ? "恢复中..." : "解除熔断"}</span>
+                        </button>
+                      )}
 
                       {/* 立即抓取入库 */}
                       <CrawlButton skillCode={s.skillCode} enabled={s.enabled} />
