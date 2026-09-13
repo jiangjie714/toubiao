@@ -13,11 +13,13 @@ import {
   ChatBubbleIcon,
   DocumentTextIcon,
   TrophyIcon,
+  BriefcaseIcon,
 } from "@/components/icons";
 
 export const ADMIN_NAV = [
   { href: "/admin", label: "仪表盘", Icon: ChartBarIcon },
   { href: "/admin/tenders", label: "信息管理", Icon: ClipboardIcon },
+  { href: "/admin/projects", label: "项目主数据", Icon: BriefcaseIcon },
   { href: "/admin/feedbacks", label: "数据反馈", Icon: ChatBubbleIcon },
   { href: "/admin/users", label: "用户管理", Icon: UsersIcon },
   { href: "/admin/orders", label: "订单管理", Icon: ClipboardIcon },
