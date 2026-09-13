@@ -62,6 +62,21 @@ h3 {
   animation-play-state: paused;
 }
 
+/* 导航弹层入场：轻微上浮缩放，指数缓出（160ms） */
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.menu-pop {
+  animation: menu-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* 无障碍：用户偏好减弱动效时全部降级为瞬时过渡 */
 @media (prefers-reduced-motion: reduce) {
   .ticker-track {

@@ -47,3 +47,7 @@ prisma/dev.db-journal
 # scratch scripts
 scratch/
 
+# 本地对象存储目录
+.data/
+
+

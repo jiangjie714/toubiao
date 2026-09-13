@@ -125,13 +125,30 @@ export default function TenderAttachmentsCard({
                   {badge.label}
                 </span>
                 <div className="min-w-0">
-                  <h4 className="text-sm font-medium text-slate-800 truncate" title={file.name}>
-                    {file.name}
-                  </h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-medium text-slate-800 truncate" title={file.name}>
+                      {file.name}
+                    </h4>
+                    {file.status === "STORED" ? (
+                      <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200 shrink-0">
+                        已安全存管
+                      </span>
+                    ) : file.status === "FAILED" ? (
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-200 shrink-0">
+                        源站异常/转存存管说明
+                      </span>
+                    ) : (
+                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-primary border border-blue-200 shrink-0">
+                        按需实时转存
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
                     <span className="font-mono">{formatSize(file.size)}</span>
                     <span>·</span>
-                    <span className="text-emerald-600">官方源站已归档校验</span>
+                    <span className={file.status === "STORED" ? "text-emerald-600" : "text-slate-500"}>
+                      {file.status === "STORED" ? "本地对象存储已就绪" : "会员触发时即时转存"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -141,10 +158,18 @@ export default function TenderAttachmentsCard({
                   <button
                     disabled={downloadingId === file.id}
                     onClick={() => handleDownload(file.id)}
-                    className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-primary-strong transition-colors disabled:opacity-50"
                   >
                     <BoltIcon className="h-3.5 w-3.5" />
-                    <span>{downloadingId === file.id ? "安全流传输中..." : "高速安全下载"}</span>
+                    <span>
+                      {downloadingId === file.id
+                        ? file.status === "STORED"
+                          ? "极速传输中..."
+                          : "正在拉取转存..."
+                        : file.status === "STORED"
+                        ? "秒级极速下载"
+                        : "按需转存下载"}
+                    </span>
                   </button>
                 ) : (
                   <Link
