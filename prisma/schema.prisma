@@ -35,6 +35,7 @@ model User {
   invoices           Invoice[]
   invoiceProfiles    InvoiceProfile[]
   followComments     TenderFollowComment[]
+  bidDeposits        BidDeposit[]
 }
 
 
@@ -101,6 +102,7 @@ model Tender {
   feedbacks        TenderFeedback[]
   aiAnalysis       TenderAiAnalysis?
   follows          TenderFollow[]
+  bidDeposits      BidDeposit[]
 
   @@index([projectNo])
 
@@ -575,5 +577,35 @@ model TenderFollowComment {
 
   @@index([followId, createdAt])
   @@index([userId])
+}
+
+model BidDeposit {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenderId        Int?
+  tender          Tender?   @relation(fields: [tenderId], references: [id], onDelete: SetNull)
+  projectName     String
+  projectNo       String?
+  purchaser       String?
+  payeeName       String?   // 收款单位/公共资源交易中心/代理机构
+  amount          Decimal   @db.Decimal(12, 2) // 保证金缴纳金额(元)
+  paymentMethod   String    @default("BANK_TRANSFER") // BANK_TRANSFER (现金电汇) | E_BOND (电子保函) | PAPER_BOND (纸质保函) | CASH_CHECK (支票)
+  paidAt          DateTime? // 打款出账时间
+  deadline        DateTime? // 截标/开标时间
+  refundDeadline  DateTime? // 法定退款截止时间 (开标或合同公示后 5 个工作日)
+  refundedAt      DateTime? // 实际退款到账时间
+  refundAmount    Decimal?  @db.Decimal(12, 2) // 实际退款金额
+  status          String    @default("IN_TRANSIT") // PENDING_PAY | IN_TRANSIT | REFUND_APPLIED | REFUNDED | OVERDUE_RISK | FORFEITED
+  bankAccount     String?   // 汇出银行账户信息
+  proofFileUrl    String?   // 转账电子回单或保函附件
+  notes           String?   @db.Text
+  teamId          Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, refundDeadline])
+  @@index([tenderId])
 }
 
