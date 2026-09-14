@@ -43,6 +43,7 @@ model User {
   bidAudits          BidAuditRecord[]
   competitorWatches  CompetitorWatch[]
   webhookEndpoints   WebhookEndpoint[]
+  proposalProjects   ProposalProject[]
 }
 
 
@@ -111,6 +112,7 @@ model Tender {
   follows          TenderFollow[]
   bidDeposits      BidDeposit[]
   bidAudits        BidAuditRecord[]
+  proposals        ProposalProject[]
 
   @@index([projectNo])
 
@@ -468,6 +470,7 @@ model TenderFollow {
   review       BidReview?
   milestones   BidMilestone[]
   audits       BidAuditRecord[]
+  proposals    ProposalProject[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -815,4 +818,28 @@ model WebhookDeliveryLog {
 
   @@index([endpointId, createdAt])
   @@index([eventType])
+}
+
+model ProposalProject {
+  id               Int           @id @default(autoincrement())
+  userId           Int
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenderId         Int?
+  tender           Tender?       @relation(fields: [tenderId], references: [id], onDelete: SetNull)
+  followId         Int?
+  follow           TenderFollow? @relation(fields: [followId], references: [id], onDelete: SetNull)
+  title            String        // 标书装配工程名称
+  status           String        @default("DRAFT") // DRAFT(装配中) | COMPLETED(装配就绪) | AUDITED(已通过质检)
+  targetPurchaser  String?       // 目标发包采购单位
+  bidAmountWan     Float?        // 拟投标报价金额 (万元)
+  projectDuration  String?       // 承诺实施交付工期
+  assembledVolumes Json          // 存储装配好的六大卷宗内容结构
+  teamId           Int?          // 团队席位共享归属
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([userId, status])
+  @@index([tenderId])
+  @@index([followId])
+  @@index([teamId])
 }

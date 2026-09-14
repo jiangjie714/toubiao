@@ -99,7 +99,7 @@ export default async function IntentionsPage({ searchParams }: PageProps) {
     <div className="min-h-screen bg-slate-50/60 pb-16">
       {/* 顶部 Hero & 标语 */}
       <section className="border-b border-slate-200/80 bg-white pt-8 pb-10 shadow-xs">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-3 py-1 text-xs font-semibold text-amber-800">
@@ -192,7 +192,7 @@ export default async function IntentionsPage({ searchParams }: PageProps) {
       </section>
 
       {/* 筛选与检索控制台 */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-6">
+      <section className="mt-6">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
           <form method="GET" action="/intentions" className="space-y-4">
             {/* 搜索框与窗口期 Tab */}
@@ -312,7 +312,7 @@ export default async function IntentionsPage({ searchParams }: PageProps) {
       </section>
 
       {/* 结果列表区 */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-6">
+      <section className="mt-6">
         <div className="flex items-center justify-between mb-4">
           <div className="text-xs text-slate-500">
             共匹配到 <strong className="font-semibold text-slate-800 tnum">{intentionData.total}</strong> 条采购意向商机

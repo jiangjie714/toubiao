@@ -22,6 +22,12 @@ const MAX_ITEMS = 4;
 
 let listeners: Array<() => void> = [];
 
+// useSyncExternalStore 要求 getSnapshot/getServerSnapshot 在通知之间返回稳定引用，
+// 否则触发 React "should be cached" 无限循环保护导致整页水合崩溃
+const EMPTY_ITEMS: CompareTrayItem[] = [];
+let snapshot: CompareTrayItem[] = EMPTY_ITEMS;
+let snapshotDirty = true;
+
 function emitChange() {
   for (const listener of listeners) {
     listener();
@@ -29,19 +35,24 @@ function emitChange() {
 }
 
 export function getCompareTrayItems(): CompareTrayItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CompareTrayItem[]) : [];
-  } catch {
-    return [];
+  if (typeof window === "undefined") return EMPTY_ITEMS;
+  if (snapshotDirty) {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      snapshot = raw ? (JSON.parse(raw) as CompareTrayItem[]) : EMPTY_ITEMS;
+    } catch {
+      snapshot = EMPTY_ITEMS;
+    }
+    snapshotDirty = false;
   }
+  return snapshot;
 }
 
 export function saveCompareTrayItems(items: CompareTrayItem[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items.slice(0, MAX_ITEMS)));
+    snapshotDirty = true;
     window.dispatchEvent(new CustomEvent("tb-compare-change"));
     emitChange();
   } catch (e) {
@@ -51,8 +62,14 @@ export function saveCompareTrayItems(items: CompareTrayItem[]) {
 
 export function subscribeCompareTray(callback: () => void) {
   listeners.push(callback);
-  const handleCustom = () => callback();
-  const handleStorage = () => callback();
+  const handleCustom = () => {
+    snapshotDirty = true;
+    callback();
+  };
+  const handleStorage = () => {
+    snapshotDirty = true;
+    callback();
+  };
   window.addEventListener("tb-compare-change", handleCustom);
   window.addEventListener("storage", handleStorage);
   return () => {
@@ -82,7 +99,7 @@ export default function TenderCompareTray() {
   const items = useSyncExternalStore(
     subscribeCompareTray,
     getCompareTrayItems,
-    () => []
+    () => EMPTY_ITEMS
   );
   const [isExpanded, setIsExpanded] = useState(false);
   const router = useRouter();

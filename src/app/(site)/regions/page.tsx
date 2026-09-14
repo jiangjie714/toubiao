@@ -44,7 +44,7 @@ export default async function RegionsPage({
   const zoneEntries = Object.entries(CHINA_ZONES);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8">
+    <div className="space-y-8">
       {/* 顶部标题与定位 */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-6">
         <div>

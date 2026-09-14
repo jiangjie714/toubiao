@@ -36,7 +36,7 @@ export default async function TenderComparePage({
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="">
       <TenderCompareView initialData={data} initialIds={ids} />
       <TenderCompareTray />
     </div>

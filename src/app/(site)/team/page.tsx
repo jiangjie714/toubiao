@@ -17,7 +17,7 @@ export default async function TeamPage() {
   const teamRes = await getMyTeamAction();
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="">
       <TeamManagementView
         initialTeam={teamRes.data}
         userName={user.name || user.username}

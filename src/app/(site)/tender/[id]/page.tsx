@@ -142,7 +142,7 @@ export default async function TenderDetailPage({
     : false;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="space-y-6">
       {/* 顶部导航与操作控制台 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link

@@ -17,7 +17,7 @@ export default async function DeveloperPage() {
   const initialData = await getUserApiKeysAction();
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="">
       <DeveloperConsole
         initialData={initialData}
         userName={user.name || user.username}

@@ -53,7 +53,7 @@ export default async function RegionDetailPage({
   const canExport = entitlement ? entitlement.features.exportDaily > 0 : false;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8">
+    <div className="space-y-8">
       {/* 顶部导航与操作控制台 */}
       <div className="flex flex-col gap-4 border-b border-slate-100 pb-6 md:flex-row md:items-center md:justify-between">
         <div>
