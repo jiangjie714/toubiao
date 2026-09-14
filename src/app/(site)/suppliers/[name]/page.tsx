@@ -9,6 +9,7 @@ import {
   MapPinIcon,
   LockClosedIcon,
   ArrowRightIcon,
+  ArrowsRightLeftIcon,
 } from "@/components/icons";
 
 export async function generateMetadata({
@@ -100,10 +101,19 @@ export default async function SupplierDetailPage({
           </div>
 
           <div className="flex flex-col items-end gap-2">
-            <SupplierTrackButton
-              supplierName={profile.name}
-              initialIsWatched={profile.isWatched}
-            />
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/suppliers/compare?names=${encodeURIComponent(profile.name)}`}
+                className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3.5 py-2 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors shadow-2xs"
+              >
+                <ArrowsRightLeftIcon className="h-3.5 w-3.5" />
+                <span>同业对标PK</span>
+              </Link>
+              <SupplierTrackButton
+                supplierName={profile.name}
+                initialIsWatched={profile.isWatched}
+              />
+            </div>
             <span className="text-[11px] text-slate-400">
               加入雷达后，该对手有新中标将触发即时推送
             </span>
@@ -288,7 +298,7 @@ export default async function SupplierDetailPage({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="data-table w-full text-left text-sm">
             <thead className="border-b border-slate-100 bg-slate-50/30 text-xs text-slate-500">
               <tr>
                 <th className="px-6 py-3.5 font-medium">中标项目名称</th>

@@ -7,8 +7,10 @@ import { prisma } from "@/lib/prisma";
 import {
   getTopSuppliers,
   getSupplierProfile,
+  compareSuppliers,
   type SupplierSummary,
   type SupplierProfileData,
+  type SupplierComparisonData,
 } from "@/lib/competitor";
 
 export async function getTopSuppliersAction(options: {
@@ -148,3 +150,33 @@ export async function untrackCompetitorAction(
     return { success: false, error: "取消关注失败" };
   }
 }
+
+export async function compareSuppliersAction(
+  names: string[]
+): Promise<{ success: boolean; data?: SupplierComparisonData; error?: string }> {
+  try {
+    const user = await getSession();
+    const entitlement = user ? await getEntitlement(user.uid) : null;
+    const isPremium =
+      user?.role === "ADMIN" ||
+      entitlement?.planCode === "PLATINUM" ||
+      (entitlement?.planCode && entitlement.planCode.startsWith("ENTERPRISE")) ||
+      entitlement?.features.contacts === true;
+
+    const data = await compareSuppliers(
+      names,
+      Boolean(isPremium),
+      entitlement?.planCode ?? "FREE"
+    );
+
+    if (!data) {
+      return { success: false, error: "未找到对比企业的有效招投标数据" };
+    }
+
+    return { success: true, data };
+  } catch (err) {
+    console.error("Failed to compare suppliers:", err);
+    return { success: false, error: "同业对比分析失败，请稍后重试" };
+  }
+}
+

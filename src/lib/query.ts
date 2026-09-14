@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { buildFullTextWhere } from "@/lib/fulltext";
 
 export type ListSearchParams = {
   q?: string;
@@ -21,26 +22,34 @@ const VALID_TYPES = new Set(["NOTICE", "RESULT", "CHANGE", "INQUIRY"]);
 export function buildWhere(sp: ListSearchParams): Prisma.TenderWhereInput {
   const where: Prisma.TenderWhereInput = {};
 
+  // Determine if full‑text search mode is enabled via env var
+  const useFullText = process.env.SEARCH_MODE === 'fulltext';
+
   // 1. 多关键词分词与组合逻辑 (AND 语义)
   const q = sp.q?.trim();
   if (q) {
-    const tokens = q.split(/\s+/).filter(Boolean);
-    if (tokens.length === 1) {
-      where.OR = [
-        { title: { contains: tokens[0] } },
-        { content: { contains: tokens[0] } },
-        { purchaser: { contains: tokens[0] } },
-        { winningSupplier: { contains: tokens[0] } },
-      ];
-    } else if (tokens.length > 1) {
-      where.AND = tokens.map((token) => ({
-        OR: [
-          { title: { contains: token } },
-          { content: { contains: token } },
-          { purchaser: { contains: token } },
-          { winningSupplier: { contains: token } },
-        ],
-      }));
+    if (useFullText) {
+      // Use PostgreSQL full‑text search helper
+      Object.assign(where, buildFullTextWhere(q));
+    } else {
+      const tokens = q.split(/\s+/).filter(Boolean);
+      if (tokens.length === 1) {
+        where.OR = [
+          { title: { contains: tokens[0] } },
+          { content: { contains: tokens[0] } },
+          { purchaser: { contains: tokens[0] } },
+          { winningSupplier: { contains: tokens[0] } },
+        ];
+      } else if (tokens.length > 1) {
+        where.AND = tokens.map((token) => ({
+          OR: [
+            { title: { contains: token } },
+            { content: { contains: token } },
+            { purchaser: { contains: token } },
+            { winningSupplier: { contains: token } },
+          ],
+        }));
+      }
     }
   }
 
