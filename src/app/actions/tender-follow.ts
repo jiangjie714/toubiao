@@ -52,6 +52,12 @@ export type TenderFollowItem = {
     decision: string;
     overallScore: number;
   } | null;
+  review?: {
+    id: number;
+    outcome: string;
+    primaryCause: string;
+    priceGapPercent: number | null;
+  } | null;
   createdAt: Date;
   updatedAt: Date;
   deadlineCountdown?: DeadlineCountdown | null;
@@ -191,6 +197,14 @@ export async function getTrackerBoardAction(options?: {
             overallScore: true,
           },
         },
+        review: {
+          select: {
+            id: true,
+            outcome: true,
+            primaryCause: true,
+            priceGapPercent: true,
+          },
+        },
         _count: {
           select: { comments: true },
         },
@@ -252,6 +266,14 @@ export async function getTrackerBoardAction(options?: {
           ? {
               decision: r.evaluation.decision,
               overallScore: r.evaluation.overallScore,
+            }
+          : null,
+        review: r.review
+          ? {
+              id: r.review.id,
+              outcome: r.review.outcome,
+              primaryCause: r.review.primaryCause,
+              priceGapPercent: r.review.priceGapPercent ? Number(r.review.priceGapPercent) : null,
             }
           : null,
         comments: r.comments.map((c) => ({

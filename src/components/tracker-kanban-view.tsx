@@ -13,8 +13,10 @@ import {
   AlertCircleIcon,
   ExternalLinkIcon,
   SparklesIcon,
+  ScaleIcon,
 } from "@/components/icons";
 import BidWarRoomModal from "@/components/bid-war-room-modal";
+import BidReviewModal from "@/components/bid-review-modal";
 import {
   getTrackerBoardAction,
   updateFollowStatusAction,
@@ -66,6 +68,9 @@ export default function TrackerKanbanView({ initialData }: Props) {
 
   // 作战指挥室 Modal
   const [warRoomFollowId, setWarRoomFollowId] = useState<number | null>(null);
+
+  // 复盘归因 Modal
+  const [reviewFollowId, setReviewFollowId] = useState<number | null>(null);
 
   const fetchBoard = useCallback(
     (mode: "team" | "personal" = viewMode, assignee: string = selectedAssignee) => {
@@ -195,6 +200,14 @@ export default function TrackerKanbanView({ initialData }: Props) {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/reviews"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+            title="查看企业投标复盘与失标归因诊断罗盘"
+          >
+            <ScaleIcon className="h-3.5 w-3.5 text-primary" />
+            <span>复盘归因大盘</span>
+          </Link>
           <Link
             href="/list"
             className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-primary/90 transition-colors"
@@ -511,6 +524,48 @@ export default function TrackerKanbanView({ initialData }: Props) {
                         </button>
                       </div>
 
+                      {/* 开标复盘归因状态 */}
+                      {(item.review || item.status === "WON" || item.status === "LOST") && (
+                        <div className="mb-2 flex items-center justify-between gap-1">
+                          {item.review ? (
+                            <button
+                              type="button"
+                              onClick={() => setReviewFollowId(item.id)}
+                              className="cursor-pointer inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition"
+                              title="点击查看/调整开标复盘与失分归因"
+                            >
+                              <ScaleIcon className="h-3 w-3 text-purple-600" />
+                              <span>
+                                {item.review.outcome === "WON" ? "已复盘(中标)" : "已归因(失标)"}
+                              </span>
+                              {item.review.priceGapPercent !== null && (
+                                <span className="font-mono">
+                                  ({Number(item.review.priceGapPercent) > 0 ? "+" : ""}{item.review.priceGapPercent}%)
+                                </span>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setReviewFollowId(item.id)}
+                              className="cursor-pointer inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 transition animate-pulse"
+                              title="已结案项目，点击进行成败归因与经验复盘"
+                            >
+                              <ScaleIcon className="h-3 w-3 text-rose-600" />
+                              <span>待复盘归因 +</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setReviewFollowId(item.id)}
+                            className="cursor-pointer inline-flex items-center gap-0.5 text-[10px] font-semibold text-purple-600 hover:text-purple-800 transition"
+                          >
+                            <span>诊断报告 →</span>
+                          </button>
+                        </div>
+                      )}
+
                       {/* 类型与金额 */}
                       <div className="flex items-center justify-between gap-1 mb-1.5">
                         <span
@@ -592,6 +647,14 @@ export default function TrackerKanbanView({ initialData }: Props) {
                         </select>
 
                         <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setReviewFollowId(item.id)}
+                            className="cursor-pointer text-[11px] font-semibold text-purple-600 hover:text-purple-800"
+                            title="打开开标复盘诊断"
+                          >
+                            复盘
+                          </button>
                           <Link
                             href={`/tender/${item.tender.id}`}
                             className="text-primary hover:underline font-semibold"
@@ -867,6 +930,16 @@ export default function TrackerKanbanView({ initialData }: Props) {
           followId={warRoomFollowId}
           isOpen={warRoomFollowId !== null}
           onClose={() => setWarRoomFollowId(null)}
+          onSaved={() => fetchBoard()}
+        />
+      )}
+
+      {/* 投标复盘与胜败归因诊断 Modal */}
+      {reviewFollowId !== null && (
+        <BidReviewModal
+          followId={reviewFollowId}
+          isOpen={reviewFollowId !== null}
+          onClose={() => setReviewFollowId(null)}
           onSaved={() => fetchBoard()}
         />
       )}
