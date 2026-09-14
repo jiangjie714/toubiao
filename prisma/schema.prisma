@@ -42,6 +42,7 @@ model User {
   bidMilestones      BidMilestone[]
   bidAudits          BidAuditRecord[]
   competitorWatches  CompetitorWatch[]
+  webhookEndpoints   WebhookEndpoint[]
 }
 
 
@@ -779,4 +780,39 @@ model CompetitorWatch {
   @@index([userId])
   @@index([competitorName])
   @@index([teamId])
+}
+
+model WebhookEndpoint {
+  id           Int                  @id @default(autoincrement())
+  userId       Int
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String               // 终端名称/业务机器人群名 (如: 销售一部企微机器人)
+  channel      String               // WECOM(企微) | DINGTALK(钉钉) | FEISHU(飞书) | GENERIC(通用HTTP)
+  webhookUrl   String               // 完整的 Webhook URL
+  secret       String?              // 加签密钥 (钉钉加签密钥 / 飞书签名Secret)
+  events       Json                 // 订阅的业务事件类型列表，如 ["DEADLINE", "COMPETITOR", "DEPOSIT", "AUDIT", "TENDER"]
+  enabled      Boolean              @default(true)
+  teamId       Int?                 // 团队多席位共享归属
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  logs         WebhookDeliveryLog[]
+
+  @@index([userId, enabled])
+  @@index([teamId])
+}
+
+model WebhookDeliveryLog {
+  id             Int             @id @default(autoincrement())
+  endpointId     Int
+  endpoint       WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  eventType      String          // DEADLINE | COMPETITOR | DEPOSIT | AUDIT | TENDER | TEST
+  payloadSummary String          // 投递主题/卡片标题摘要
+  statusCode     Int             // HTTP 状态码 (200, 400, 500 等)
+  latencyMs      Int             // 投递网络往返耗时 (毫秒)
+  success        Boolean         // 是否投递成功
+  error          String?         // 异常或错误信息
+  createdAt      DateTime        @default(now())
+
+  @@index([endpointId, createdAt])
+  @@index([eventType])
 }

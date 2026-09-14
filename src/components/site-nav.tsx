@@ -65,6 +65,7 @@ const WORKBENCH_ITEMS: NavItem[] = [
   { href: "/reviews", label: "复盘归因罗盘", desc: "开标数据对标与胜败六维归因诊断", icon: ScaleIcon, match: ["/reviews"] },
   { href: "/tenders/compare", label: "标讯对比", desc: "多标段横向立项决策罗盘", icon: ScaleIcon, match: ["/tenders/compare"] },
   { href: "/watches", label: "关键词订阅", desc: "按关键词追踪新公告", icon: BellIcon, match: ["/watches"] },
+  { href: "/webhooks", label: "预警推送中枢", desc: "企微/钉钉/飞书机器人事件路由", icon: BoltIcon, match: ["/webhooks"] },
   { href: "/exports", label: "商机导出", desc: "筛选结果批量导出", icon: ArrowDownTrayIcon, match: ["/exports"] },
 ];
 
