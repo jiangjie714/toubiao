@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getEntitlement } from "@/lib/quota";
+import { getRegionDisplayName } from "@/lib/dict-cache";
 import { tenderTypeLabel, tenderTypeColor, formatDate } from "@/lib/constants";
 import { parseTenderSections, type SectionKind } from "@/lib/tender-sections";
 import { TenderRichContent } from "@/components/tender-rich-content";
@@ -94,13 +95,7 @@ export default async function TenderDetailPage({
   ]);
   if (!tender) notFound();
 
-  const province = tender.provinceCode
-    ? await prisma.region.findFirst({
-        where: { code: tender.provinceCode, level: 1 },
-        select: { name: true },
-      })
-    : null;
-  const provinceName = province?.name ?? null;
+  const provinceName = (await getRegionDisplayName(tender.provinceCode)) || null;
 
   const user = await getSession();
   const entitlement = user ? await getEntitlement(user.uid) : null;

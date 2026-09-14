@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getCachedProvinces } from "@/lib/dict-cache";
 import {
   TENDER_TYPES,
   tenderTypeLabel,
@@ -26,9 +27,18 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
 
 export default async function HomePage() {
   const [latest, byType, provinces, byProvince] = await Promise.all([
-    prisma.tender.findMany({ orderBy: { publishDate: "desc" }, take: 10 }),
+    prisma.tender.findMany({
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        publishDate: true,
+      },
+      orderBy: { publishDate: "desc" },
+      take: 10,
+    }),
     prisma.tender.groupBy({ by: ["type"], _count: { _all: true } }),
-    prisma.region.findMany({ where: { level: 1 }, orderBy: { code: "asc" } }),
+    getCachedProvinces(),
     prisma.tender.groupBy({ by: ["provinceCode"], _count: { _all: true } }),
   ]);
   const countOf = (t: string) => byType.find((x) => x.type === t)?._count._all ?? 0;
