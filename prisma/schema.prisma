@@ -39,6 +39,7 @@ model User {
   companyCases       CompanyCase[]
   companyQualifications CompanyQualification[]
   bidReviews         BidReview[]
+  bidMilestones      BidMilestone[]
 }
 
 
@@ -461,6 +462,7 @@ model TenderFollow {
   comments     TenderFollowComment[]
   evaluation   BidProjectEvaluation?
   review       BidReview?
+  milestones   BidMilestone[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -708,4 +710,26 @@ model BidReview {
   @@index([reviewedAt])
   @@index([teamId])
 }
+
+model BidMilestone {
+  id          Int           @id @default(autoincrement())
+  followId    Int?
+  follow      TenderFollow? @relation(fields: [followId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String        // 里程碑/节点名称 (如: 技术方案初稿交付、现场踏勘答疑、内部封标评审、保证金到账核实)
+  type        String        @default("OTHER") // SUBMISSION(递交开标) | CLARIFICATION(答疑澄清) | SITE_VISIT(踏勘答疑) | DEPOSIT_PAY(缴纳保证金) | INTERNAL_REVIEW(内部评审) | OTHER(其他)
+  targetDate  DateTime      // 发生/截止时间
+  status      String        @default("PENDING") // PENDING(待完成) | COMPLETED(已完成) | CANCELLED(已取消)
+  assignee    String?       // 责任人
+  notes       String?       @db.Text // 备忘说明或关键要求
+  teamId      Int?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([userId, targetDate])
+  @@index([followId])
+  @@index([teamId, targetDate])
+}
+
 

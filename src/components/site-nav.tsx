@@ -21,6 +21,7 @@ import {
   ScaleIcon,
   RadarIcon,
   TrophyIcon,
+  CalendarIcon,
   XMarkIcon,
 } from "@/components/icons";
 
@@ -57,6 +58,7 @@ const WORKBENCH_ITEMS: NavItem[] = [
   { href: "/cases", label: "业绩案例库", desc: "合同业绩归档与类似项目智能匹配", icon: TrophyIcon, match: ["/cases"] },
   { href: "/deposits", label: "保证金台账", desc: "在途资金监控与超期催款维权", icon: ScaleIcon, match: ["/deposits"] },
   { href: "/tracker", label: "跟进看板", desc: "商机跟进与投标状态管理", icon: ClipboardIcon, match: ["/tracker"] },
+  { href: "/calendar", label: "投标日历", desc: "截标倒计时与关键里程碑排期大盘", icon: CalendarIcon, match: ["/calendar"] },
   { href: "/reviews", label: "复盘归因罗盘", desc: "开标数据对标与胜败六维归因诊断", icon: ScaleIcon, match: ["/reviews"] },
   { href: "/tenders/compare", label: "标讯对比", desc: "多标段横向立项决策罗盘", icon: ScaleIcon, match: ["/tenders/compare"] },
   { href: "/watches", label: "关键词订阅", desc: "按关键词追踪新公告", icon: BellIcon, match: ["/watches"] },

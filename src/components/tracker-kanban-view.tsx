@@ -14,6 +14,7 @@ import {
   ExternalLinkIcon,
   SparklesIcon,
   ScaleIcon,
+  CalendarIcon,
 } from "@/components/icons";
 import BidWarRoomModal from "@/components/bid-war-room-modal";
 import BidReviewModal from "@/components/bid-review-modal";
@@ -199,14 +200,22 @@ export default function TrackerKanbanView({ initialData }: Props) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/calendar"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+            title="进入企业招投标协同日历与排期大盘"
+          >
+            <CalendarIcon className="h-3.5 w-3.5 text-primary" />
+            <span>投标日历</span>
+          </Link>
           <Link
             href="/reviews"
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             title="查看企业投标复盘与失标归因诊断罗盘"
           >
             <ScaleIcon className="h-3.5 w-3.5 text-primary" />
-            <span>复盘归因大盘</span>
+            <span>复盘归因</span>
           </Link>
           <Link
             href="/list"
