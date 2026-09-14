@@ -78,7 +78,7 @@ export default async function SuppliersPage({
             <span>同业对标PK</span>
           </Link>
           <Link
-            href="/watches"
+            href="/competitors"
             className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50/70 px-3.5 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-100 transition-colors shadow-2xs"
           >
             <RadarIcon className="h-3.5 w-3.5 text-purple-600" />

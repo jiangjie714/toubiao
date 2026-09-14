@@ -41,6 +41,7 @@ model User {
   bidReviews         BidReview[]
   bidMilestones      BidMilestone[]
   bidAudits          BidAuditRecord[]
+  competitorWatches  CompetitorWatch[]
 }
 
 
@@ -761,5 +762,21 @@ model BidAuditRecord {
   @@index([teamId])
 }
 
+model CompetitorWatch {
+  id                  Int      @id @default(autoincrement())
+  userId              Int
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  competitorName      String   // 目标竞对企业名称全称
+  tag                 String   @default("CORE") // CORE(核心宿敌) | REGIONAL(区域龙头) | LOW_PRICE(价格搅局者) | PARTNER(潜在联合体)
+  notes               String?  // 内部攻防战术备忘/特征记录
+  alertOnWin          Boolean  @default(true) // 竞对中标实时情报提醒
+  alertOnEncroachment Boolean  @default(true) // 渗透我方深耕客户/战区红色预警
+  teamId              Int?     // 团队多席位共享归属
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-
+  @@unique([userId, competitorName])
+  @@index([userId])
+  @@index([competitorName])
+  @@index([teamId])
+}

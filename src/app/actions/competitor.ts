@@ -114,7 +114,24 @@ export async function trackCompetitorAction(
       },
     });
 
+    // 联动同步写入 CompetitorWatch
+    await prisma.competitorWatch.upsert({
+      where: {
+        userId_competitorName: {
+          userId: user.uid,
+          competitorName: trimmed,
+        },
+      },
+      update: { alertOnWin: true },
+      create: {
+        userId: user.uid,
+        competitorName: trimmed,
+        tag: "CORE",
+      },
+    });
+
     revalidatePath("/watches");
+    revalidatePath("/competitors");
     revalidatePath(`/suppliers/${encodeURIComponent(trimmed)}`);
 
     return { success: true, watchId: watch.id };
@@ -134,14 +151,23 @@ export async function untrackCompetitorAction(
     }
 
     const trimmed = supplierName.trim();
-    await prisma.pushWatch.deleteMany({
-      where: {
-        userId: user.uid,
-        keyword: trimmed,
-      },
-    });
+    await Promise.all([
+      prisma.pushWatch.deleteMany({
+        where: {
+          userId: user.uid,
+          keyword: trimmed,
+        },
+      }),
+      prisma.competitorWatch.deleteMany({
+        where: {
+          userId: user.uid,
+          competitorName: trimmed,
+        },
+      }),
+    ]);
 
     revalidatePath("/watches");
+    revalidatePath("/competitors");
     revalidatePath(`/suppliers/${encodeURIComponent(trimmed)}`);
 
     return { success: true };

@@ -46,7 +46,8 @@ const SEARCH_ITEMS = [
 
 const INTEL_ITEMS: NavItem[] = [
   { href: "/intentions", label: "意向雷达", desc: "提前 30~90 天锁定潜在商机", icon: SparklesIcon, match: ["/intentions"] },
-  { href: "/suppliers", label: "竞对情报", desc: "竞对中标动态与竞争格局", icon: TargetIcon, match: ["/suppliers"] },
+  { href: "/competitors", label: "竞对雷达", desc: "核心竞对监控与后院起火预警", icon: RadarIcon, match: ["/competitors"] },
+  { href: "/suppliers", label: "供应商库", desc: "全网供应商中标画像与PK", icon: TargetIcon, match: ["/suppliers"] },
   { href: "/purchasers", label: "买方画像", desc: "采购单位画像与采购偏好", icon: BuildingIcon, match: ["/purchasers"] },
   { href: "/projects", label: "项目大盘", desc: "重点项目全过程进展", icon: FolderIcon, match: ["/projects"] },
   { href: "/industries", label: "重点赛道", desc: "行业赛道招标热度", icon: BoltIcon, match: ["/industries"] },
