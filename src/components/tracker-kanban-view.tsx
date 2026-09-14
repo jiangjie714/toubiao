@@ -12,7 +12,9 @@ import {
   PlusIcon,
   AlertCircleIcon,
   ExternalLinkIcon,
+  SparklesIcon,
 } from "@/components/icons";
+import BidWarRoomModal from "@/components/bid-war-room-modal";
 import {
   getTrackerBoardAction,
   updateFollowStatusAction,
@@ -61,6 +63,9 @@ export default function TrackerKanbanView({ initialData }: Props) {
 
   // 预警筛选: "ALL" | "CRITICAL_DEADLINE" | "LIFECYCLE_UPDATE"
   const [filterAlert, setFilterAlert] = useState<"ALL" | "CRITICAL_DEADLINE" | "LIFECYCLE_UPDATE">("ALL");
+
+  // 作战指挥室 Modal
+  const [warRoomFollowId, setWarRoomFollowId] = useState<number | null>(null);
 
   const fetchBoard = useCallback(
     (mode: "team" | "personal" = viewMode, assignee: string = selectedAssignee) => {
@@ -460,6 +465,52 @@ export default function TrackerKanbanView({ initialData }: Props) {
                         </div>
                       )}
 
+                      {/* 立项决策徽章与作战室入口 */}
+                      <div className="mb-2 flex items-center justify-between gap-1">
+                        {item.evaluation ? (
+                          <button
+                            type="button"
+                            onClick={() => setWarRoomFollowId(item.id)}
+                            className={`cursor-pointer inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border transition ${
+                              item.evaluation.decision === "GO"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+                                : item.evaluation.decision === "NO_GO"
+                                ? "bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100"
+                                : "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100"
+                            }`}
+                            title="点击打开作战指挥室查看四维评审结论"
+                          >
+                            <span>
+                              {item.evaluation.decision === "GO"
+                                ? "🟢 建议投标"
+                                : item.evaluation.decision === "NO_GO"
+                                ? "🔴 建议放弃"
+                                : "🟡 审慎跟进"}
+                            </span>
+                            <span className="font-mono">({item.evaluation.overallScore}分)</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setWarRoomFollowId(item.id)}
+                            className="cursor-pointer inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium border border-blue-200 bg-blue-50/70 text-blue-700 hover:bg-blue-100 transition"
+                            title="点击进行多维立项评估与Go/No-Go判定"
+                          >
+                            <span>⚖️ 待立项评审</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setWarRoomFollowId(item.id)}
+                          className="cursor-pointer inline-flex items-center gap-1 rounded px-1 py-0.5 text-[10px] font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition"
+                          title="进入三流合一协同作战指挥室"
+                        >
+                          <SparklesIcon className="h-3 w-3 text-blue-600" />
+                          <span>作战室 →</span>
+                        </button>
+                      </div>
+
                       {/* 类型与金额 */}
                       <div className="flex items-center justify-between gap-1 mb-1.5">
                         <span
@@ -808,6 +859,16 @@ export default function TrackerKanbanView({ initialData }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 投标项目协同作战指挥室 Modal */}
+      {warRoomFollowId !== null && (
+        <BidWarRoomModal
+          followId={warRoomFollowId}
+          isOpen={warRoomFollowId !== null}
+          onClose={() => setWarRoomFollowId(null)}
+          onSaved={() => fetchBoard()}
+        />
       )}
     </div>
   );

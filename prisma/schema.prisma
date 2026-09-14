@@ -458,6 +458,7 @@ model TenderFollow {
   teamId       Int?
   team         Team?                 @relation(fields: [teamId], references: [id], onDelete: SetNull)
   comments     TenderFollowComment[]
+  evaluation   BidProjectEvaluation?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -579,6 +580,26 @@ model TenderFollowComment {
 
   @@index([followId, createdAt])
   @@index([userId])
+}
+
+model BidProjectEvaluation {
+  id              Int          @id @default(autoincrement())
+  followId        Int          @unique
+  follow          TenderFollow @relation(fields: [followId], references: [id], onDelete: Cascade)
+  marketScore     Int          @default(80) // 市场与客户关系评分 (0-100)
+  techScore       Int          @default(80) // 技术方案与交付可行性 (0-100)
+  commercialScore Int          @default(80) // 资质与业绩满足度 (0-100)
+  financialScore  Int          @default(80) // 资金占用与回款周期风险 (0-100)
+  overallScore    Int          @default(80) // 综合得分 (加权平均)
+  decision        String       @default("GO") // GO (坚决投标) | CONDITIONAL_GO (附条件谨慎投标) | NO_GO (建议止损放弃)
+  decisionReason  String?      @db.Text // 决策结论与核心理由
+  riskNotes       String?      @db.Text // 关键风险警示与应对防范策略
+  leadEvaluator   String?      // 牵头评审人/主持会签人
+  evaluatedAt     DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([decision])
 }
 
 model BidDeposit {

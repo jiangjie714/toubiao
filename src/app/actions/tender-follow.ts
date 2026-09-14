@@ -48,6 +48,10 @@ export type TenderFollowItem = {
   remindDate: Date | null;
   commentsCount: number;
   comments?: TenderFollowCommentItem[];
+  evaluation?: {
+    decision: string;
+    overallScore: number;
+  } | null;
   createdAt: Date;
   updatedAt: Date;
   deadlineCountdown?: DeadlineCountdown | null;
@@ -181,6 +185,12 @@ export async function getTrackerBoardAction(options?: {
           },
           orderBy: { createdAt: "desc" },
         },
+        evaluation: {
+          select: {
+            decision: true,
+            overallScore: true,
+          },
+        },
         _count: {
           select: { comments: true },
         },
@@ -238,6 +248,12 @@ export async function getTrackerBoardAction(options?: {
         commentsCount: r._count.comments,
         deadlineCountdown: deadline,
         lifecycleAlert: lifecycle,
+        evaluation: r.evaluation
+          ? {
+              decision: r.evaluation.decision,
+              overallScore: r.evaluation.overallScore,
+            }
+          : null,
         comments: r.comments.map((c) => ({
           id: c.id,
           followId: c.followId,
