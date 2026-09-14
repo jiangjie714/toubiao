@@ -17,11 +17,23 @@ import TenderExportActions from "@/components/tender-export-actions";
 import TenderWinnerCard from "@/components/tender-winner-card";
 import TenderCompareButton from "@/components/tender-compare-button";
 import TenderCompareTray from "@/components/tender-compare-tray";
-import TenderComplianceButton from "@/components/tender-compliance-button";
-import { TenderPricingCompassButton } from "@/components/bidding-pricing-compass";
-import { TenderProposalOutlineButton } from "@/components/tender-proposal-outline";
-import { TenderCaseMatchButton } from "@/components/tender-case-match";
-import { TenderQualificationMatchButton } from "@/components/tender-qualification-match";
+import dynamic from "next/dynamic";
+
+const TenderComplianceButton = dynamic(
+  () => import("@/components/tender-compliance-button")
+);
+const TenderPricingCompassButton = dynamic(
+  () => import("@/components/bidding-pricing-compass").then((m) => m.TenderPricingCompassButton)
+);
+const TenderProposalOutlineButton = dynamic(
+  () => import("@/components/tender-proposal-outline").then((m) => m.TenderProposalOutlineButton)
+);
+const TenderCaseMatchButton = dynamic(
+  () => import("@/components/tender-case-match").then((m) => m.TenderCaseMatchButton)
+);
+const TenderQualificationMatchButton = dynamic(
+  () => import("@/components/tender-qualification-match").then((m) => m.TenderQualificationMatchButton)
+);
 import {
   ExternalLinkIcon,
   CalendarIcon,

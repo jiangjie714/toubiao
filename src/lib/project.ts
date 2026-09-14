@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getCachedProvinces } from "@/lib/dict-cache";
 import { tenderTypeLabel, tenderTypeColor } from "@/lib/constants";
 
 export type ProjectStage = "INTENTION" | "BIDDING" | "CLARIFYING" | "AWARDED" | "TERMINATED";
@@ -203,14 +204,11 @@ export async function getProjectList(options: {
     whereClause.provinceCode = provinceCode.trim();
   }
 
-  // 查询所有的 regions 供中文映射
-  const regions = await prisma.region.findMany({
-    where: { level: 1 },
-    select: { code: true, name: true },
-  });
+  // 查询所有的 regions 供中文映射（0ms 内存缓存）
+  const regions = await getCachedProvinces();
   const regionMap = new Map(regions.map((r) => [r.code, r.name]));
 
-  // 查询符合基础条件的 projects
+  // 查询符合基础条件的 projects (设置安全上限 300，防止全库万级大表 OOM)
   const allCandidates = await prisma.project.findMany({
     where: whereClause,
     include: {
@@ -230,6 +228,7 @@ export async function getProjectList(options: {
       },
     },
     orderBy: { updatedAt: "desc" },
+    take: 300,
   });
 
   // 全局概览数据计算（不受当前 stage 过滤限制，但受 query/province 影响）

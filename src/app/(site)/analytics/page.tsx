@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { getMarketIntelligenceAction } from "@/app/actions/analytics";
+import { getCachedProvinces } from "@/lib/dict-cache";
 import AnalyticsDashboard from "@/components/analytics-dashboard";
 
 export const metadata = {
@@ -17,11 +17,7 @@ export default async function AnalyticsPage() {
 
   const [intelResult, provinces] = await Promise.all([
     getMarketIntelligenceAction({ days: 30 }),
-    prisma.region.findMany({
-      where: { level: 1 },
-      select: { code: true, name: true },
-      orderBy: { code: "asc" },
-    }),
+    getCachedProvinces(),
   ]);
 
   if (!intelResult.success || !intelResult.data) {

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { consumeSearchQuota, getEntitlement, getExportQuota } from "@/lib/quota";
+import { getCachedRegionsData, getCachedIndustriesData } from "@/lib/dict-cache";
 import FilterBar from "@/components/filter-bar";
 import {
   buildWhere,
@@ -63,12 +64,31 @@ export default async function ListPage({
   const where = quota.allowed ? buildWhere(sp) : undefined;
   const page = Math.max(1, parseInt(sp.page || "1", 10) || 1);
 
-  const [total, items, provinces, cities, industries] = quota.allowed
+  const [dictRegions, dictIndustries] = await Promise.all([
+    getCachedRegionsData(),
+    getCachedIndustriesData(),
+  ]);
+  const { provinces, cities, provinceMap, cityMap } = dictRegions;
+  const { industries, industryMap } = dictIndustries;
+
+  const [total, items] = quota.allowed
     ? await Promise.all([
         prisma.tender.count({ where }),
         prisma.tender.findMany({
           where,
-          include: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            provinceCode: true,
+            cityCode: true,
+            purchaser: true,
+            winningSupplier: true,
+            budgetAmount: true,
+            awardAmount: true,
+            publishDate: true,
+            sourceName: true,
+            industryCode: true,
             _count: {
               select: { attachments: true },
             },
@@ -77,24 +97,10 @@ export default async function ListPage({
           skip: (page - 1) * PAGE_SIZE,
           take: PAGE_SIZE,
         }),
-        prisma.region.findMany({ where: { level: 1 }, orderBy: { code: "asc" } }),
-        prisma.region.findMany({ where: { level: 2 }, orderBy: { code: "asc" } }),
-        prisma.industryDict.findMany({ where: { parentId: null }, orderBy: { id: "asc" } }),
       ])
-    : await Promise.all([
-        Promise.resolve(0),
-        Promise.resolve([]),
-        prisma.region.findMany({ where: { level: 1 }, orderBy: { code: "asc" } }),
-        prisma.region.findMany({ where: { level: 2 }, orderBy: { code: "asc" } }),
-        prisma.industryDict.findMany({ where: { parentId: null }, orderBy: { id: "asc" } }),
-      ]);
+    : [0, []];
 
-  const regionName = (code: string | null) =>
-    provinces.find((p) => p.code === code)?.name ??
-    cities.find((c) => c.code === code)?.name ??
-    "";
-
-  const industryMap = new Map(industries.map((ind) => [ind.code, ind.name]));
+  const regionName = (code: string | null) => (code ? provinceMap.get(code) || cityMap.get(code) || "" : "");
 
   const totalPages = quota.allowed ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : 1;
   const qs = (overrides: Record<string, string | undefined>) =>

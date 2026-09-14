@@ -115,11 +115,14 @@ model Tender {
   proposals        ProposalProject[]
 
   @@index([projectNo])
-
   @@index([projectRefId])
   @@index([publishDate, type])
+  @@index([type, publishDate(sort: Desc)])
   @@index([type])
   @@index([provinceCode, cityCode])
+  @@index([purchaser])
+  @@index([winningSupplier])
+  @@index([industryCode])
 }
 
 model Attachment {

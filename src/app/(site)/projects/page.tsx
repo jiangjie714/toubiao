@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getCachedProvinces } from "@/lib/dict-cache";
 import { getProjectList, projectStageBadgeColor, type ProjectStage } from "@/lib/project";
 import {
   BriefcaseIcon,
@@ -55,11 +55,7 @@ export default async function ProjectsPage({
       page: pageNum,
       pageSize: 15,
     }),
-    prisma.region.findMany({
-      where: { level: 1 },
-      select: { code: true, name: true },
-      orderBy: { code: "asc" },
-    }),
+    getCachedProvinces(),
   ]);
 
   const { projects, total, totalPages, metrics } = projectData;
