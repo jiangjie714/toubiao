@@ -1,0 +1,251 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="Codex drawio-mxgraph skill" version="24.7.17" type="device" compressed="false">
+  <diagram id="page-1" name="标讯通业务架构">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="guest" value="游客 / 注册用户" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="g_access">
+          <mxGeometry x="30" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="enterprise" value="企业付费用户" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="g_access">
+          <mxGeometry x="250" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="admin" value="运营管理员" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="g_access">
+          <mxGeometry x="470" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="api_client" value="开放API调用方" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="g_access">
+          <mxGeometry x="690" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="web_front" value="前台门户 / 订阅中心" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_app">
+          <mxGeometry x="30" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_console" value="运营后台 / 配置中心" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_app">
+          <mxGeometry x="250" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="business_api" value="Server Actions / API路由" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_app">
+          <mxGeometry x="470" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="auth" value="会话 / 权限" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_app">
+          <mxGeometry x="690" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="openapi" value="OpenAPI v1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_app">
+          <mxGeometry x="910" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="pay_callback" value="支付回调入口" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_app">
+          <mxGeometry x="1130" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="file_service" value="导出 / 附件服务" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_app">
+          <mxGeometry x="1350" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="search" value="公告检索与详情" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_service">
+          <mxGeometry x="30" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="subscription" value="订阅 / 配额 / 付费墙" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_service">
+          <mxGeometry x="250" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="order" value="订单 / 发票" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_service">
+          <mxGeometry x="470" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="push" value="订阅推送 / 周报" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_service">
+          <mxGeometry x="690" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="ai" value="AI解读 / 方案助手" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_service">
+          <mxGeometry x="910" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="analytics" value="项目 / 采购商 / 供应商分析" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_service">
+          <mxGeometry x="1130" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="collab" value="团队 / 反馈 / 审计" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_service">
+          <mxGeometry x="1350" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="scheduler" value="定时调度器" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="g_pipeline">
+          <mxGeometry x="30" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="queue" value="任务队列" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="g_pipeline">
+          <mxGeometry x="250" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="crawl_worker" value="采集 Worker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="g_pipeline">
+          <mxGeometry x="470" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="skill" value="采集技能配置 / 版本" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="g_pipeline">
+          <mxGeometry x="690" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="fetch_parse" value="抓取 / 解析 / 丰富" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="g_pipeline">
+          <mxGeometry x="910" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="persist" value="入库 / 聚合" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="g_pipeline">
+          <mxGeometry x="1130" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="health" value="健康分 / 告警" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="g_pipeline">
+          <mxGeometry x="1350" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="push_worker" value="推送 Worker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="g_pipeline">
+          <mxGeometry x="1570" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="postgres" value="PostgreSQL / Prisma" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="g_data">
+          <mxGeometry x="30" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="object_store" value="本地 / 对象存储" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="g_data">
+          <mxGeometry x="250" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="gov_site" value="公开采购网站" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="g_external">
+          <mxGeometry x="30" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="pay_provider" value="支付宝 / 微信支付" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="g_external">
+          <mxGeometry x="250" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="smtp" value="SMTP 邮件" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="g_external">
+          <mxGeometry x="470" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="wecom" value="企业微信 Webhook" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="g_external">
+          <mxGeometry x="690" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="ai_provider" value="AI 模型服务" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="g_external">
+          <mxGeometry x="910" y="22" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="e_guest_web" value="浏览 / 检索" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="guest" target="web_front">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_enterprise_web" value="订阅 / 导出" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="enterprise" target="web_front">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_admin_admin" value="配置 / 审核" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="admin" target="admin_console">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_api_client_openapi" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="api_client" target="openapi">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_web_bapi" value="页面操作" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="web_front" target="business_api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_admin_bapi" value="后台操作" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="admin_console" target="business_api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_openapi_bapi" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="openapi" target="business_api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_paycb_bapi" value="支付结果" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="pay_callback" target="business_api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bapi_auth" value="鉴权" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="business_api" target="auth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bapi_file" value="导出 / 附件" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="business_api" target="file_service">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bapi_search" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="business_api" target="search">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bapi_subscription" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="business_api" target="subscription">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bapi_order" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="business_api" target="order">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bapi_push" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="business_api" target="push">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bapi_ai" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="business_api" target="ai">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bapi_analytics" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="business_api" target="analytics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bapi_collab" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="business_api" target="collab">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_search_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="search" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_subscription_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="subscription" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_order_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="order" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_push_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="push" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ai_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="ai" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_analytics_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="analytics" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_collab_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="collab" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_file_store" value="附件 / 导出" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="file_service" target="object_store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_scheduler_queue" value="到期任务" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="scheduler" target="queue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_queue_worker" value="领取任务" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="queue" target="crawl_worker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_worker_skill" value="加载配置" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="crawl_worker" target="skill">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_skill_fetch" value="抓取规则" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="skill" target="fetch_parse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_fetch_persist" value="结构化数据" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="fetch_parse" target="persist">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_persist_pg" value="入库" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="persist" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_persist_store" value="原文 / 附件" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="persist" target="object_store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_persist_health" value="运行指标" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="persist" target="health">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_health_wecom" value="告警" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="health" target="wecom">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_health_smtp" value="恢复 / 异常" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="health" target="smtp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_push_worker_smtp" value="邮件推送" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="push_worker" target="smtp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_push_worker_pg" value="读取订阅" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="push_worker" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_admin_skill" value="配置 / 版本" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="admin_console" target="skill">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_gov_fetch" value="公告 HTML" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="gov_site" target="fetch_parse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_pay_provider_cb" value="异步回调" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="pay_provider" target="pay_callback">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ai_model" value="模型调用" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;fontColor=#334155;fontSize=10;labelBackgroundColor=#FFFFFF;labelBorderColor=#E2E8F0;spacing=4;" edge="1" parent="1" source="ai" target="ai_provider">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="g_access" value="用户与接入" style="swimlane;html=1;startSize=28;rounded=1;collapsible=0;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="10" y="10" width="920" height="144" as="geometry" />
+        </mxCell>
+        <mxCell id="g_app" value="应用层（Next.js）" style="swimlane;html=1;startSize=28;rounded=1;collapsible=0;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="10" y="200" width="1580" height="144" as="geometry" />
+        </mxCell>
+        <mxCell id="g_service" value="业务服务层" style="swimlane;html=1;startSize=28;rounded=1;collapsible=0;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="10" y="390" width="1580" height="144" as="geometry" />
+        </mxCell>
+        <mxCell id="g_pipeline" value="采集与后台任务" style="swimlane;html=1;startSize=28;rounded=1;collapsible=0;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="10" y="580" width="1800" height="144" as="geometry" />
+        </mxCell>
+        <mxCell id="g_data" value="数据层" style="swimlane;html=1;startSize=28;rounded=1;collapsible=0;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="10" y="770" width="480" height="144" as="geometry" />
+        </mxCell>
+        <mxCell id="g_external" value="外部系统" style="swimlane;html=1;startSize=28;rounded=1;collapsible=0;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="10" y="960" width="1140" height="144" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

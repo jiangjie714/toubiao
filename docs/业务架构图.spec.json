@@ -1,0 +1,101 @@
+{
+  "title": "标讯通业务架构",
+  "direction": "LR",
+  "auto_icons": false,
+  "nodes": [
+    { "id": "guest", "label": "游客 / 注册用户", "type": "actor", "x": 40, "y": 60, "width": 200, "height": 64 },
+    { "id": "enterprise", "label": "企业付费用户", "type": "actor", "x": 260, "y": 60, "width": 200, "height": 64 },
+    { "id": "admin", "label": "运营管理员", "type": "actor", "x": 480, "y": 60, "width": 200, "height": 64 },
+    { "id": "api_client", "label": "开放API调用方", "type": "external", "x": 700, "y": 60, "width": 200, "height": 64 },
+
+    { "id": "web_front", "label": "前台门户 / 订阅中心", "type": "application", "x": 40, "y": 250, "width": 200, "height": 64 },
+    { "id": "admin_console", "label": "运营后台 / 配置中心", "type": "application", "x": 260, "y": 250, "width": 200, "height": 64 },
+    { "id": "business_api", "label": "Server Actions / API路由", "type": "api", "x": 480, "y": 250, "width": 200, "height": 64 },
+    { "id": "auth", "label": "会话 / 权限", "type": "security", "x": 700, "y": 250, "width": 200, "height": 64 },
+    { "id": "openapi", "label": "OpenAPI v1", "type": "api", "x": 920, "y": 250, "width": 200, "height": 64 },
+    { "id": "pay_callback", "label": "支付回调入口", "type": "api", "x": 1140, "y": 250, "width": 200, "height": 64 },
+    { "id": "file_service", "label": "导出 / 附件服务", "type": "application", "x": 1360, "y": 250, "width": 200, "height": 64 },
+
+    { "id": "search", "label": "公告检索与详情", "type": "service", "x": 40, "y": 440, "width": 200, "height": 64 },
+    { "id": "subscription", "label": "订阅 / 配额 / 付费墙", "type": "service", "x": 260, "y": 440, "width": 200, "height": 64 },
+    { "id": "order", "label": "订单 / 发票", "type": "service", "x": 480, "y": 440, "width": 200, "height": 64 },
+    { "id": "push", "label": "订阅推送 / 周报", "type": "service", "x": 700, "y": 440, "width": 200, "height": 64 },
+    { "id": "ai", "label": "AI解读 / 方案助手", "type": "service", "x": 920, "y": 440, "width": 200, "height": 64 },
+    { "id": "analytics", "label": "项目 / 采购商 / 供应商分析", "type": "service", "x": 1140, "y": 440, "width": 200, "height": 64 },
+    { "id": "collab", "label": "团队 / 反馈 / 审计", "type": "service", "x": 1360, "y": 440, "width": 200, "height": 64 },
+
+    { "id": "scheduler", "label": "定时调度器", "type": "process", "x": 40, "y": 630, "width": 200, "height": 64 },
+    { "id": "queue", "label": "任务队列", "type": "queue", "x": 260, "y": 630, "width": 200, "height": 64 },
+    { "id": "crawl_worker", "label": "采集 Worker", "type": "process", "x": 480, "y": 630, "width": 200, "height": 64 },
+    { "id": "skill", "label": "采集技能配置 / 版本", "type": "document", "x": 700, "y": 630, "width": 200, "height": 64 },
+    { "id": "fetch_parse", "label": "抓取 / 解析 / 丰富", "type": "process", "x": 920, "y": 630, "width": 200, "height": 64 },
+    { "id": "persist", "label": "入库 / 聚合", "type": "process", "x": 1140, "y": 630, "width": 200, "height": 64 },
+    { "id": "health", "label": "健康分 / 告警", "type": "monitoring", "x": 1360, "y": 630, "width": 200, "height": 64 },
+    { "id": "push_worker", "label": "推送 Worker", "type": "process", "x": 1580, "y": 630, "width": 200, "height": 64 },
+
+    { "id": "postgres", "label": "PostgreSQL / Prisma", "type": "database", "x": 40, "y": 820, "width": 200, "height": 64 },
+    { "id": "object_store", "label": "本地 / 对象存储", "type": "database", "x": 260, "y": 820, "width": 200, "height": 64 },
+
+    { "id": "gov_site", "label": "公开采购网站", "type": "external", "x": 40, "y": 1010, "width": 200, "height": 64 },
+    { "id": "pay_provider", "label": "支付宝 / 微信支付", "type": "external", "x": 260, "y": 1010, "width": 200, "height": 64 },
+    { "id": "smtp", "label": "SMTP 邮件", "type": "external", "x": 480, "y": 1010, "width": 200, "height": 64 },
+    { "id": "wecom", "label": "企业微信 Webhook", "type": "external", "x": 700, "y": 1010, "width": 200, "height": 64 },
+    { "id": "ai_provider", "label": "AI 模型服务", "type": "external", "x": 920, "y": 1010, "width": 200, "height": 64 }
+  ],
+  "edges": [
+    { "id": "e_guest_web", "source": "guest", "target": "web_front", "label": "浏览 / 检索" },
+    { "id": "e_enterprise_web", "source": "enterprise", "target": "web_front", "label": "订阅 / 导出" },
+    { "id": "e_admin_admin", "source": "admin", "target": "admin_console", "label": "配置 / 审核" },
+    { "id": "e_api_client_openapi", "source": "api_client", "target": "openapi", "label": "HTTPS" },
+
+    { "id": "e_web_bapi", "source": "web_front", "target": "business_api", "label": "页面操作" },
+    { "id": "e_admin_bapi", "source": "admin_console", "target": "business_api", "label": "后台操作" },
+    { "id": "e_openapi_bapi", "source": "openapi", "target": "business_api" },
+    { "id": "e_paycb_bapi", "source": "pay_callback", "target": "business_api", "label": "支付结果" },
+    { "id": "e_bapi_auth", "source": "business_api", "target": "auth", "label": "鉴权" },
+    { "id": "e_bapi_file", "source": "business_api", "target": "file_service", "label": "导出 / 附件" },
+
+    { "id": "e_bapi_search", "source": "business_api", "target": "search" },
+    { "id": "e_bapi_subscription", "source": "business_api", "target": "subscription" },
+    { "id": "e_bapi_order", "source": "business_api", "target": "order" },
+    { "id": "e_bapi_push", "source": "business_api", "target": "push" },
+    { "id": "e_bapi_ai", "source": "business_api", "target": "ai" },
+    { "id": "e_bapi_analytics", "source": "business_api", "target": "analytics" },
+    { "id": "e_bapi_collab", "source": "business_api", "target": "collab" },
+
+    { "id": "e_search_pg", "source": "search", "target": "postgres" },
+    { "id": "e_subscription_pg", "source": "subscription", "target": "postgres" },
+    { "id": "e_order_pg", "source": "order", "target": "postgres" },
+    { "id": "e_push_pg", "source": "push", "target": "postgres" },
+    { "id": "e_ai_pg", "source": "ai", "target": "postgres" },
+    { "id": "e_analytics_pg", "source": "analytics", "target": "postgres" },
+    { "id": "e_collab_pg", "source": "collab", "target": "postgres" },
+    { "id": "e_file_store", "source": "file_service", "target": "object_store", "label": "附件 / 导出" },
+
+    { "id": "e_scheduler_queue", "source": "scheduler", "target": "queue", "label": "到期任务" },
+    { "id": "e_queue_worker", "source": "queue", "target": "crawl_worker", "label": "领取任务" },
+    { "id": "e_worker_skill", "source": "crawl_worker", "target": "skill", "label": "加载配置" },
+    { "id": "e_skill_fetch", "source": "skill", "target": "fetch_parse", "label": "抓取规则" },
+    { "id": "e_fetch_persist", "source": "fetch_parse", "target": "persist", "label": "结构化数据" },
+    { "id": "e_persist_pg", "source": "persist", "target": "postgres", "label": "入库" },
+    { "id": "e_persist_store", "source": "persist", "target": "object_store", "label": "原文 / 附件" },
+    { "id": "e_persist_health", "source": "persist", "target": "health", "label": "运行指标" },
+    { "id": "e_health_wecom", "source": "health", "target": "wecom", "label": "告警" },
+    { "id": "e_health_smtp", "source": "health", "target": "smtp", "label": "恢复 / 异常" },
+    { "id": "e_push_worker_smtp", "source": "push_worker", "target": "smtp", "label": "邮件推送" },
+    { "id": "e_push_worker_pg", "source": "push_worker", "target": "postgres", "label": "读取订阅" },
+    { "id": "e_admin_skill", "source": "admin_console", "target": "skill", "label": "配置 / 版本" },
+
+    { "id": "e_gov_fetch", "source": "gov_site", "target": "fetch_parse", "label": "公告 HTML" },
+    { "id": "e_pay_provider_cb", "source": "pay_provider", "target": "pay_callback", "label": "异步回调" },
+    { "id": "e_ai_model", "source": "ai", "target": "ai_provider", "label": "模型调用" }
+  ],
+  "groups": [
+    { "id": "g_access", "label": "用户与接入", "members": ["guest", "enterprise", "admin", "api_client"] },
+    { "id": "g_app", "label": "应用层（Next.js）", "members": ["web_front", "admin_console", "business_api", "auth", "openapi", "pay_callback", "file_service"] },
+    { "id": "g_service", "label": "业务服务层", "members": ["search", "subscription", "order", "push", "ai", "analytics", "collab"] },
+    { "id": "g_pipeline", "label": "采集与后台任务", "members": ["scheduler", "queue", "crawl_worker", "skill", "fetch_parse", "persist", "health", "push_worker"] },
+    { "id": "g_data", "label": "数据层", "members": ["postgres", "object_store"] },
+    { "id": "g_external", "label": "外部系统", "members": ["gov_site", "pay_provider", "smtp", "wecom", "ai_provider"] }
+  ]
+}
