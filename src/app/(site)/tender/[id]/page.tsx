@@ -19,6 +19,7 @@ import TenderCompareButton from "@/components/tender-compare-button";
 import TenderCompareTray from "@/components/tender-compare-tray";
 import TenderComplianceButton from "@/components/tender-compliance-button";
 import { TenderPricingCompassButton } from "@/components/bidding-pricing-compass";
+import { TenderProposalOutlineButton } from "@/components/tender-proposal-outline";
 import {
   ExternalLinkIcon,
   CalendarIcon,
@@ -161,6 +162,7 @@ export default async function TenderDetailPage({
               variant="detail"
             />
             <TenderPricingCompassButton tenderId={tender.id} />
+            <TenderProposalOutlineButton tenderId={tender.id} />
             <TenderComplianceButton tenderId={tender.id} />
             <TenderFollowButton tenderId={tender.id} />
             <TenderFeedbackButton tenderId={tender.id} />
