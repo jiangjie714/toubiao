@@ -1,32 +1,30 @@
+# 北京市政府采购网
+# 结构说明见同目录 SKILL.md
 source:
   name: 北京市政府采购网
   baseUrl: http://www.ccgp-beijing.gov.cn
+
 settings:
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2
   maxPages: 1
-  scheduleCron: 0 */2 * * *
+
 lists:
-  - type: NOTICE
+  # 市级采购意向公开（静态频道，2026-09-14 修复）
+  - type: INTENTION
     mode: html
-    firstPageUrl: http://www.ccgp-beijing.gov.cn/xxgg/sjzfcggg/
-    url: http://www.ccgp-beijing.gov.cn/xxgg/sjzfcggg/
+    firstPageUrl: "http://www.ccgp-beijing.gov.cn/yxgk/sjcgyx/A002003001index_1.htm"
+    url: "http://www.ccgp-beijing.gov.cn/yxgk/sjcgyx/A002003001index_{page}.htm"
     parse:
-      itemSelector: ul.listBox > li
+      itemSelector: "ul.inner-ul > li"
       fields:
-        title:
-          selector: a
-          attr: text
-        url:
-          selector: a
-          attr: href
-        date:
-          selector: span
-          attr: text
-          regex: \d{4}-\d{2}-\d{2}
-        province:
-          const: "11"
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "span.datetime", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { const: "11" }
     detail:
-      contentSelector: div.articleBox
-      removeSelector: script, style
+      contentSelector: "#mainText"
+      removeSelector: "script, style"
+
+  # 信息公告主频道 /xxgg/（含采购公告/中标/更正等）已改为 XHR 动态加载，静态抓取无数据，待接口逆向后接入，见 SKILL.md

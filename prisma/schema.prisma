@@ -36,6 +36,7 @@ model User {
   invoiceProfiles    InvoiceProfile[]
   followComments     TenderFollowComment[]
   bidDeposits        BidDeposit[]
+  companyCases       CompanyCase[]
 }
 
 
@@ -607,5 +608,26 @@ model BidDeposit {
   @@index([userId, status])
   @@index([status, refundDeadline])
   @@index([tenderId])
+}
+
+model CompanyCase {
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String    // 项目/合同全称
+  clientName       String    // 客户/业主单位名称
+  amountWan        Decimal   @db.Decimal(10, 2) // 合同金额 (万元)
+  signDate         DateTime  // 合同签署日期
+  industryCode     String?   // 对应行业赛道
+  serviceScope     String?   @db.Text // 供货/服务范围关键词
+  projectLeader    String?   // 项目负责人/项目经理
+  hasAcceptanceDoc Boolean   @default(false) // 是否具备验收证书/用户好评信
+  contractFileUrl  String?   // 合同关键页扫描件存储地址
+  teamId           Int?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId, signDate])
+  @@index([industryCode])
 }
 

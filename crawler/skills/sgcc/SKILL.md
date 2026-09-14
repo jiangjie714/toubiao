@@ -16,3 +16,8 @@
 ## 2026-09-14 采集诊断：站点改版(SPA)
 
 ecp2.0 平台为 hash 路由 SPA（#/doc/...），`div.el-table__row` 永远无静态内容。连续失败已触发系统熔断降级（6 小时一次）。需逆向 ecp2.0 的公告列表接口。
+
+
+## 2026-09-14 深度诊断补充
+
+- 首页加载 `/wN8QR01HsLbZ/acRLbC1q9RHN.*.js`（瑞数系 WAF 特征：随机路径 JS 动态生成 Cookie），且引用 `EcpSecureRandom.js`/`encrytrans.js`（请求参数加密）。静态抓取无法通过 WAF 挑战，**必须无头浏览器**（或专用抗瑞数方案），单靠接口逆向不可行。
