@@ -29,8 +29,8 @@ export default async function OrdersPage() {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-surface">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-surface">
+        <table className="data-table w-full text-sm">
           <thead className="border-b border-slate-100 bg-slate-50/70 text-left text-xs text-slate-500">
             <tr>
               <th className="px-5 py-3 font-medium">订单号</th>

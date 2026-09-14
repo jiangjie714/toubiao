@@ -58,7 +58,7 @@ const fieldSetSchema = z
 
 const listConfigSchema = z
   .object({
-    type: z.enum(["NOTICE", "RESULT", "CHANGE", "INQUIRY"]),
+    type: z.enum(["NOTICE", "RESULT", "CHANGE", "INQUIRY", "INTENTION"]),
     mode: z.enum(["html", "json"]),
     url: z.string().min(1).optional(),
     firstPageUrl: z.string().min(1).optional(),

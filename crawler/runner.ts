@@ -28,6 +28,8 @@ export type RunOptions = {
   dryRun?: boolean;
   file?: boolean;
   trigger?: "cron" | "manual" | "api" | "retry";
+  /** 只保留发布日期不早于该时刻的公告，列表按日期倒序、整页过期时提前停止翻页 */
+  sinceDate?: Date;
 };
 
 export type DryRunItem = {
@@ -47,6 +49,7 @@ export type RunResult = {
   httpFail: number;
   avgLatencyMs: number;
   dryRun: boolean;
+  skippedOld: number;
   items?: DryRunItem[];
   errors?: string[];
 };
@@ -304,11 +307,13 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
     userAgent: config.settings.userAgent,
   };
   const regionMatcher = await loadRegionMatcher();
+  const sinceMs = options.sinceDate ? options.sinceDate.getTime() : null;
   const dryItems: DryRunItem[] = [];
   const errors: string[] = [];
   let newCount = 0;
   let fetched = 0;
   let itemsParsed = 0;
+  let skippedOld = 0;
   let httpOk = 0;
   let httpFail = 0;
   let latencyTotal = 0;
@@ -352,6 +357,10 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
       }
 
       for (const item of items) {
+        if (sinceMs !== null && (!item.date || item.date.getTime() < sinceMs)) {
+          skippedOld++;
+          continue;
+        }
         const detailStartedAt = Date.now();
         try {
           const detail = list.detail
@@ -427,6 +436,11 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
         }
         await sleep(settings.requestDelayMs);
       }
+
+      // 列表按发布日期倒序，整页都早于截止时间时无需继续翻页
+      if (sinceMs !== null && items.length > 0 && items.every((it) => it.date && it.date.getTime() < sinceMs)) {
+        break;
+      }
     }
   }
 
@@ -438,6 +452,7 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
     httpFail,
     avgLatencyMs: Math.round(latencyTotal / Math.max(httpOk + httpFail, 1)),
     dryRun: Boolean(options.dryRun),
+    skippedOld,
     ...(options.dryRun ? { items: dryItems.slice(0, 20), errors } : { errors }),
   };
 }
@@ -481,7 +496,9 @@ export async function runSourceWithLogging(
     const result = await runSource(skillCode, options);
     const finishedAt = new Date();
     const durationMs = finishedAt.getTime() - startedAt.getTime();
-    const message = `抓取 ${result.fetched} 条，新增 ${result.newCount} 条，解析 ${result.itemsParsed} 条`;
+    const message = `抓取 ${result.fetched} 条，新增 ${result.newCount} 条，解析 ${result.itemsParsed} 条${
+      result.skippedOld > 0 ? `，跳过截止日期前旧数据 ${result.skippedOld} 条` : ""
+    }`;
 
     await prisma.crawlLog.create({
       data: {

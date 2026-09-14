@@ -3,6 +3,13 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import {
+  calculateDeadlineCountdown,
+  detectProjectLifecycleUpdates,
+  type DeadlineCountdown,
+  type LifecycleUpdateAlert,
+  type TrackerAlertSummary,
+} from "@/lib/lifecycle-alert";
 
 export type FollowStatus =
   | "EVALUATING"
@@ -43,6 +50,8 @@ export type TenderFollowItem = {
   comments?: TenderFollowCommentItem[];
   createdAt: Date;
   updatedAt: Date;
+  deadlineCountdown?: DeadlineCountdown | null;
+  lifecycleAlert?: LifecycleUpdateAlert | null;
   tender: {
     id: number;
     title: string;
@@ -50,8 +59,11 @@ export type TenderFollowItem = {
     purchaser: string | null;
     budgetAmount: number | null;
     expireDate: Date | null;
+    publishDate?: Date | null;
     provinceCode: string | null;
     cityCode: string | null;
+    projectRefId?: number | null;
+    projectNoticesCount?: number;
   };
 };
 
@@ -68,6 +80,7 @@ export type TrackerBoardData = {
   teamName?: string;
   teamMembers?: TeamMemberOption[];
   currentMode: "team" | "personal";
+  alertSummary: TrackerAlertSummary;
   stats: {
     totalCount: number;
     totalBudget: number;
@@ -147,8 +160,19 @@ export async function getTrackerBoardAction(options?: {
             purchaser: true,
             budgetAmount: true,
             expireDate: true,
+            publishDate: true,
             provinceCode: true,
             cityCode: true,
+            projectRefId: true,
+            project: {
+              select: {
+                id: true,
+                notices: {
+                  select: { id: true, title: true, type: true, publishDate: true },
+                  orderBy: { publishDate: "desc" },
+                },
+              },
+            },
           },
         },
         comments: {
@@ -164,42 +188,82 @@ export async function getTrackerBoardAction(options?: {
       orderBy: { updatedAt: "desc" },
     });
 
-    const items: TenderFollowItem[] = records.map((r) => ({
-      id: r.id,
-      tenderId: r.tenderId,
-      userId: r.userId,
-      creatorName: r.user.username,
-      teamId: r.teamId,
-      status: r.status as FollowStatus,
-      priority: r.priority as FollowPriority,
-      assignee: r.assignee,
-      targetAmount: r.targetAmount ? Number(r.targetAmount) : null,
-      notes: r.notes,
-      winRateScore: r.winRateScore,
-      remindDate: r.remindDate,
-      commentsCount: r._count.comments,
-      comments: r.comments.map((c) => ({
-        id: c.id,
-        followId: c.followId,
-        userId: c.userId,
-        username: c.user.username,
-        content: c.content,
-        category: c.category as CommentCategory,
-        createdAt: c.createdAt.toISOString(),
-      })),
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-      tender: {
-        id: r.tender.id,
-        title: r.tender.title,
-        type: r.tender.type,
-        purchaser: r.tender.purchaser,
-        budgetAmount: r.tender.budgetAmount ? Number(r.tender.budgetAmount) : null,
-        expireDate: r.tender.expireDate,
-        provinceCode: r.tender.provinceCode,
-        cityCode: r.tender.cityCode,
-      },
-    }));
+    const alertSummary: TrackerAlertSummary = {
+      criticalDeadlinesCount: 0,
+      warningDeadlinesCount: 0,
+      newClarificationsCount: 0,
+      convertedIntentionsCount: 0,
+      newResultsCount: 0,
+    };
+
+    const items: TenderFollowItem[] = records.map((r) => {
+      const isCompleted = r.status === "WON" || r.status === "LOST";
+      const deadline = isCompleted
+        ? null
+        : calculateDeadlineCountdown(r.tender.expireDate, r.remindDate);
+
+      const lifecycle = detectProjectLifecycleUpdates(
+        {
+          id: r.tender.id,
+          type: r.tender.type,
+          publishDate: r.tender.publishDate,
+        },
+        r.tender.project?.notices
+      );
+
+      if (deadline && !isCompleted) {
+        if (deadline.urgency === "CRITICAL") alertSummary.criticalDeadlinesCount += 1;
+        if (deadline.urgency === "WARNING") alertSummary.warningDeadlinesCount += 1;
+      }
+
+      if (lifecycle.hasUpdate) {
+        if (lifecycle.updateType === "CHANGE") alertSummary.newClarificationsCount += 1;
+        if (lifecycle.updateType === "CONVERTED_NOTICE") alertSummary.convertedIntentionsCount += 1;
+        if (lifecycle.updateType === "RESULT") alertSummary.newResultsCount += 1;
+      }
+
+      return {
+        id: r.id,
+        tenderId: r.tenderId,
+        userId: r.userId,
+        creatorName: r.user.username,
+        teamId: r.teamId,
+        status: r.status as FollowStatus,
+        priority: r.priority as FollowPriority,
+        assignee: r.assignee,
+        targetAmount: r.targetAmount ? Number(r.targetAmount) : null,
+        notes: r.notes,
+        winRateScore: r.winRateScore,
+        remindDate: r.remindDate,
+        commentsCount: r._count.comments,
+        deadlineCountdown: deadline,
+        lifecycleAlert: lifecycle,
+        comments: r.comments.map((c) => ({
+          id: c.id,
+          followId: c.followId,
+          userId: c.userId,
+          username: c.user.username,
+          content: c.content,
+          category: c.category as CommentCategory,
+          createdAt: c.createdAt.toISOString(),
+        })),
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        tender: {
+          id: r.tender.id,
+          title: r.tender.title,
+          type: r.tender.type,
+          purchaser: r.tender.purchaser,
+          budgetAmount: r.tender.budgetAmount ? Number(r.tender.budgetAmount) : null,
+          expireDate: r.tender.expireDate,
+          publishDate: r.tender.publishDate,
+          provinceCode: r.tender.provinceCode,
+          cityCode: r.tender.cityCode,
+          projectRefId: r.tender.projectRefId,
+          projectNoticesCount: r.tender.project?.notices.length || 0,
+        },
+      };
+    });
 
     let totalBudget = 0;
     let evaluatingCount = 0;
@@ -230,6 +294,7 @@ export async function getTrackerBoardAction(options?: {
         teamName: team?.name,
         teamMembers,
         currentMode: requestedMode,
+        alertSummary,
         stats: {
           totalCount: items.length,
           totalBudget: Math.round(totalBudget * 100) / 100,

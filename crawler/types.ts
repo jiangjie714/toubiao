@@ -20,7 +20,7 @@ export type HtmlDetail = {
 };
 
 export type ListConfig = {
-  type: "NOTICE" | "RESULT" | "CHANGE" | "INQUIRY";
+  type: "NOTICE" | "RESULT" | "CHANGE" | "INQUIRY" | "INTENTION";
   mode: "html" | "json";
   url?: string;
   firstPageUrl?: string;

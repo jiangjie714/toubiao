@@ -74,7 +74,7 @@ export default async function PushesPage() {
           订阅规则
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="data-table w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-xs text-slate-500">
                 <th className="px-5 py-3 font-medium">规则</th>
@@ -129,7 +129,7 @@ export default async function PushesPage() {
           最近送达
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="data-table w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-xs text-slate-500">
                 <th className="px-5 py-3 font-medium">时间</th>

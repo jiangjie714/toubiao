@@ -21,7 +21,7 @@ export default function UsersTableView({ users, plans, meUid }: UsersTableViewPr
     <>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-surface shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="data-table w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-xs text-slate-500">
                 <th className="px-5 py-3 font-medium">客户 / 用户名</th>

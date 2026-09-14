@@ -363,8 +363,8 @@ export default function ProjectsManagerView({
       </div>
 
       {/* 主数据表格 */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
+        <table className="data-table w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/70 text-xs text-slate-500">
               <th className="px-5 py-3.5 font-medium">项目 ID / 编号</th>

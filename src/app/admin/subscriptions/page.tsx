@@ -233,8 +233,8 @@ export default async function AdminSubscriptionsPage({
       </div>
 
       {/* 客户订阅清单表格 */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-surface shadow-2xs">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-surface shadow-2xs">
+        <table className="data-table w-full text-sm">
           <thead className="border-b border-slate-100 bg-slate-50/70 text-left text-xs text-slate-500">
             <tr>
               <th className="px-5 py-3 font-medium">客户信息</th>

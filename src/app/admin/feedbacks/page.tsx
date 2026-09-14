@@ -84,7 +84,7 @@ export default async function AdminFeedbacksPage() {
           反馈记录列表（最近 50 条）
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="data-table w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-xs text-slate-500">
                 <th className="px-5 py-3 font-medium">提交时间</th>

@@ -127,8 +127,8 @@ export default function WeeklyBriefView({ brief, userName }: Props) {
             <SparklesIcon className="h-4 w-4 text-amber-500" />
             二、高预算重点标的聚焦（建议销售团队重点跟进）
           </h3>
-          <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
-            <table className="min-w-full divide-y divide-slate-200 text-xs">
+          <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+            <table className="data-table min-w-full divide-y divide-slate-200 text-xs">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="py-2.5 pl-3 pr-2 text-left font-semibold text-slate-700">项目名称</th>

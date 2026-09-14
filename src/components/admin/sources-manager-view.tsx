@@ -385,8 +385,8 @@ export default function SourcesManagerView({ initialSources }: Props) {
       </div>
 
       {/* 数据源列表表格 */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-xs">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-surface shadow-xs">
+        <table className="data-table w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-xs text-slate-500">
               <th className="px-5 py-3 font-medium">数据源名称</th>

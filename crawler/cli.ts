@@ -9,6 +9,16 @@ async function main() {
   const dryRun = args.includes("--dry-run");
   const maxPageArg = args.find((arg) => arg.startsWith("--max-pages="));
   const maxPages = Number(maxPageArg?.split("=")[1] ?? process.env.CRAWL_MAX_PAGES ?? 2);
+  const sinceArg = args.find((arg) => arg.startsWith("--since="));
+  const sinceRaw = sinceArg?.split("=")[1] ?? "";
+  const sinceDate = sinceRaw
+    ? new Date(`${sinceRaw}T00:00:00+08:00`)
+    : undefined;
+  if (sinceArg && (isNaN(sinceDate!.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(sinceRaw))) {
+    console.error(`--since 格式应为 YYYY-MM-DD，收到：${sinceRaw}`);
+    process.exitCode = 1;
+    return;
+  }
   const targets = args.filter((arg) => !arg.startsWith("-"));
   const skills = targets.length > 0 ? targets : listSkills();
 
@@ -24,11 +34,12 @@ async function main() {
         maxPages,
         dryRun,
         file: fileMode,
+        sinceDate,
       });
       if (dryRun) {
         console.log(JSON.stringify(result, null, 2));
       } else {
-        console.log(`  完成：抓取 ${result.fetched} 条，新增 ${result.newCount} 条`);
+        console.log(`  完成：抓取 ${result.fetched} 条，新增 ${result.newCount} 条${result.skippedOld > 0 ? `，跳过旧数据 ${result.skippedOld} 条` : ""}`);
       }
     }
     return;
@@ -36,8 +47,8 @@ async function main() {
 
   await syncSkillConfigs();
   for (const skill of skills) {
-    console.log(`▶ 抓取 ${skill} …`);
-    const result = await runSourceWithLogging(skill, { maxPages, trigger: "manual" });
+    console.log(`▶ 抓取 ${skill}${sinceDate ? `（仅保留 ${sinceRaw} 及之后发布）` : ""} …`);
+    const result = await runSourceWithLogging(skill, { maxPages, trigger: "manual", sinceDate });
     if (result.ok) console.log(`  完成：${result.message}`);
     else console.error(`  失败：${result.message}`);
   }

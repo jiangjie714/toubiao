@@ -57,8 +57,8 @@ export default async function AdminTendersPage({
         </button>
       </form>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-surface">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-surface">
+        <table className="data-table w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-xs text-slate-500">
               <th className="px-5 py-3 font-medium">标题</th>

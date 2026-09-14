@@ -356,8 +356,8 @@ func main() {
           </div>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
-          <table className="min-w-full divide-y divide-slate-200 text-xs">
+        <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
+          <table className="data-table min-w-full divide-y divide-slate-200 text-xs">
             <thead className="bg-slate-50">
               <tr>
                 <th className="py-2.5 pl-4 pr-2 text-left font-semibold text-slate-700">密钥名称</th>

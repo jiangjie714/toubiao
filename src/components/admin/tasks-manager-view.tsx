@@ -262,7 +262,7 @@ export default function TasksManagerView({ data, currentStatus }: Props) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="data-table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/30 text-slate-500">
                   <th className="py-3 px-4 font-semibold">任务 ID</th>

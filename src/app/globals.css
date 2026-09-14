@@ -77,6 +77,38 @@ h3 {
   animation: menu-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ─── 数据表格套件：表头不折行 + 统一密度 ─────────────────
+   用 :where() 清零内层优先级，单元格上的工具类仍可逐处覆盖；
+   数据表挂 .data-table，文档式表格（合同正文）不要挂。 */
+@layer components {
+  .data-table {
+    width: 100%;
+  }
+  .data-table :where(thead th) {
+    white-space: nowrap;
+    text-align: left;
+    vertical-align: middle;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    color: #64748b;
+  }
+  .data-table :where(tbody td) {
+    vertical-align: middle;
+    padding: 0.75rem 1.25rem;
+    font-variant-numeric: tabular-nums;
+  }
+  /* 单元格内的动作按钮不折行（CJK 逐字断行会竖排）；标题类普通链接不受影响 */
+  .data-table :where(tbody td a.inline-flex, tbody td button.inline-flex) {
+    white-space: nowrap;
+  }
+  /* 单元格内的标签/徽章（省区、状态等）不折行，长内容应自带 truncate */
+  .data-table :where(tbody td span.inline-flex) {
+    white-space: nowrap;
+  }
+}
+
 /* 无障碍：用户偏好减弱动效时全部降级为瞬时过渡 */
 @media (prefers-reduced-motion: reduce) {
   .ticker-track {

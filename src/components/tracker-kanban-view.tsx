@@ -10,6 +10,8 @@ import {
   UsersIcon,
   ChatBubbleIcon,
   PlusIcon,
+  AlertCircleIcon,
+  ExternalLinkIcon,
 } from "@/components/icons";
 import {
   getTrackerBoardAction,
@@ -56,6 +58,9 @@ export default function TrackerKanbanView({ initialData }: Props) {
   const [commentInput, setCommentInput] = useState("");
   const [commentCat, setCommentCat] = useState<CommentCategory>("GENERAL");
   const [commentError, setCommentError] = useState("");
+
+  // 预警筛选: "ALL" | "CRITICAL_DEADLINE" | "LIFECYCLE_UPDATE"
+  const [filterAlert, setFilterAlert] = useState<"ALL" | "CRITICAL_DEADLINE" | "LIFECYCLE_UPDATE">("ALL");
 
   const fetchBoard = useCallback(
     (mode: "team" | "personal" = viewMode, assignee: string = selectedAssignee) => {
@@ -138,6 +143,27 @@ export default function TrackerKanbanView({ initialData }: Props) {
   const stats = boardData.stats;
   const items = boardData.items || [];
   const teamMembers = boardData.teamMembers || [];
+  const alertSummary = boardData.alertSummary || {
+    criticalDeadlinesCount: 0,
+    warningDeadlinesCount: 0,
+    newClarificationsCount: 0,
+    convertedIntentionsCount: 0,
+    newResultsCount: 0,
+  };
+  const totalLifecycleAlerts =
+    alertSummary.newClarificationsCount +
+    alertSummary.convertedIntentionsCount +
+    alertSummary.newResultsCount;
+
+  const filteredItems = items.filter((it) => {
+    if (filterAlert === "CRITICAL_DEADLINE") {
+      return it.deadlineCountdown?.urgency === "CRITICAL";
+    }
+    if (filterAlert === "LIFECYCLE_UPDATE") {
+      return Boolean(it.lifecycleAlert?.hasUpdate);
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -256,6 +282,78 @@ export default function TrackerKanbanView({ initialData }: Props) {
         </div>
       )}
 
+      {/* 截标倒计时与全生命周期变更即时预警中枢横幅 */}
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+            <AlertCircleIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-sm text-slate-900">
+                截标倒计时与变更即时预警中枢
+              </span>
+              {alertSummary.criticalDeadlinesCount > 0 && (
+                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-700 animate-pulse">
+                  🚨 {alertSummary.criticalDeadlinesCount} 个标段 ≤48h 截标冲刺
+                </span>
+              )}
+              {totalLifecycleAlerts > 0 && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                  📢 {totalLifecycleAlerts} 项捕获澄清答疑/变更
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-slate-500">
+              系统自动联动关联项目公告流：毫秒级捕获答疑澄清与最新补遗，动态监控封标截标时间节点
+            </p>
+          </div>
+        </div>
+
+        {/* 预警快筛切换器 */}
+        <div className="flex items-center gap-1.5 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setFilterAlert("ALL")}
+            className={`cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+              filterAlert === "ALL"
+                ? "bg-slate-900 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            全部 ({items.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterAlert("CRITICAL_DEADLINE")}
+            className={`cursor-pointer inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+              filterAlert === "CRITICAL_DEADLINE"
+                ? "bg-rose-600 text-white shadow-2xs"
+                : "bg-rose-50 text-rose-700 hover:bg-rose-100"
+            }`}
+          >
+            <span>🚨 48h 临期冲刺</span>
+            <span className="rounded-full bg-rose-200/60 px-1.5 py-0.2 text-[10px] tnum">
+              {alertSummary.criticalDeadlinesCount}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterAlert("LIFECYCLE_UPDATE")}
+            className={`cursor-pointer inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+              filterAlert === "LIFECYCLE_UPDATE"
+                ? "bg-amber-600 text-white shadow-2xs"
+                : "bg-amber-50 text-amber-800 hover:bg-amber-100"
+            }`}
+          >
+            <span>📢 澄清与答疑动态</span>
+            <span className="rounded-full bg-amber-200/60 px-1.5 py-0.2 text-[10px] tnum">
+              {totalLifecycleAlerts}
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* 敏捷看板泳道主体 */}
       {items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-xs">
@@ -277,10 +375,29 @@ export default function TrackerKanbanView({ initialData }: Props) {
             </Link>
           </div>
         </div>
+      ) : filteredItems.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-xs">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 mb-2">
+            <AlertCircleIcon className="h-6 w-6" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-800">
+            当前筛选条件下暂无匹配标段
+          </h3>
+          <p className="mt-1 text-xs text-slate-500">
+            可点击上方“全部 ({items.length})”查看所有推进中的商机标段
+          </p>
+          <button
+            type="button"
+            onClick={() => setFilterAlert("ALL")}
+            className="mt-4 inline-flex cursor-pointer items-center gap-1 rounded-lg bg-slate-800 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 transition-colors"
+          >
+            清除预警筛选
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-5 items-start">
           {LANES.map((lane) => {
-            const laneItems = items.filter((it) => it.status === lane.status);
+            const laneItems = filteredItems.filter((it) => it.status === lane.status);
 
             return (
               <div
@@ -305,6 +422,44 @@ export default function TrackerKanbanView({ initialData }: Props) {
                       key={item.id}
                       className="group relative rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs hover:border-blue-300 hover:shadow-md transition-all text-xs"
                     >
+                      {/* 截标倒计时与更正答疑动态预警徽章 */}
+                      {(item.deadlineCountdown || item.lifecycleAlert?.hasUpdate) && (
+                        <div className="mb-2 space-y-1.5">
+                          {/* 截标倒计时 */}
+                          {item.deadlineCountdown && !item.deadlineCountdown.isDeadlinePassed && (
+                            <div
+                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold border ${item.deadlineCountdown.badgeColor}`}
+                            >
+                              <ClockIcon className="h-3 w-3 shrink-0" />
+                              <span>{item.deadlineCountdown.badgeLabel}</span>
+                            </div>
+                          )}
+
+                          {/* 项目全生命周期变更/更正澄清/结果动态 */}
+                          {item.lifecycleAlert?.hasUpdate && (
+                            <button
+                              type="button"
+                              onClick={() => setActiveItem(item)}
+                              className="w-full text-left cursor-pointer rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 p-2 border border-amber-200/80 hover:border-amber-400 transition-all"
+                            >
+                              <div className="flex items-center justify-between text-[11px] font-bold text-amber-900">
+                                <span>{item.lifecycleAlert.updateLabel}</span>
+                                {item.lifecycleAlert.latestNoticeDate && (
+                                  <span className="text-[10px] text-amber-700 font-normal">
+                                    {item.lifecycleAlert.latestNoticeDate}
+                                  </span>
+                                )}
+                              </div>
+                              {item.lifecycleAlert.latestNoticeTitle && (
+                                <p className="mt-0.5 text-[11px] text-slate-700 line-clamp-1">
+                                  {item.lifecycleAlert.latestNoticeTitle}
+                                </p>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
                       {/* 类型与金额 */}
                       <div className="flex items-center justify-between gap-1 mb-1.5">
                         <span
@@ -487,6 +642,75 @@ export default function TrackerKanbanView({ initialData }: Props) {
                 </div>
               )}
             </div>
+
+            {/* 截标倒计时协同卡片 */}
+            {activeItem.deadlineCountdown && (
+              <div
+                className={`mt-3 rounded-xl p-3 border text-xs ${
+                  activeItem.deadlineCountdown.urgency === "CRITICAL"
+                    ? "bg-rose-50/80 border-rose-200 text-rose-950"
+                    : activeItem.deadlineCountdown.urgency === "WARNING"
+                    ? "bg-amber-50/80 border-amber-200 text-amber-950"
+                    : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <ClockIcon className="h-4 w-4 shrink-0 text-slate-600" />
+                    <span>{activeItem.deadlineCountdown.badgeLabel}</span>
+                  </div>
+                  <span className="font-extrabold tnum">
+                    {activeItem.deadlineCountdown.isDeadlinePassed
+                      ? "已截止"
+                      : activeItem.deadlineCountdown.diffHours <= 48
+                      ? `🚨 剩余 ${activeItem.deadlineCountdown.diffHours} 小时`
+                      : `剩余 ${activeItem.deadlineCountdown.diffDays} 天`}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] opacity-90 leading-relaxed">
+                  {activeItem.deadlineCountdown.urgency === "CRITICAL"
+                    ? "🚨 紧急预警：项目已进入最后 48 小时冲刺阶段！请团队责任人立刻完成标书排版封标、CA电子签章测试与系统预上传，防止因网络拥堵延误投递。"
+                    : activeItem.deadlineCountdown.urgency === "WARNING"
+                    ? "⏳ 进度提醒：距离截标不足 7 天，请确保商务资质、技术方案初稿及投标保证金汇款流程已启动并进入终审。"
+                    : "标段处于正常编制周期，请按计划稳步推进商务与技术方案。"}
+                </p>
+              </div>
+            )}
+
+            {/* 全生命周期预警：关联项目澄清更正/答疑补遗/中标动态 */}
+            {activeItem.lifecycleAlert?.hasUpdate && (
+              <div className="mt-3 rounded-xl bg-amber-50/90 p-3.5 border border-amber-300/80 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-amber-950 flex items-center gap-1.5">
+                    <AlertCircleIcon className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span>【全生命周期预警】捕获关联项目后续公告动态</span>
+                  </span>
+                  <span className="rounded bg-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                    {activeItem.lifecycleAlert.updateLabel}
+                  </span>
+                </div>
+                {activeItem.lifecycleAlert.latestNoticeTitle && (
+                  <p className="mt-1.5 font-semibold text-slate-900 leading-snug">
+                    {activeItem.lifecycleAlert.latestNoticeTitle}
+                  </p>
+                )}
+                <div className="mt-2 flex items-center justify-between pt-2 border-t border-amber-200 text-[11px]">
+                  <span className="text-amber-800">
+                    发布时间：{activeItem.lifecycleAlert.latestNoticeDate || "近期"}
+                  </span>
+                  {activeItem.lifecycleAlert.latestNoticeId && (
+                    <Link
+                      href={`/tender/${activeItem.lifecycleAlert.latestNoticeId}`}
+                      target="_blank"
+                      className="inline-flex items-center gap-1 font-bold text-primary hover:underline"
+                    >
+                      <span>查看答疑更正公告全文</span>
+                      <ExternalLinkIcon className="h-3 w-3" />
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* 批注流展示 */}
             <div className="mt-4 flex-1 overflow-y-auto space-y-3 pr-1">

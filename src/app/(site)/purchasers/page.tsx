@@ -152,17 +152,17 @@ export default async function PurchasersPage({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="data-table w-full text-left text-sm">
             <thead className="border-b border-slate-100 bg-slate-50/40 text-xs text-slate-500">
               <tr>
-                <th className="px-6 py-3.5 font-medium w-16 text-center">排名</th>
-                <th className="px-6 py-3.5 font-medium">采购买方 / 招标业主单位</th>
-                <th className="px-6 py-3.5 font-medium text-right">历史发包数</th>
-                <th className="px-6 py-3.5 font-medium text-right">发包总预算 (万元)</th>
-                <th className="px-6 py-3.5 font-medium text-right">已成交中标 (万元)</th>
-                <th className="px-6 py-3.5 font-medium">首选合作供应商</th>
-                <th className="px-6 py-3.5 font-medium">所在战区</th>
-                <th className="px-6 py-3.5 font-medium text-right">操作</th>
+                <th className="px-4 py-3.5 font-medium w-16 text-center">排名</th>
+                <th className="px-4 py-3.5 font-medium">采购买方 / 招标业主单位</th>
+                <th className="px-4 py-3.5 font-medium text-right">历史发包数</th>
+                <th className="px-4 py-3.5 font-medium text-right">发包总预算 (万元)</th>
+                <th className="px-4 py-3.5 font-medium text-right">已成交中标 (万元)</th>
+                <th className="px-4 py-3.5 font-medium">首选合作供应商</th>
+                <th className="px-4 py-3.5 font-medium">所在战区</th>
+                <th className="px-4 py-3.5 font-medium text-right">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -195,29 +195,29 @@ export default async function PurchasersPage({
 
                 return (
                   <tr key={p.name} className="hover:bg-blue-50/40 transition-colors">
-                    <td className="px-6 py-4 text-center">{rankBadge}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 text-center">{rankBadge}</td>
+                    <td className="px-4 py-4 max-w-[256px]">
                       <Link
                         href={`/purchasers/${encodeURIComponent(p.name)}`}
-                        className="cursor-pointer font-semibold text-slate-900 hover:text-primary transition-colors flex items-center gap-1.5"
+                        className="cursor-pointer font-semibold text-slate-900 hover:text-primary transition-colors flex items-center gap-1.5 min-w-0"
                       >
                         <BuildingIcon className="h-4 w-4 text-slate-400 shrink-0" />
-                        <span>{p.name}</span>
+                        <span className="truncate">{p.name}</span>
                       </Link>
-                      <div className="text-xs text-slate-400 mt-0.5">
+                      <div className="text-xs text-slate-400 mt-0.5 truncate">
                         发布跨度：{p.firstDate} 至 {p.latestDate}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-4 text-right">
                       <span className="font-bold text-slate-900 tnum">{p.noticeCount}</span> 标
                     </td>
-                    <td className="px-6 py-4 text-right font-bold text-blue-700 tnum">
+                    <td className="px-4 py-4 text-right font-bold text-blue-700 tnum">
                       {p.totalBudgetWan > 0 ? `¥${p.totalBudgetWan.toLocaleString()}` : "详见公告"}
                     </td>
-                    <td className="px-6 py-4 text-right font-semibold text-amber-600 tnum">
+                    <td className="px-4 py-4 text-right font-semibold text-amber-600 tnum">
                       {p.totalAwardWan > 0 ? `¥${p.totalAwardWan.toLocaleString()}` : "-"}
                     </td>
-                    <td className="px-6 py-4 max-w-xs">
+                    <td className="px-4 py-4 max-w-xs">
                       <div className="flex flex-wrap gap-1">
                         {p.topSuppliers.length > 0 ? (
                           p.topSuppliers.map((s, sIdx) => (
@@ -235,27 +235,27 @@ export default async function PurchasersPage({
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="flex flex-wrap gap-1">
                         {p.provinces.length > 0 ? (
                           p.provinces.map((prov, prIdx) => (
                             <span
                               key={prIdx}
-                              className="inline-flex items-center gap-0.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700"
+                              className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700"
                             >
                               <MapPinIcon className="h-3 w-3 text-slate-400" />
                               {prov}
                             </span>
                           ))
                         ) : (
-                          <span className="text-xs text-slate-400">全国/直属</span>
+                          <span className="whitespace-nowrap text-xs text-slate-400">全国/直属</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-4 text-right">
                       <Link
                         href={`/purchasers/${encodeURIComponent(p.name)}`}
-                        className="cursor-pointer inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:border-primary hover:text-primary transition-colors"
+                        className="cursor-pointer inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:border-primary hover:text-primary transition-colors"
                       >
                         <span>发包画像</span>
                         <ArrowRightIcon className="h-3 w-3" />

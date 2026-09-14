@@ -29,8 +29,8 @@ export default async function LogsPage({
         <p className="mt-1 text-sm text-slate-500">每次抓取的结果与失败原因</p>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-surface">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-surface">
+        <table className="data-table w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-xs text-slate-500">
               <th className="px-5 py-3 font-medium">开始时间</th>

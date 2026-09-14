@@ -1,5 +1,9 @@
 import { prisma } from "./prisma";
 import { getAppUrl, sendMail } from "./mailer";
+import {
+  calculateDeadlineCountdown,
+  detectProjectLifecycleUpdates,
+} from "./lifecycle-alert";
 import type { Prisma } from "@prisma/client";
 
 export type DailyPushResult = {
@@ -291,5 +295,179 @@ export async function runDailyPushes(options: { dryRun?: boolean } = {}): Promis
       });
     }
   }
+  return results;
+}
+
+export type LifecycleAlertPushResult = {
+  followId: number;
+  userId: number;
+  userName: string;
+  tenderId: number;
+  tenderTitle: string;
+  criticalDeadline?: { hoursLeft: number; targetDateStr: string };
+  lifecycleUpdate?: { title: string; updateType: string; publishDate?: string };
+  sent: boolean;
+  error?: string;
+};
+
+/**
+ * 全生命周期与截标倒计时协同批量扫描预警与即时推送
+ */
+export async function runLifecycleAlerts(options: {
+  dryRun?: boolean;
+  now?: Date;
+} = {}): Promise<LifecycleAlertPushResult[]> {
+  const now = options.now || new Date();
+  const results: LifecycleAlertPushResult[] = [];
+
+  const activeFollows = await prisma.tenderFollow.findMany({
+    where: {
+      status: { in: ["EVALUATING", "DECIDED", "DRAFTING", "SUBMITTED"] },
+    },
+    include: {
+      tender: {
+        select: {
+          id: true,
+          title: true,
+          type: true,
+          publishDate: true,
+          expireDate: true,
+          project: {
+            include: {
+              notices: {
+                select: {
+                  id: true,
+                  title: true,
+                  type: true,
+                  publishDate: true,
+                  sourceUrl: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          emailVerified: true,
+        },
+      },
+    },
+  });
+
+  if (activeFollows.length === 0) {
+    return results;
+  }
+
+  for (const follow of activeFollows) {
+    const countdown = calculateDeadlineCountdown(
+      follow.tender.expireDate,
+      follow.remindDate,
+      now
+    );
+    const lifecycleAlert = detectProjectLifecycleUpdates(
+      {
+        id: follow.tender.id,
+        type: follow.tender.type,
+        publishDate: follow.tender.publishDate,
+      },
+      follow.tender.project?.notices
+    );
+
+    const isCriticalDeadline = countdown
+      ? countdown.urgency === "CRITICAL" && !countdown.isDeadlinePassed
+      : false;
+    const hasLifecycleAlert = lifecycleAlert.hasUpdate;
+
+    if (!isCriticalDeadline && !hasLifecycleAlert) {
+      continue;
+    }
+
+    const itemResult: LifecycleAlertPushResult = {
+      followId: follow.id,
+      userId: follow.user.id,
+      userName: follow.user.name,
+      tenderId: follow.tender.id,
+      tenderTitle: follow.tender.title,
+      sent: false,
+    };
+
+    if (isCriticalDeadline && countdown) {
+      itemResult.criticalDeadline = {
+        hoursLeft: countdown.diffHours,
+        targetDateStr: countdown.targetDate.toISOString().slice(0, 10),
+      };
+    }
+
+    if (lifecycleAlert.hasUpdate) {
+      itemResult.lifecycleUpdate = {
+        title: lifecycleAlert.latestNoticeTitle || "",
+        updateType: lifecycleAlert.updateType || "OTHER",
+        publishDate: lifecycleAlert.latestNoticeDate,
+      };
+    }
+
+    if (options.dryRun) {
+      results.push(itemResult);
+      continue;
+    }
+
+    // 执行真实预警推送
+    try {
+      const appUrl = getAppUrl();
+      const alertLines: string[] = [];
+      if (itemResult.criticalDeadline) {
+        alertLines.push(
+          `🚨 截标冲刺紧急提醒：剩余 ${itemResult.criticalDeadline.hoursLeft} 小时截止（${itemResult.criticalDeadline.targetDateStr}）！请立刻核对电子签章与封标投递。`
+        );
+      }
+      if (itemResult.lifecycleUpdate) {
+        const typeStr =
+          itemResult.lifecycleUpdate.updateType === "CHANGE"
+            ? "更正/澄清答疑"
+            : "项目后续进展";
+        alertLines.push(
+          `📢 捕获关联项目${typeStr}公告：《${itemResult.lifecycleUpdate.title}》，请及时检查并调整应答文件。`
+        );
+      }
+
+      // 1. 邮件预警
+      if (follow.user.email && follow.user.emailVerified) {
+        const html = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e293b;">
+            <h3 style="color: #e11d48; margin-bottom: 8px;">🔔【标讯通】投标商机预警提醒</h3>
+            <p>尊敬的 <strong>${follow.user.name}</strong>：</p>
+            <p>您在投标跟进看板中推进的标段出现重要节点或动态：</p>
+            <div style="background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px; margin: 12px 0;">
+              <strong style="color: #0f172a;">${follow.tender.title}</strong>
+              <div style="margin-top: 6px; font-size: 13px; color: #475569;">
+                ${alertLines.map((l) => `<div style="margin: 4px 0;">${l}</div>`).join("")}
+              </div>
+            </div>
+            <p>
+              <a href="${appUrl}/tender/${follow.tender.id}" style="display: inline-block; background: #2563eb; color: #fff; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px;">进入标段协同工作台</a>
+            </p>
+          </div>
+        `;
+
+        await sendMail({
+          to: follow.user.email,
+          subject: `【标讯通预警】${itemResult.criticalDeadline ? `🚨 48h 截标冲刺: ` : `📢 发现澄清更正: `}${follow.tender.title.slice(0, 20)}...`,
+          text: `${alertLines.join("\n")}\n标段详情: ${appUrl}/tender/${follow.tender.id}`,
+          html,
+        });
+        itemResult.sent = true;
+      }
+
+      results.push(itemResult);
+    } catch (err) {
+      itemResult.error = err instanceof Error ? err.message : String(err);
+      results.push(itemResult);
+    }
+  }
+
   return results;
 }

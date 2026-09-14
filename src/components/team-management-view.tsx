@@ -302,7 +302,7 @@ export default function TeamManagementView({ initialTeam }: Props) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+          <table className="data-table w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50/80 text-xs font-semibold text-slate-700 uppercase tracking-wider">
               <tr>
                 <th className="px-6 py-3.5">成员账号</th>

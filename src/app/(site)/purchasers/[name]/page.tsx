@@ -389,7 +389,7 @@ export default async function PurchaserDetailPage({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="data-table w-full text-left text-sm">
             <thead className="border-b border-slate-100 bg-slate-50/30 text-xs text-slate-500">
               <tr>
                 <th className="px-6 py-3.5 font-medium">项目名称</th>
