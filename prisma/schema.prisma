@@ -37,6 +37,7 @@ model User {
   followComments     TenderFollowComment[]
   bidDeposits        BidDeposit[]
   companyCases       CompanyCase[]
+  companyQualifications CompanyQualification[]
 }
 
 
@@ -629,5 +630,29 @@ model CompanyCase {
 
   @@index([userId, signDate])
   @@index([industryCode])
+}
+
+model CompanyQualification {
+  id                Int       @id @default(autoincrement())
+  userId            Int
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String    // 证书/资质名称 (如: ISO9001质量管理体系认证、信息安全管理体系认证(ISO27001)、高新技术企业证书、CMMI3级)
+  category          String    @default("MANAGEMENT") // MANAGEMENT(管理体系) | CAPABILITY(技术能力) | CREDIT(信用资信) | HONOR(荣誉创新) | SPECIAL(特许资质)
+  certNo            String?   // 证书编号
+  issuingAuthority  String?   // 颁发机构/发证机关
+  issueDate         DateTime? // 初次发证/最新颁证日期
+  expiryDate        DateTime  // 有效期截止日期 (核心，用于倒计时与过期废标预警)
+  status            String    @default("VALID") // VALID(正常有效) | EXPIRING_90(90天内换证) | EXPIRING_30(30天高危临期) | EXPIRED(已逾期废标)
+  annualInspectDate DateTime? // 下次年审/监督审核截止日期
+  coverageScope     String?   @db.Text // 认证范围 (业务/产品/服务范围)
+  level             String?   // 等级/级别 (如: 壹级 / 甲级 / 3级 / AAA)
+  certFileUrl       String?   // 扫描件/电子证照存储地址
+  notes             String?   @db.Text
+  teamId            Int?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId, expiryDate])
+  @@index([category, status])
 }
 

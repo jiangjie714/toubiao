@@ -9,6 +9,7 @@ export const EXTRA_FIELD_TARGETS = {
   openTime: { column: "openTime", type: "datetime" },
   industryCode: { column: "industryCode", type: "industry" },
   winningSupplier: { column: "winningSupplier", type: "string" },
+  agency: { column: "agency", type: "string" },
   contactPhone: { column: "OrgContact.phone", type: "phone" },
   contactEmail: { column: "OrgContact.email", type: "email" },
   contactAddress: { column: "OrgContact.address", type: "string" },
@@ -24,6 +25,7 @@ export type NormalizedExtraFields = {
   openTime?: Date;
   industryCode?: string;
   winningSupplier?: string;
+  agency?: string;
   contactPhone?: string;
   contactEmail?: string;
   contactAddress?: string;
@@ -41,6 +43,7 @@ export const BUILTIN_EXTRACTION: Record<ExtraFieldTarget, ExtractionSpec> = {
   openTime: { regex: "(?:开标时间|开启时间)[：:]\\s*(\\d{4}年\\d{1,2}月\\d{1,2}日[^，,。\\s]{0,10})" },
   industryCode: { regex: "(医疗设备|信息化|软件开发|工程施工|办公物资|物业服务|维修保养|检验检测|教育装备|环保设备)" },
   winningSupplier: { regex: "中标(?:供应商|人)[：:]\\s*([^\\s，,。；;]{4,40})" },
+  agency: { regex: "(?:采购代理机构|代理机构|集中采购机构)(?:[\\s\\S]{0,10}?名\\s*称\\s*[：:]|[：:])\\s*([^\\s，,。；;]{4,40})" },
   contactPhone: { regex: "(?:联系电话|联系方式|电\\s*话)[：:]\\s*([\\d\\-—()]{7,20})" },
   contactEmail: { regex: "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}" },
   contactAddress: { regex: "(?:地址|通讯地址)[：:]\\s*([^\\s]{6,60})" },
@@ -187,6 +190,10 @@ export function normalizeExtraFields(
   if (raw.winningSupplier) {
     fields.winningSupplier = raw.winningSupplier;
     validKeys.push("winningSupplier");
+  }
+  if (raw.agency) {
+    fields.agency = raw.agency;
+    validKeys.push("agency");
   }
   if (raw.contactPhone) {
     const value = normalizePhone(raw.contactPhone);

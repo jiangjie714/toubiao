@@ -7,6 +7,7 @@ export const EXTRA_FIELD_TARGETS = [
   "openTime",
   "industryCode",
   "winningSupplier",
+  "agency",
   "contactPhone",
   "contactEmail",
   "contactAddress",

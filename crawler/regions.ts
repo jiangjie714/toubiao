@@ -56,12 +56,23 @@ export async function loadRegionMatcher() {
     if (!best) return { provinceCode: null, cityCode: null };
 
     const cityList = citiesByProv.get(best.prov.code) ?? [];
-    const after = scope.slice(best.pos, best.pos + 40);
+    const near = scope.slice(best.pos, best.pos + 40);
     for (const city of cityList) {
-      if (city.keys.some((k) => after.includes(k))) {
+      if (city.keys.some((k) => near.includes(k))) {
         return { provinceCode: best.prov.code, cityCode: city.code };
       }
     }
+    // 兜底：城市关键词出现在正文其它位置（实施地点/联系方式等），取全文最早命中
+    let fallback: { city: Keyed; pos: number } | null = null;
+    for (const city of cityList) {
+      for (const k of city.keys) {
+        const i = scope.indexOf(k);
+        if (i < 0) continue;
+        if (!fallback || i < fallback.pos) fallback = { city, pos: i };
+        break;
+      }
+    }
+    if (fallback) return { provinceCode: best.prov.code, cityCode: fallback.city.code };
     return { provinceCode: best.prov.code, cityCode: null };
   }
 

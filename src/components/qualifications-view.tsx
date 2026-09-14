@@ -24,6 +24,8 @@ import {
   addRadarItemToTrackerAction,
   type OpportunityRadarActionResponse,
 } from "@/app/actions/opportunity-radar";
+import QualificationLedgerView from "@/components/qualification-ledger-view";
+import type { CompanyQualificationItem, QualificationSummary } from "@/lib/qualification-manager";
 
 const COMMON_CERTS = [
   "ISO9001质量管理体系",
@@ -53,11 +55,15 @@ const COMMON_QUALS = [
 export default function QualificationsView({
   initialData,
   userName,
+  initialQualifications = [],
+  initialSummary,
 }: {
   initialData: OpportunityRadarActionResponse["data"];
   userName?: string;
+  initialQualifications?: CompanyQualificationItem[];
+  initialSummary?: QualificationSummary;
 }) {
-  const [activeTab, setActiveTab] = useState<"radar" | "profile">("radar");
+  const [activeTab, setActiveTab] = useState<"ledger" | "radar" | "profile">("ledger");
 
   // Profile 表单状态
   const [companyName, setCompanyName] = useState(initialData?.profile?.companyName || "");
@@ -237,8 +243,31 @@ export default function QualificationsView({
         </div>
       </div>
 
-      {/* 双 Tab 切换栏 */}
+      {/* 3 Tab 切换栏 */}
       <div className="flex border-b border-slate-200">
+        <button
+          type="button"
+          onClick={() => setActiveTab("ledger")}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold transition-colors cursor-pointer ${
+            activeTab === "ledger"
+              ? "border-purple-600 text-purple-700"
+              : "border-transparent text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <ShieldCheckIcon className="h-4 w-4" />
+          <span>资质证书数字台账</span>
+          {initialQualifications && initialQualifications.length > 0 ? (
+            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-800 tnum">
+              {initialQualifications.length}
+            </span>
+          ) : null}
+          {initialSummary && initialSummary.expiring30Count > 0 ? (
+            <span className="rounded-full bg-amber-100 px-1.5 py-0.2 text-2xs font-bold text-amber-800 animate-pulse">
+              {initialSummary.expiring30Count}临期
+            </span>
+          ) : null}
+        </button>
+
         <button
           type="button"
           onClick={() => setActiveTab("radar")}
@@ -266,15 +295,21 @@ export default function QualificationsView({
               : "border-transparent text-slate-600 hover:text-slate-900"
           }`}
         >
-          <ShieldCheckIcon className="h-4 w-4" />
-          <span>企业资质与业绩资产库</span>
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 tnum">
-            {certifications.length + qualifications.length + keyCases.length} 项资产
-          </span>
+          <BuildingIcon className="h-4 w-4" />
+          <span>企业档案与偏好设置</span>
         </button>
       </div>
 
-      {/* Tab 1: 全网智能商机匹配雷达 */}
+      {/* Tab 1: 资质证书数字台账 */}
+      {activeTab === "ledger" && (
+        <QualificationLedgerView
+          initialQualifications={initialQualifications}
+          initialSummary={initialSummary}
+          companyName={companyName || "我司"}
+        />
+      )}
+
+      {/* Tab 2: 全网智能商机匹配雷达 */}
       {activeTab === "radar" && (
         <div className="space-y-6">
           {/* 未录入企业主体提醒 */}

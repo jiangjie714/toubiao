@@ -98,7 +98,7 @@ export async function persistTender(
         provinceCode: input.provinceCode ?? region.provinceCode,
         cityCode: input.cityCode ?? region.cityCode,
         purchaser: input.purchaser,
-        agency: input.agency,
+        agency: input.agency || input.extraFields.agency || null,
         sourceName: input.sourceName,
         sourceUrl: input.sourceUrl,
         content: input.content,
