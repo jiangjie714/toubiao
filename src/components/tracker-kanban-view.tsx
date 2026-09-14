@@ -15,6 +15,7 @@ import {
   SparklesIcon,
   ScaleIcon,
   CalendarIcon,
+  ShieldCheckIcon,
 } from "@/components/icons";
 import BidWarRoomModal from "@/components/bid-war-room-modal";
 import BidReviewModal from "@/components/bid-review-modal";
@@ -216,6 +217,14 @@ export default function TrackerKanbanView({ initialData }: Props) {
           >
             <ScaleIcon className="h-3.5 w-3.5 text-primary" />
             <span>复盘归因</span>
+          </Link>
+          <Link
+            href="/audit"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+            title="进入投标文件清标查重与合规深度质检罗盘"
+          >
+            <ShieldCheckIcon className="h-3.5 w-3.5 text-primary" />
+            <span>标书质检</span>
           </Link>
           <Link
             href="/list"
@@ -664,6 +673,13 @@ export default function TrackerKanbanView({ initialData }: Props) {
                           >
                             复盘
                           </button>
+                          <Link
+                            href="/audit"
+                            className="cursor-pointer text-[11px] font-semibold text-emerald-600 hover:text-emerald-800"
+                            title="打开投标文件清标与合规质检工坊"
+                          >
+                            质检
+                          </Link>
                           <Link
                             href={`/tender/${item.tender.id}`}
                             className="text-primary hover:underline font-semibold"

@@ -40,6 +40,7 @@ model User {
   companyQualifications CompanyQualification[]
   bidReviews         BidReview[]
   bidMilestones      BidMilestone[]
+  bidAudits          BidAuditRecord[]
 }
 
 
@@ -107,6 +108,7 @@ model Tender {
   aiAnalysis       TenderAiAnalysis?
   follows          TenderFollow[]
   bidDeposits      BidDeposit[]
+  bidAudits        BidAuditRecord[]
 
   @@index([projectNo])
 
@@ -463,6 +465,7 @@ model TenderFollow {
   evaluation   BidProjectEvaluation?
   review       BidReview?
   milestones   BidMilestone[]
+  audits       BidAuditRecord[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -731,5 +734,32 @@ model BidMilestone {
   @@index([followId])
   @@index([teamId, targetDate])
 }
+
+model BidAuditRecord {
+  id                 Int           @id @default(autoincrement())
+  followId           Int?
+  follow             TenderFollow? @relation(fields: [followId], references: [id], onDelete: SetNull)
+  userId             Int
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenderId           Int?
+  tender             Tender?       @relation(fields: [tenderId], references: [id], onDelete: SetNull)
+  documentTitle      String        // 投标文件名称/送检标段名称
+  auditScore         Int           @default(100) // 清标健康分 (0-100)
+  riskLevel          String        @default("LOW") // LOW(低风险通过) | MEDIUM(中度瑕疵警示) | HIGH(高危废标隐患)
+  fatalIssuesCount   Int           @default(0) // 一票否决/法定废标项数
+  warningIssuesCount Int           @default(0) // 扣分与瑕疵项数量
+  issuesDetails      Json          // 检测出的隐患清单明细
+  auditedContent     String?       @db.Text // 送检文本摘录/要点
+  inspector          String?       // 清标复核人
+  teamId             Int?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([userId, riskLevel])
+  @@index([followId])
+  @@index([tenderId])
+  @@index([teamId])
+}
+
 
 
