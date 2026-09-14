@@ -19,6 +19,7 @@ import {
   SparklesIcon,
   TargetIcon,
   ScaleIcon,
+  RadarIcon,
   XMarkIcon,
 } from "@/components/icons";
 
@@ -51,6 +52,7 @@ const INTEL_ITEMS: NavItem[] = [
 ];
 
 const WORKBENCH_ITEMS: NavItem[] = [
+  { href: "/qualifications", label: "资质与商机雷达", desc: "企业资质管理与全网智能赢面匹配", icon: RadarIcon, match: ["/qualifications"] },
   { href: "/tracker", label: "跟进看板", desc: "商机跟进与投标状态管理", icon: ClipboardIcon, match: ["/tracker"] },
   { href: "/tenders/compare", label: "标讯对比", desc: "多标段横向立项决策罗盘", icon: ScaleIcon, match: ["/tenders/compare"] },
   { href: "/watches", label: "关键词订阅", desc: "按关键词追踪新公告", icon: BellIcon, match: ["/watches"] },
