@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   SparklesIcon,
   ShieldAlertIcon,
+  ShieldCheckIcon,
   ScaleIcon,
   DocumentTextIcon,
   LockClosedIcon,
@@ -22,6 +23,7 @@ import {
 } from "@/app/actions/fit-check";
 import { CompanyProfileModal } from "@/components/company-profile-modal";
 import TenderProposalCopilot from "@/components/tender-proposal-copilot";
+import TenderComplianceDialog from "@/components/tender-compliance-dialog";
 import type {
   AiExecutiveSummary,
   AiRiskRadar,
@@ -46,6 +48,7 @@ export function TenderAiCard({ tenderId }: TenderAiCardProps) {
   const [fitLoading, setFitLoading] = useState<boolean>(false);
   const [fitRes, setFitRes] = useState<FitCheckActionResponse | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isComplianceOpen, setIsComplianceOpen] = useState(false);
 
   const handleExecuteAi = (force = false) => {
     setLoading(true);
@@ -388,6 +391,31 @@ export function TenderAiCard({ tenderId }: TenderAiCardProps) {
                   <span className="ml-1 text-slate-700">
                     {riskRadar.depositAndFees.depositDeadline ?? "同投标截止时间"}
                   </span>
+                </div>
+
+                {/* 深度合规扫描仪入口横幅 */}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50/60 p-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 text-red-600">
+                      <ShieldCheckIcon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-red-900">
+                        标书 16 项高频废标雷区智能体检与交底清单
+                      </div>
+                      <div className="text-[11px] text-red-700/80 mt-0.5">
+                        全方位排查骑缝章漏盖、报价大小写、基本户保证金、CA 锁与星号实质性参数
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsComplianceOpen(true)}
+                    className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-red-700 transition-colors"
+                  >
+                    <span>开启深度体检</span>
+                    <span>→</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -741,6 +769,13 @@ export function TenderAiCard({ tenderId }: TenderAiCardProps) {
         onClose={() => setIsProfileModalOpen(false)}
         initialData={fitRes?.profile}
         onSaved={loadFitCheck}
+      />
+
+      {/* 标书智能合规与防废标自查扫描仪弹窗 */}
+      <TenderComplianceDialog
+        tenderId={tenderId}
+        isOpen={isComplianceOpen}
+        onClose={() => setIsComplianceOpen(false)}
       />
     </div>
   );
