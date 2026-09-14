@@ -19,34 +19,76 @@ export interface PushTenderItem {
   title: string;
   publishDate: Date | string;
   type?: string;
+  budgetAmountWan?: number | null;
   awardAmountWan?: number | null;
   purchaser?: string | null;
 }
 
 /**
- * 推送到企业微信群机器人 (Markdown 格式)
+ * 公告类型人类可读标签
+ */
+export function formatTenderTypeLabel(type?: string): string {
+  switch (type) {
+    case "NOTICE":
+      return "招标公告";
+    case "RESULT":
+      return "中标公告";
+    case "CHANGE":
+      return "变更答疑";
+    case "INQUIRY":
+      return "询价竞谈";
+    case "INTENTION":
+      return "采购意向";
+    default:
+      return "标讯动态";
+  }
+}
+
+/**
+ * 格式化预算与金额信息
+ */
+export function formatTenderAmountStr(item: PushTenderItem): string {
+  if (item.budgetAmountWan && item.budgetAmountWan > 0) {
+    return `预算: ¥${item.budgetAmountWan.toLocaleString("zh-CN")}万`;
+  }
+  if (item.awardAmountWan && item.awardAmountWan > 0) {
+    return `中标: ¥${item.awardAmountWan.toLocaleString("zh-CN")}万`;
+  }
+  return "预算/金额: 详见正文";
+}
+
+/**
+ * 推送到企业微信群机器人 (Markdown 格式富文本卡片)
  */
 export async function sendWecomWebhook(
   webhookUrl: string,
   options: {
     keyword: string;
+    frequency?: "daily" | "weekly";
     tenders: PushTenderItem[];
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const appUrl = getAppUrl();
+    const isWeekly = options.frequency === "weekly";
+    const headerTitle = isWeekly ? "📊 标讯通 · 决策周报" : "🔔 标讯通 · 商机速递";
+    const subTitle = isWeekly ? "本周高匹配商机精选" : "今日高匹配新商机";
+
     const itemsMarkdown = options.tenders
-      .slice(0, 5)
+      .slice(0, 8)
       .map((t, idx) => {
         const dateStr =
           typeof t.publishDate === "string"
             ? t.publishDate
             : t.publishDate.toISOString().slice(0, 10);
-        return `${idx + 1}. [${t.title}](${appUrl}/tender/${t.id}) (${dateStr})`;
+        const typeLabel = formatTenderTypeLabel(t.type);
+        const amountStr = formatTenderAmountStr(t);
+        const purchaserStr = t.purchaser ? t.purchaser : "采购单位见正文";
+        return `${idx + 1}. **[${typeLabel}]** [${t.title}](${appUrl}/tender/${t.id})\n> 🏢 <font color="comment">${purchaserStr}</font>\n> 💰 <font color="warning">${amountStr}</font> · 📅 ${dateStr}`;
       })
-      .join("\n");
+      .join("\n\n");
 
-    const content = `### 🔔 标讯通商机速递\n> 监控关键词：<font color="info">「${options.keyword}」</font>\n> 发现新商机：**${options.tenders.length}** 条\n\n${itemsMarkdown}\n\n[点击前往标讯通工作台查看全部 >](${appUrl}/tracker)`;
+    const content = `### ${headerTitle}\n> 🎯 监控规则：<font color="info">「${options.keyword}」</font>\n> ⚡️ ${subTitle}：**${options.tenders.length}** 条\n\n${itemsMarkdown}\n\n---\n[👉 前往标讯通协同看板](${appUrl}/tracker) · [⚙️ 订阅偏好设置](${appUrl}/watches)`;
 
     const res = await fetch(webhookUrl, {
       method: "POST",
@@ -68,29 +110,37 @@ export async function sendWecomWebhook(
 }
 
 /**
- * 推送到钉钉群自定义机器人 (Markdown 格式)
+ * 推送到钉钉群自定义机器人 (Markdown 格式富文本卡片)
  */
 export async function sendDingtalkWebhook(
   webhookUrl: string,
   options: {
     keyword: string;
+    frequency?: "daily" | "weekly";
     tenders: PushTenderItem[];
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const appUrl = getAppUrl();
+    const isWeekly = options.frequency === "weekly";
+    const headerTitle = isWeekly ? "📊 标讯通 · 决策周报" : "🔔 标讯通 · 商机速递";
+    const title = `${headerTitle}: ${options.keyword}`;
+
     const itemsMarkdown = options.tenders
-      .slice(0, 5)
+      .slice(0, 8)
       .map((t, idx) => {
         const dateStr =
           typeof t.publishDate === "string"
             ? t.publishDate
             : t.publishDate.toISOString().slice(0, 10);
-        return `${idx + 1}. [${t.title}](${appUrl}/tender/${t.id}) (${dateStr})`;
+        const typeLabel = formatTenderTypeLabel(t.type);
+        const amountStr = formatTenderAmountStr(t);
+        const purchaserStr = t.purchaser ? t.purchaser : "采购单位见正文";
+        return `#### ${idx + 1}. 【${typeLabel}】[${t.title}](${appUrl}/tender/${t.id})\n- 🏢 采购单位：${purchaserStr}\n- 💰 金额预算：${amountStr}\n- 📅 发布日期：${dateStr}`;
       })
       .join("\n\n");
 
-    const text = `### 🔔 标讯通商机速递\n**监控关键词**：${options.keyword}\n\n**命中最新商机**：${options.tenders.length} 条\n\n${itemsMarkdown}\n\n[进入标讯通协同看板](${appUrl}/tracker)`;
+    const text = `### ${headerTitle}\n**监控规则**：${options.keyword}\n**命中商机**：共 ${options.tenders.length} 条\n\n${itemsMarkdown}\n\n---\n[👉 前往标讯通协同看板](${appUrl}/tracker)  |  [⚙️ 订阅偏好管理](${appUrl}/watches)`;
 
     const res = await fetch(webhookUrl, {
       method: "POST",
@@ -98,7 +148,7 @@ export async function sendDingtalkWebhook(
       body: JSON.stringify({
         msgtype: "markdown",
         markdown: {
-          title: `标讯通商机提醒: ${options.keyword}`,
+          title,
           text,
         },
       }),
@@ -121,22 +171,61 @@ export async function sendFeishuWebhook(
   webhookUrl: string,
   options: {
     keyword: string;
+    frequency?: "daily" | "weekly";
     tenders: PushTenderItem[];
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const appUrl = getAppUrl();
-    const contentList = options.tenders.slice(0, 5).map((t, idx) => {
+    const isWeekly = options.frequency === "weekly";
+    const headerTitle = isWeekly ? "📊 标讯通 · 决策周报" : "🔔 标讯通 · 商机速递";
+
+    const contentBlocks: Array<Array<{ tag: string; text?: string; href?: string }>> = [
+      [
+        {
+          tag: "text",
+          text: `🎯 监控规则:「${options.keyword}」 | ⚡️ 命中商机: ${options.tenders.length} 条\n\n`,
+        },
+      ],
+    ];
+
+    options.tenders.slice(0, 8).forEach((t, idx) => {
       const dateStr =
         typeof t.publishDate === "string"
           ? t.publishDate
           : t.publishDate.toISOString().slice(0, 10);
-      return [
-        { tag: "text", text: `${idx + 1}. ` },
+      const typeLabel = formatTenderTypeLabel(t.type);
+      const amountStr = formatTenderAmountStr(t);
+      const purchaserStr = t.purchaser ? t.purchaser : "采购单位见正文";
+
+      contentBlocks.push([
+        { tag: "text", text: `${idx + 1}. 【${typeLabel}】 ` },
         { tag: "a", text: t.title, href: `${appUrl}/tender/${t.id}` },
-        { tag: "text", text: ` (${dateStr})\n` },
-      ];
+      ]);
+      contentBlocks.push([
+        {
+          tag: "text",
+          text: `   🏢 采购单位：${purchaserStr}  |  💰 ${amountStr}  |  📅 ${dateStr}\n`,
+        },
+      ]);
     });
+
+    contentBlocks.push([
+      {
+        tag: "a",
+        text: "👉 点击进入标讯通项目跟踪看板",
+        href: `${appUrl}/tracker`,
+      },
+      {
+        tag: "text",
+        text: "  ·  ",
+      },
+      {
+        tag: "a",
+        text: "⚙️ 调整订阅规则",
+        href: `${appUrl}/watches`,
+      },
+    ]);
 
     const res = await fetch(webhookUrl, {
       method: "POST",
@@ -146,18 +235,8 @@ export async function sendFeishuWebhook(
         content: {
           post: {
             zh_cn: {
-              title: `🔔 标讯通商机速递:「${options.keyword}」`,
-              content: [
-                [{ tag: "text", text: `本次命中最新商机 ${options.tenders.length} 条：\n\n` }],
-                ...contentList,
-                [
-                  {
-                    tag: "a",
-                    text: "\n👉 点击查看标讯通项目跟踪看板",
-                    href: `${appUrl}/tracker`,
-                  },
-                ],
-              ],
+              title: `${headerTitle}:「${options.keyword}」`,
+              content: contentBlocks,
             },
           },
         },
@@ -175,9 +254,16 @@ export async function sendFeishuWebhook(
 }
 
 /**
- * 执行全库日常订阅推送任务（支持 Email、企微、钉钉、飞书）
+ * 执行全库日常订阅推送任务（支持 Email、企微、钉钉、飞书，支持日报/周报偏好调度）
  */
-export async function runDailyPushes(options: { dryRun?: boolean } = {}): Promise<DailyPushResult[]> {
+export async function runDailyPushes(options: {
+  dryRun?: boolean;
+  now?: Date;
+  forceAll?: boolean;
+} = {}): Promise<DailyPushResult[]> {
+  const now = options.now || new Date();
+  const isMonday = now.getDay() === 1;
+
   const watches = await prisma.pushWatch.findMany({
     where: { enabled: true, user: { status: "ACTIVE" } },
     include: { user: { select: { id: true, email: true, name: true, emailVerified: true } } },
@@ -186,7 +272,19 @@ export async function runDailyPushes(options: { dryRun?: boolean } = {}): Promis
 
   const results: DailyPushResult[] = [];
   for (const watch of watches) {
-    const since = watch.lastPushAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // 频次控制：若为周报 (weekly)，仅在周一或距离上次推送超过 6 天时执行，除非指定 forceAll
+    const isWeekly = watch.frequency === "weekly";
+    if (isWeekly && !options.forceAll) {
+      if (!isMonday) {
+        if (watch.lastPushAt && now.getTime() - watch.lastPushAt.getTime() < 6 * 24 * 60 * 60 * 1000) {
+          continue;
+        }
+      }
+    }
+
+    const defaultLookback = isWeekly ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    const since = watch.lastPushAt ?? new Date(now.getTime() - defaultLookback);
+
     const where: Prisma.TenderWhereInput = {
       publishDate: { gte: since },
       OR: [
@@ -202,7 +300,15 @@ export async function runDailyPushes(options: { dryRun?: boolean } = {}): Promis
       where,
       orderBy: { publishDate: "desc" },
       take: 20,
-      select: { id: true, title: true, type: true, publishDate: true, awardAmount: true, purchaser: true },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        publishDate: true,
+        budgetAmount: true,
+        awardAmount: true,
+        purchaser: true,
+      },
     });
 
     const existing = await prisma.pushRecord.findMany({
@@ -215,7 +321,7 @@ export async function runDailyPushes(options: { dryRun?: boolean } = {}): Promis
     if (matched.length === 0) {
       await prisma.pushWatch.update({
         where: { id: watch.id },
-        data: { lastPushAt: new Date() },
+        data: { lastPushAt: now },
       });
       results.push({ watchId: watch.id, watchName: watch.name, matched: 0, sent: false });
       continue;
@@ -230,41 +336,59 @@ export async function runDailyPushes(options: { dryRun?: boolean } = {}): Promis
       const channels = Array.isArray(watch.channels) ? (watch.channels as string[]) : ["email"];
       let hasSentAny = false;
 
+      const tenderItems: PushTenderItem[] = matched.map((m) => ({
+        id: m.id,
+        title: m.title,
+        publishDate: m.publishDate,
+        type: m.type,
+        budgetAmountWan: m.budgetAmount ? Math.round((Number(m.budgetAmount) / 10000) * 100) / 100 : null,
+        awardAmountWan: m.awardAmount ? Math.round((Number(m.awardAmount) / 10000) * 100) / 100 : null,
+        purchaser: m.purchaser,
+      }));
+
       // 1. 邮件推送
       if (channels.includes("email") && watch.user.email && watch.user.emailVerified) {
-        const listHtml = matched
-          .map(
-            (tender) =>
-              `<li><a href="${getAppUrl()}/tender/${tender.id}">${tender.title}</a>（${tender.publishDate.toLocaleDateString("zh-CN")}）</li>`,
-          )
+        const listHtml = tenderItems
+          .map((tender) => {
+            const typeLabel = formatTenderTypeLabel(tender.type);
+            const amountStr = formatTenderAmountStr(tender);
+            const dateStr =
+              typeof tender.publishDate === "string"
+                ? tender.publishDate
+                : tender.publishDate.toLocaleDateString("zh-CN");
+            return `<li><strong>[${typeLabel}]</strong> <a href="${getAppUrl()}/tender/${tender.id}">${tender.title}</a>（${amountStr} - ${tender.purchaser || "采购人见正文"}，${dateStr}）</li>`;
+          })
           .join("");
+
+        const emailSubject = isWeekly
+          ? `【标讯通周报】关键词「${watch.keyword}」本周精选 ${matched.length} 条高价值标讯`
+          : `【标讯通日报】关键词「${watch.keyword}」今日命中 ${matched.length} 条新公告`;
+
         await sendMail({
           to: watch.user.email,
-          subject: `【标讯通】关键词「${watch.keyword}」命中 ${matched.length} 条新公告`,
-          text: matched.map((tender) => `${tender.title}\n${getAppUrl()}/tender/${tender.id}`).join("\n"),
-          html: `<p>${watch.user.name}，您好：</p><p>您的关键词「${watch.keyword}」命中以下新公告：</p><ol>${listHtml}</ol>`,
+          subject: emailSubject,
+          text: tenderItems.map((t) => `${t.title} (${formatTenderAmountStr(t)})\n${getAppUrl()}/tender/${t.id}`).join("\n"),
+          html: `<p>${watch.user.name}，您好：</p><p>您的商机监控「${watch.name}」（关键词：${watch.keyword}）命中以下新标讯：</p><ol>${listHtml}</ol><p><a href="${getAppUrl()}/tracker">前往标讯通项目跟踪看板 &gt;</a></p>`,
         });
         hasSentAny = true;
       }
 
       // 2. 机器人 Webhook 推送
       if (watch.webhookUrl && watch.webhookUrl.startsWith("http")) {
-        const tenderItems: PushTenderItem[] = matched.map((m) => ({
-          id: m.id,
-          title: m.title,
-          publishDate: m.publishDate,
-          type: m.type,
-          purchaser: m.purchaser,
-        }));
+        const pushOpts = {
+          keyword: watch.keyword,
+          frequency: (watch.frequency === "weekly" ? "weekly" : "daily") as "daily" | "weekly",
+          tenders: tenderItems,
+        };
 
         if (channels.includes("wecom")) {
-          await sendWecomWebhook(watch.webhookUrl, { keyword: watch.keyword, tenders: tenderItems });
+          await sendWecomWebhook(watch.webhookUrl, pushOpts);
           hasSentAny = true;
         } else if (channels.includes("dingtalk")) {
-          await sendDingtalkWebhook(watch.webhookUrl, { keyword: watch.keyword, tenders: tenderItems });
+          await sendDingtalkWebhook(watch.webhookUrl, pushOpts);
           hasSentAny = true;
         } else if (channels.includes("feishu")) {
-          await sendFeishuWebhook(watch.webhookUrl, { keyword: watch.keyword, tenders: tenderItems });
+          await sendFeishuWebhook(watch.webhookUrl, pushOpts);
           hasSentAny = true;
         }
       }
@@ -281,7 +405,7 @@ export async function runDailyPushes(options: { dryRun?: boolean } = {}): Promis
         }),
         prisma.pushWatch.update({
           where: { id: watch.id },
-          data: { lastPushAt: new Date() },
+          data: { lastPushAt: now },
         }),
       ]);
       results.push({ watchId: watch.id, watchName: watch.name, matched: matched.length, sent: hasSentAny });

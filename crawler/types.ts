@@ -16,6 +16,8 @@ export type ExtractionSpec = {
 export type HtmlDetail = {
   contentSelector: string;
   removeSelector?: string;
+  /** 详情页真实地址模板，支持 {query:参数名}/{YYYY}/{MM}/{DD} 占位；缺省用条目链接本身 */
+  urlTemplate?: string;
   extraction?: Record<string, ExtractionSpec>;
 };
 

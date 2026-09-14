@@ -88,7 +88,12 @@ export default async function PushesPage() {
               {watches.map((watch) => (
                 <tr key={watch.id} className="transition-colors duration-150 hover:bg-blue-50/40">
                   <td className="px-5 py-3.5">
-                    <div className="font-medium text-slate-800">{watch.name}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-slate-800">{watch.name}</span>
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                        {watch.frequency === "weekly" ? "周报" : "日报"}
+                      </span>
+                    </div>
                     <div className="text-xs text-slate-500">关键词：{watch.keyword}</div>
                   </td>
                   <td className="px-5 py-3.5">

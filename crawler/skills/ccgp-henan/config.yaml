@@ -1,32 +1,31 @@
+# 河南省政府采购网
+# 结构说明见同目录 SKILL.md
 source:
   name: 河南省政府采购网
   baseUrl: http://www.ccgp-henan.gov.cn
+
 settings:
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2
   maxPages: 1
-  scheduleCron: 0 */2 * * *
+
 lists:
+  # 通知公告频道（采购公告/更正/中标成交等混合，条目 channelCode=H601001）
   - type: NOTICE
     mode: html
-    firstPageUrl: http://www.ccgp-henan.gov.cn/henan/ggcx
-    url: http://www.ccgp-henan.gov.cn/henan/ggcx
+    firstPageUrl: "http://www.ccgp-henan.gov.cn/henan/list2?pageNo=1&pageSize=16&gglx=2&bz=0"
+    url: "http://www.ccgp-henan.gov.cn/henan/list2?pageNo={page}&pageSize=16&gglx=2&bz=0"
     parse:
-      itemSelector: ul.List2 > li
+      itemSelector: "div.List2 > ul > li"
       fields:
-        title:
-          selector: a
-          attr: text
-        url:
-          selector: a
-          attr: href
-        date:
-          selector: span.Date
-          attr: text
-          regex: \d{4}-\d{2}-\d{2}
-        province:
-          const: "41"
+        title: { selector: "a", attr: "text" }
+        url: { selector: "a", attr: "href" }
+        date: { selector: "span.Gray", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        province: { const: "41" }
     detail:
-      contentSelector: div.Content
-      removeSelector: script, style
+      # 详情壳页 /henan/content?infoId=… 由前端 XHR 渲染，正文实际存放在静态文件
+      # /webfile/henan/wzxx/tzgg/webinfo/{发布年}/{发布月}/{infoId}.htm
+      urlTemplate: "http://www.ccgp-henan.gov.cn/webfile/henan/wzxx/tzgg/webinfo/{YYYY}/{MM}/{query:infoId}.htm"
+      contentSelector: "body"
+      removeSelector: "script, style"

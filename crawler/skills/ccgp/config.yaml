@@ -130,20 +130,6 @@ lists:
       contentSelector: "div.vF_detail_content"
       removeSelector: "script, style"
 
-  # 采购意向公告
-  - type: INTENTION
-    mode: html
-    firstPageUrl: "http://www.ccgp.gov.cn/cggg/zygg/cgyx/"
-    url: "http://www.ccgp.gov.cn/cggg/zygg/cgyx/index_{page-1}.htm"
-    parse:
-      itemSelector: "ul.c_list_bid > li"
-      fields:
-        title: { selector: "a", attr: "text" }
-        url: { selector: "a", attr: "href" }
-        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
-        province: { selector: "em:eq(1)", attr: "text" }
-        purchaser: { selector: "em:eq(2)", attr: "text" }
-    detail:
-      contentSelector: "div.vF_detail_content"
-      removeSelector: "script, style"
+  # 采购意向公告：原 /cggg/zygg/cgyx/ 频道已下线，迁移到独立系统 http://www.ccgp.gov.cn/cgyx/（JS 应用，需接口逆向后另行接入）
+  # 暂从配置移除，见 SKILL.md
 

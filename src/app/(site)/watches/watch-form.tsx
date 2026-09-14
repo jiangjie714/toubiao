@@ -20,6 +20,7 @@ export default function WatchForm({
   );
 
   const [selectedChannel, setSelectedChannel] = useState<"email" | "wecom" | "dingtalk" | "feishu">("email");
+  const [frequency, setFrequency] = useState<"daily" | "weekly">("daily");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [testPending, setTestPending] = useState(false);
   const [testFeedback, setTestFeedback] = useState<{ success: boolean; message: string } | null>(null);
@@ -90,6 +91,58 @@ export default function WatchForm({
               <option key={city.code} value={city.code}>{city.name}</option>
             ))}
           </select>
+        </div>
+      </div>
+
+      {/* 推送频次策略 */}
+      <div className="pt-2 border-t border-slate-100">
+        <label className="text-sm font-medium text-slate-700 block mb-1.5">推送频次策略</label>
+        <div className="grid grid-cols-2 gap-2">
+          <label
+            className={`flex flex-col gap-1 rounded-lg border p-2.5 text-xs cursor-pointer transition-colors ${
+              frequency === "daily"
+                ? "border-primary bg-blue-50/50 text-primary"
+                : "border-slate-200 text-slate-700 hover:border-slate-300"
+            }`}
+          >
+            <input
+              type="radio"
+              name="frequency"
+              value="daily"
+              checked={frequency === "daily"}
+              onChange={() => setFrequency("daily")}
+              className="sr-only"
+            />
+            <span className="font-semibold flex items-center gap-1">
+              <span>🌅 商机日报 (每日)</span>
+            </span>
+            <span className="text-[11px] text-slate-500 font-normal leading-tight">
+              每日早间速递前 24h 新标讯
+            </span>
+          </label>
+
+          <label
+            className={`flex flex-col gap-1 rounded-lg border p-2.5 text-xs cursor-pointer transition-colors ${
+              frequency === "weekly"
+                ? "border-primary bg-blue-50/50 text-primary"
+                : "border-slate-200 text-slate-700 hover:border-slate-300"
+            }`}
+          >
+            <input
+              type="radio"
+              name="frequency"
+              value="weekly"
+              checked={frequency === "weekly"}
+              onChange={() => setFrequency("weekly")}
+              className="sr-only"
+            />
+            <span className="font-semibold flex items-center gap-1">
+              <span>📊 决策周报 (周一)</span>
+            </span>
+            <span className="text-[11px] text-slate-500 font-normal leading-tight">
+              每周一汇总近 7 天高价值商机
+            </span>
+          </label>
         </div>
       </div>
 

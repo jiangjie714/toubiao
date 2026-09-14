@@ -26,11 +26,17 @@ export async function testWebhookAction(params: {
       {
         id: 1,
         title: "【测试】国家税务总局全国发票查验平台运维服务采购项目",
+        type: "NOTICE",
+        budgetAmountWan: 385.5,
+        purchaser: "国家税务总局",
         publishDate: new Date().toISOString().slice(0, 10),
       },
       {
         id: 2,
         title: "【测试】某省数字化政务协同办公中枢系统建设项目（包1：软件工程）",
+        type: "RESULT",
+        awardAmountWan: 1260.0,
+        purchaser: "某省大数据局",
         publishDate: new Date().toISOString().slice(0, 10),
       },
     ];

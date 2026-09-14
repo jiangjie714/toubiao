@@ -11,3 +11,8 @@
 1. 若拨测探测超时，检查目标官网防火墙或 CDN 状态；
 2. 若列表解析为 0，核对前端 DOM 选择器 `ul.notice-ul > li` 是否有改版更新；
 3. 若详情页截取空白，检查正文容器 `div.notice-info` 是否有嵌套 iframe 或动态渲染。
+
+
+## 2026-09-14 采集诊断：站点改版
+
+老频道 `/cms/channel/purchase_notice/index.htm` 404，新入口为 `/portal`（历史公告查询，SPA）。需逆向新平台接口。

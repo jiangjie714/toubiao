@@ -11,3 +11,9 @@
 1. 若拨测探测超时，检查目标官网防火墙或 CDN 状态；
 2. 若列表解析为 0，核对前端 DOM 选择器 `ul.line_list > li` 是否有改版更新；
 3. 若详情页截取空白，检查正文容器 `div.detail_con` 是否有嵌套 iframe 或动态渲染。
+
+
+## 2026-09-14 采集诊断：站点改版(SPA)
+
+页面已迁移至政采云(ZCY)平台，列表/详情均由 axios 动态渲染，静态 HTML 无列表项，`ul.line_list` 选择器失效。
+修复方向：逆向 `searchUrl: /site/search` JSON 接口（注意 headers/签名），或改用无头浏览器渲染。

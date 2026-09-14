@@ -72,8 +72,11 @@ export default async function WatchesPage({
                     </div>
                   </td>
                   <td className="px-5 py-3.5 text-slate-700">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs text-primary">{watch.keyword}</span>
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                        {watch.frequency === "weekly" ? "周一汇总" : "每日速递"}
+                      </span>
                       {Array.isArray(watch.channels) && watch.channels.includes("wecom") && (
                         <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">企微</span>
                       )}

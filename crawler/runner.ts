@@ -217,6 +217,22 @@ type FetchedDetail = {
   attachments: AttachmentMeta[];
 };
 
+/** 列表条目壳页与详情正文分离的站点，用模板拼出真实详情地址 */
+function resolveDetailUrl(
+  detail: NonNullable<ListConfig["detail"]> | null | undefined,
+  item: ParsedItem,
+): string {
+  const template = detail?.urlTemplate;
+  if (!template) return item.url;
+  const date = item.date ?? new Date();
+  const params = new URL(item.url, "http://placeholder.invalid").searchParams;
+  return template
+    .replace(/\{query:([A-Za-z0-9_]+)\}/g, (_, name: string) => params.get(name) ?? "")
+    .replace(/\{YYYY\}/g, String(date.getFullYear()))
+    .replace(/\{MM\}/g, String(date.getMonth() + 1).padStart(2, "0"))
+    .replace(/\{DD\}/g, String(date.getDate()).padStart(2, "0"));
+}
+
 async function fetchDetail(
   itemUrl: string,
   detail: NonNullable<ListConfig["detail"]>,
@@ -364,7 +380,7 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
         const detailStartedAt = Date.now();
         try {
           const detail = list.detail
-            ? await fetchDetail(item.url, list.detail, settings)
+            ? await fetchDetail(resolveDetailUrl(list.detail, item), list.detail, settings)
             : { content: item.hint ?? item.title, contentHtml: null, attachments: [] };
           httpOk++;
           latencyTotal += Date.now() - detailStartedAt;

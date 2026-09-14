@@ -35,6 +35,8 @@ export async function createWatchAction(
   const cityCode = String(formData.get("cityCode") ?? "").trim();
   const channel = String(formData.get("channel") ?? "email").trim();
   const webhookUrl = String(formData.get("webhookUrl") ?? "").trim();
+  const frequencyRaw = String(formData.get("frequency") ?? "daily").trim();
+  const frequency = frequencyRaw === "weekly" ? "weekly" : "daily";
 
   if (!name || name.length > 30) return { error: "请填写 1-30 位订阅名称" };
   if (!keyword || keyword.length > 50) return { error: "请填写 1-50 位关键词" };
@@ -52,7 +54,7 @@ export async function createWatchAction(
       type: ["NOTICE", "RESULT", "CHANGE", "INQUIRY"].includes(type) ? type : null,
       provinceCode: provinceCode || null,
       cityCode: cityCode || null,
-      frequency: "daily",
+      frequency,
       channels,
       webhookUrl: webhookUrl || null,
       enabled: true,

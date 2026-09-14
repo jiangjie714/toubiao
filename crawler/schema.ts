@@ -85,6 +85,7 @@ const listConfigSchema = z
       .object({
         contentSelector: z.string().min(1).max(200),
         removeSelector: z.string().min(1).max(500).optional(),
+        urlTemplate: z.string().min(1).max(500).optional(),
         extraction: z.partialRecord(z.enum(EXTRA_FIELD_TARGETS), extractionSpecSchema).optional(),
       })
       .strict()
