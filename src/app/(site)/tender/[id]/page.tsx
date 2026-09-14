@@ -15,6 +15,8 @@ import TenderContactsCard from "@/components/tender-contacts-card";
 import TenderAttachmentsCard from "@/components/tender-attachments-card";
 import TenderExportActions from "@/components/tender-export-actions";
 import TenderWinnerCard from "@/components/tender-winner-card";
+import TenderCompareButton from "@/components/tender-compare-button";
+import TenderCompareTray from "@/components/tender-compare-tray";
 import {
   ExternalLinkIcon,
   CalendarIcon,
@@ -147,6 +149,15 @@ export default async function TenderDetailPage({
         <div className="flex flex-wrap items-center gap-2.5">
           <TenderExportActions tenderId={tender.id} canExport={canViewFullText} />
           <div className="flex items-center gap-2 print:hidden">
+            <TenderCompareButton
+              tender={{
+                id: tender.id,
+                title: tender.title,
+                type: tender.type,
+                budgetAmount: tender.budgetAmount ? Number(tender.budgetAmount) : null,
+              }}
+              variant="detail"
+            />
             <TenderFollowButton tenderId={tender.id} />
             <TenderFeedbackButton tenderId={tender.id} />
           </div>
@@ -322,6 +333,8 @@ export default async function TenderDetailPage({
           />
         </div>
       )}
+
+      <TenderCompareTray />
     </div>
   );
 }

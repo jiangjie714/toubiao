@@ -11,6 +11,8 @@ import {
   type ListSearchParams,
 } from "@/lib/query";
 import { tenderTypeLabel, tenderTypeColor, formatDate } from "@/lib/constants";
+import TenderCompareTray from "@/components/tender-compare-tray";
+import TenderCompareButton from "@/components/tender-compare-button";
 import {
   MapPinIcon,
   CalendarIcon,
@@ -190,38 +192,49 @@ export default async function ListPage({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span
-                          className={`inline-flex shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${tenderTypeColor(
-                            t.type
-                          )}`}
-                        >
-                          {tenderTypeLabel(t.type)}
-                        </span>
-
-                        {indName && (
-                          <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 border border-slate-200">
-                            {indName}
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${tenderTypeColor(
+                              t.type
+                            )}`}
+                          >
+                            {tenderTypeLabel(t.type)}
                           </span>
-                        )}
 
-                        {t.budgetAmount && (
-                          <span className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700 border border-blue-200 tnum">
-                            ¥{(Number(t.budgetAmount) / 10000).toFixed(2)}万 预算
-                          </span>
-                        )}
+                          {indName && (
+                            <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 border border-slate-200">
+                              {indName}
+                            </span>
+                          )}
 
-                        {t.awardAmount && (
-                          <span className="rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200 tnum">
-                            ¥{(Number(t.awardAmount) / 10000).toFixed(2)}万 中标
-                          </span>
-                        )}
+                          {t.budgetAmount && (
+                            <span className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700 border border-blue-200 tnum">
+                              ¥{(Number(t.budgetAmount) / 10000).toFixed(2)}万 预算
+                            </span>
+                          )}
 
-                        {attachmentCount > 0 && (
-                          <span className="rounded bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 border border-purple-200">
-                            📎 含 {attachmentCount} 个附件
-                          </span>
-                        )}
+                          {t.awardAmount && (
+                            <span className="rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200 tnum">
+                              ¥{(Number(t.awardAmount) / 10000).toFixed(2)}万 中标
+                            </span>
+                          )}
+
+                          {attachmentCount > 0 && (
+                            <span className="rounded bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 border border-purple-200">
+                              📎 含 {attachmentCount} 个附件
+                            </span>
+                          )}
+                        </div>
+
+                        <TenderCompareButton
+                          tender={{
+                            id: t.id,
+                            title: t.title,
+                            type: t.type,
+                            budgetAmount: t.budgetAmount ? Number(t.budgetAmount) : null,
+                          }}
+                        />
                       </div>
 
                       <Link
@@ -333,6 +346,8 @@ export default async function ListPage({
           )}
         </div>
       )}
+
+      <TenderCompareTray />
     </div>
   );
 }
