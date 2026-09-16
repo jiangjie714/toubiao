@@ -68,6 +68,7 @@ const WORKBENCH_ITEMS: NavItem[] = [
   { href: "/tenders/compare", label: "标讯对比", desc: "多标段横向立项决策罗盘", icon: ScaleIcon, match: ["/tenders/compare"] },
   { href: "/watches", label: "关键词订阅", desc: "按关键词追踪新公告", icon: BellIcon, match: ["/watches"] },
   { href: "/webhooks", label: "预警推送中枢", desc: "企微/钉钉/飞书机器人事件路由", icon: BoltIcon, match: ["/webhooks"] },
+  { href: "/compliance", label: "安全合规中心", desc: "等保二级自检与防篡改审计报告", icon: ShieldCheckIcon, match: ["/compliance"] },
   { href: "/exports", label: "商机导出", desc: "筛选结果批量导出", icon: ArrowDownTrayIcon, match: ["/exports"] },
 ];
 
