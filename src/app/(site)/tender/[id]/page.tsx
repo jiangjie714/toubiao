@@ -50,6 +50,9 @@ import {
 } from "@/components/icons";
 import { INDUSTRY_META } from "@/lib/industry";
 
+import type { Metadata } from "next";
+import { getAppUrl } from "@/lib/mailer";
+
 const KIND_ICONS: Record<SectionKind, React.ComponentType<{ className?: string }>> = {
   project: BuildingIcon,
   requirement: ShieldCheckIcon,
@@ -57,6 +60,67 @@ const KIND_ICONS: Record<SectionKind, React.ComponentType<{ className?: string }
   contact: PhoneIcon,
   misc: ClipboardIcon,
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const tenderId = parseInt(id, 10) || -1;
+  const tender = await prisma.tender.findUnique({
+    where: { id: tenderId },
+    select: {
+      id: true,
+      title: true,
+      purchaser: true,
+      budgetAmount: true,
+      type: true,
+      publishDate: true,
+      provinceCode: true,
+    },
+  });
+
+  if (!tender) {
+    return {
+      title: "未找到招标公告 - 标讯通",
+    };
+  }
+
+  const typeName = tenderTypeLabel(tender.type) || "招标公告";
+  const purchaserStr = tender.purchaser ? `采购人：${tender.purchaser}。` : "";
+  const budgetStr = tender.budgetAmount ? `预算金额：${Number(tender.budgetAmount)}万元。` : "";
+  const dateStr = tender.publishDate.toISOString().slice(0, 10);
+  const description = `${tender.title}。${purchaserStr}${budgetStr}发布日期：${dateStr}。标讯通汇聚全国公开招标、中标候选人与更正答疑公告，提供全流程跟踪与商业情报分析。`;
+
+  const baseUrl = getAppUrl();
+  const canonicalUrl = `${baseUrl}/tender/${tender.id}`;
+
+  return {
+    title: `${tender.title} - ${typeName} - 标讯通`,
+    description,
+    keywords: [
+      tender.title,
+      typeName,
+      tender.purchaser || "",
+      "招标信息",
+      "政府采购",
+      "公共资源交易",
+      "标讯通",
+    ].filter(Boolean),
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: `${tender.title} - 标讯通`,
+      description,
+      url: canonicalUrl,
+      siteName: "标讯通 - 招投标商业情报平台",
+      type: "article",
+      publishedTime: tender.publishDate.toISOString(),
+    },
+  };
+}
 
 export default async function TenderDetailPage({
   params,
@@ -150,6 +214,34 @@ export default async function TenderDetailPage({
 
   return (
     <div className="space-y-6">
+      {/* 搜索引擎富媒体结构化数据 (JSON-LD Schema.org) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: tender.title,
+            datePublished: tender.publishDate.toISOString(),
+            dateModified: tender.publishDate.toISOString(),
+            description: `${tender.purchaser ? `采购人：${tender.purchaser}。` : ""}${tender.budgetAmount ? `预算金额：${Number(tender.budgetAmount)}万元。` : ""}发布日期：${tender.publishDate.toISOString().slice(0, 10)}。`,
+            author: {
+              "@type": "Organization",
+              name: tender.purchaser || "招标采购人",
+            },
+            publisher: {
+              "@type": "Organization",
+              name: "标讯通 - 招投标商业情报平台",
+              url: getAppUrl(),
+            },
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": `${getAppUrl()}/tender/${tender.id}`,
+            },
+          }),
+        }}
+      />
+
       {/* 顶部导航与操作控制台 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link

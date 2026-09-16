@@ -3,13 +3,16 @@ import { jwtVerify } from "jose";
 
 const SESSION_COOKIE = "tb_session";
 
-// 登录/静态资源/法务条款放行，其余全部要求有效会话
+// 登录/静态资源/法务条款与搜索引擎公开路由放行，其余全部要求有效会话
 const PUBLIC_PREFIXES = [
   "/login",
   "/register",
   "/verify-email",
   "/terms",
   "/privacy",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/tender",
   "/api/payment",
   "/api/v1",
   "/_next",
