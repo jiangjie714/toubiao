@@ -71,6 +71,28 @@ export default function ProposalAssemblerView({
     riskLevel?: string;
   } | null>(null);
 
+  // DOCX 导出状态
+  const [exportingDocxId, setExportingDocxId] = useState<number | null>(null);
+
+  // 触发 DOCX 流式下载
+  const handleExportDocx = (projectId: number, type: "正本" | "副本" = "正本") => {
+    try {
+      setExportingDocxId(projectId);
+      const downloadUrl = `/api/proposals/${projectId}/export/docx?type=${encodeURIComponent(type)}`;
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Export docx failed:", err);
+      alert("导出 Word 标书公文失败，请稍后重试");
+    } finally {
+      setTimeout(() => setExportingDocxId(null), 1800);
+    }
+  };
+
   // 打开工程详情
   const handleOpenProject = (id: number) => {
     startTransition(async () => {
@@ -429,6 +451,14 @@ export default function ProposalAssemblerView({
 
                       <div className="flex items-center gap-1">
                         <button
+                          onClick={() => handleExportDocx(p.id)}
+                          disabled={exportingDocxId === p.id}
+                          title="导出 Word 标书公文 (.docx)"
+                          className="cursor-pointer rounded-lg p-1.5 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+                        >
+                          <DocumentTextIcon className="h-4 w-4" />
+                        </button>
+                        <button
                           onClick={() => handleExportFullMarkdown(p.id)}
                           title="导出全套 Markdown"
                           className="cursor-pointer rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
@@ -490,11 +520,19 @@ export default function ProposalAssemblerView({
                 <span>一键送检·清标质检</span>
               </button>
               <button
+                onClick={() => handleExportDocx(selectedProject.id)}
+                disabled={exportingDocxId === selectedProject.id}
+                className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:from-blue-700 hover:to-indigo-700 transition-all shadow-xs disabled:opacity-50"
+              >
+                <DocumentTextIcon className="h-4 w-4" />
+                <span>{exportingDocxId === selectedProject.id ? "正在排版导出 Word..." : "导出 Word 公文 (.docx)"}</span>
+              </button>
+              <button
                 onClick={() => handleExportFullMarkdown(selectedProject.id)}
                 className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition-colors shadow-xs"
               >
                 <ArrowDownTrayIcon className="h-4 w-4" />
-                <span>导出全套标书</span>
+                <span>全套 Markdown 预览</span>
               </button>
             </div>
           </div>
@@ -871,11 +909,21 @@ export default function ProposalAssemblerView({
                 </button>
                 <button
                   onClick={handleDownloadFile}
-                  className="cursor-pointer inline-flex items-center gap-1 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-hover shadow-xs"
+                  className="cursor-pointer inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs"
                 >
                   <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-                  <span>下载 .md 文档文件</span>
+                  <span>下载 .md 文档</span>
                 </button>
+                {selectedProject && (
+                  <button
+                    onClick={() => handleExportDocx(selectedProject.id)}
+                    disabled={exportingDocxId === selectedProject.id}
+                    className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:from-blue-700 hover:to-indigo-700 shadow-xs disabled:opacity-50 transition-all"
+                  >
+                    <DocumentTextIcon className="h-3.5 w-3.5" />
+                    <span>{exportingDocxId === selectedProject.id ? "正在排版导出 Word..." : "导出 Word 公文 (.docx)"}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

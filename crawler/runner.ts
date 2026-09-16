@@ -303,7 +303,7 @@ async function fetchDetail(
 
 function extractExpireDate(text: string): Date | null {
   const match = text.match(
-    /(?:投标|响应文件递交|递交).{0,6}截止(?:时间|日期)[：:]?\s*(\d{4}年?\d{1,2}月?\d{1,2}日?[^，,。；;\s]{0,10})/,
+    /截止[^，,。；;\d]{0,16}?[：:]?\s*(\d{4}[-年/.]\d{1,2}[-月./]\d{1,2}日?(?:[^，,。；;\s]{0,10})?)/,
   );
   return match ? parseDate(match[1]) : null;
 }
