@@ -54,6 +54,7 @@ const INTEL_ITEMS: NavItem[] = [
   { href: "/industries", label: "重点赛道", desc: "行业赛道招标热度", icon: BoltIcon, match: ["/industries"] },
   { href: "/regions", label: "区域大盘", desc: "全国区域招标分布", icon: MapPinIcon, match: ["/regions"] },
   { href: "/analytics", label: "行业情报", desc: "行业统计与每周简报", icon: ChartBarIcon, match: ["/analytics", "/brief"] },
+  { href: "/history", label: "历史穿透库", desc: "对标千里马10年库与下浮罗盘", icon: ScaleIcon, match: ["/history"] },
 ];
 
 const WORKBENCH_ITEMS: NavItem[] = [
