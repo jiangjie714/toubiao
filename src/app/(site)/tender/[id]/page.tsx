@@ -35,6 +35,9 @@ const TenderCaseMatchButton = dynamic(
 const TenderQualificationMatchButton = dynamic(
   () => import("@/components/tender-qualification-match").then((m) => m.TenderQualificationMatchButton)
 );
+const TenderMobileShareModal = dynamic(
+  () => import("@/components/tender-mobile-share-modal")
+);
 import {
   ExternalLinkIcon,
   CalendarIcon,
@@ -252,6 +255,18 @@ export default async function TenderDetailPage({
         </Link>
         <div className="flex flex-wrap items-center gap-2.5">
           <TenderExportActions tenderId={tender.id} canExport={canViewFullText} />
+          <TenderMobileShareModal
+            tender={{
+              id: tender.id,
+              title: tender.title,
+              type: tender.type,
+              purchaser: tender.purchaser,
+              budgetAmount: tender.budgetAmount ? Number(tender.budgetAmount) : null,
+              publishDate: tender.publishDate.toISOString(),
+              expireDate: tender.expireDate ? tender.expireDate.toISOString() : null,
+              provinceName: provinceName || undefined,
+            }}
+          />
           <div className="flex items-center gap-2 print:hidden">
             <TenderCompareButton
               tender={{
