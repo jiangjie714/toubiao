@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import PrintButton from "@/components/print-button";
+import { getCompanyPaymentConfig } from "@/lib/company-config";
 
 export const metadata = {
   title: "电子服务采购合同 - 标讯通",
@@ -124,12 +125,12 @@ export default async function ContractPage({
 
           <div className="space-y-1.5">
             <div className="font-bold text-sm text-slate-900">
-              乙方（服务机构）：标讯通信息技术（北京）有限公司
+              乙方（服务机构）：{getCompanyPaymentConfig().companyName}
             </div>
-            <div>统一社会信用代码：91110108MA017XYZ88</div>
-            <div>开户银行：招商银行股份有限公司北京分行大运村支行</div>
-            <div>对公银行账号：1109 0888 6610 801</div>
-            <div>联行行号：3081 0000 5035</div>
+            <div>统一社会信用代码：{getCompanyPaymentConfig().taxNumber}</div>
+            <div>开户银行：{getCompanyPaymentConfig().bankName}</div>
+            <div>对公银行账号：{getCompanyPaymentConfig().bankAccount}</div>
+            <div>联行行号：{getCompanyPaymentConfig().bankBranchCode}</div>
           </div>
         </div>
 
@@ -256,24 +257,24 @@ export default async function ContractPage({
             <div>
               <span className="font-bold">乙方（盖章）：</span>
               <span className="text-slate-700">
-                标讯通信息技术（北京）有限公司
+                {getCompanyPaymentConfig().companyName}
               </span>
             </div>
-            <div>法定代表人或授权代表（签字）： 张建标</div>
+            <div>法定代表人或授权代表（签字）： 授权签署</div>
             <div>签署日期：{createDateStr}</div>
 
             {/* 仿真电子合同专用印章 */}
             <div className="absolute right-6 -top-4 pointer-events-none opacity-85 select-none">
               <div className="h-32 w-32 rounded-full border-2 border-red-600 flex flex-col items-center justify-center p-2 text-center text-red-600 font-serif rotate-[-12deg]">
-                <div className="text-[10px] tracking-tight font-sans">
-                  ★ 标讯通信息技术（北京）有限公司 ★
+                <div className="text-[9px] tracking-tight font-sans font-bold">
+                  ★ {getCompanyPaymentConfig().companyName} ★
                 </div>
                 <div className="my-1 text-base">★</div>
                 <div className="text-xs font-bold tracking-widest border-t border-b border-red-600 py-0.5 w-full">
                   合同专用章
                 </div>
                 <div className="text-[9px] font-mono mt-0.5">
-                  110108MA017XYZ
+                  {getCompanyPaymentConfig().taxNumber?.slice(0, 16)}
                 </div>
               </div>
             </div>

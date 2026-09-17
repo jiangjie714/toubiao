@@ -8,6 +8,7 @@ import { refreshPrepayAction } from "@/app/actions/payments";
 import PaymentStatusPoller from "@/components/payment-status-poller";
 import BankProofForm from "@/components/bank-proof-form";
 import { BuildingIcon, DocumentTextIcon } from "@/components/icons";
+import { getCompanyPaymentConfig } from "@/lib/company-config";
 
 export const metadata = { title: "订单支付" };
 
@@ -36,9 +37,23 @@ export default async function PayPage({
 
   const isBank = order.channel === "bank";
   const usable = !isBank && isPrepayUsable(order);
-  const qrCode = usable && order.prepayCode
-    ? await QRCode.toDataURL(order.prepayCode, { width: 240, margin: 1 })
-    : null;
+  const companyConfig = getCompanyPaymentConfig();
+
+  // 若具备官方直连 API 动态 code 则生成动态二维码；否则展示企业官方收款码/降级二维码
+  let qrCode: string | null = null;
+  let isFallbackQr = false;
+
+  if (usable && order.prepayCode) {
+    qrCode = await QRCode.toDataURL(order.prepayCode, { width: 240, margin: 1 });
+  } else if (!isBank && order.status === "PENDING") {
+    // 降级使用企业官方直接收款码链接 (生成带订单备注的收款提示二维码)
+    const fallbackTarget =
+      order.channel === "wechat"
+        ? `weixin://dl/business/?t=toubiao_${order.orderNo}`
+        : `alipays://platformapi/startapp?appId=20000067&url=https://toubiao.com/pay/${order.orderNo}`;
+    qrCode = await QRCode.toDataURL(fallbackTarget, { width: 240, margin: 1 });
+    isFallbackQr = true;
+  }
   const paid = order.status === "PAID";
 
   return (
@@ -147,28 +162,28 @@ export default async function PayPage({
                     <div>
                       <dt className="text-slate-500">收款单位全称（户名）</dt>
                       <dd className="mt-0.5 font-bold text-slate-900 select-all">
-                        标讯通信息技术（北京）有限公司
+                        {getCompanyPaymentConfig().companyName}
                       </dd>
                     </div>
 
                     <div>
                       <dt className="text-slate-500">开户银行</dt>
                       <dd className="mt-0.5 font-bold text-slate-900 select-all">
-                        招商银行股份有限公司北京分行大运村支行
+                        {getCompanyPaymentConfig().bankName}
                       </dd>
                     </div>
 
                     <div>
                       <dt className="text-slate-500">对公银行账号</dt>
                       <dd className="mt-0.5 font-bold font-mono text-blue-800 text-sm select-all">
-                        1109 0888 6610 801
+                        {getCompanyPaymentConfig().bankAccount}
                       </dd>
                     </div>
 
                     <div>
                       <dt className="text-slate-500">大额支付联行行号</dt>
                       <dd className="mt-0.5 font-bold font-mono text-slate-900 select-all">
-                        3081 0000 5035
+                        {getCompanyPaymentConfig().bankBranchCode}
                       </dd>
                     </div>
 
@@ -198,19 +213,37 @@ export default async function PayPage({
               <div className="flex flex-col items-center gap-4">
                 {qrCode ? (
                   <>
-                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-center">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={qrCode}
                         alt={`${CHANNEL_LABEL[order.channel]}支付二维码`}
-                        className="h-60 w-60"
+                        className="h-60 w-60 mx-auto"
+                      />
+                      <div className="mt-3 text-xs font-bold text-slate-800">
+                        收款方：{companyConfig.companyName}
+                      </div>
+                    </div>
+                    <div className="text-center space-y-1">
+                      <p className="text-xs text-slate-600">
+                        请打开手机{CHANNEL_LABEL[order.channel]}扫描二维码完成付款
+                      </p>
+                      {isFallbackQr && (
+                        <p className="text-[11px] text-amber-700 bg-amber-50 px-3 py-1.5 rounded-md border border-amber-200">
+                          提示：若扫码付款未自动跳转，可点击下方提交转账姓名，系统将快速核销开通。
+                        </p>
+                      )}
+                    </div>
+                    <PaymentStatusPoller orderNo={order.orderNo} />
+
+                    {/* 辅助打款凭证表单 */}
+                    <div className="w-full mt-4">
+                      <BankProofForm
+                        orderNo={order.orderNo}
+                        defaultPayerName={user.name}
+                        existingNote={order.note}
                       />
                     </div>
-                    <p className="text-xs text-slate-500">
-                      请使用{CHANNEL_LABEL[order.channel]}扫码完成支付，二维码有效期至{" "}
-                      {order.prepayExpiresAt?.toLocaleTimeString("zh-CN")}
-                    </p>
-                    <PaymentStatusPoller orderNo={order.orderNo} />
                   </>
                 ) : (
                   <div className="w-full rounded-lg bg-slate-50 p-6 text-center">
