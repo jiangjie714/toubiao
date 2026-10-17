@@ -2,31 +2,34 @@ source:
   name: 湖南省政府采购网
   baseUrl: http://www.ccgp-hunan.gov.cn
 settings:
-  requestDelayMs: 1500
+  requestDelayMs: 1200
   timeoutMs: 20000
   retries: 2
-  maxPages: 1
+  maxPages: 2
   scheduleCron: 0 */2 * * *
 lists:
   - type: NOTICE
-    mode: html
-    firstPageUrl: http://www.ccgp-hunan.gov.cn/mvc/getNoticeList4Web.do
-    url: http://www.ccgp-hunan.gov.cn/mvc/getNoticeList4Web.do
+    mode: json
+    request:
+      method: POST
+      url: http://www.ccgp-hunan.gov.cn/portal/searchHome
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      json:
+        code: 160-396330
+        pageSize: 15
+        pageNo: "{page}"
+    startPage: 1
+    maxPages: 2
     parse:
-      itemSelector: ul.list_news > li
+      itemsPath: "result.data.children"
       fields:
-        title:
-          selector: a
-          attr: text
-        url:
-          selector: a
-          attr: href
-        date:
-          selector: span
-          attr: text
-          regex: \d{4}-\d{2}-\d{2}
+        title: "title"
+        url: "http://www.ccgp-hunan.gov.cn/portal/detail?articleId={articleId}"
+        date: "pubDate"
+        purchaser: "purchaseName"
         province:
           const: "43"
+        city: "districtName"
     detail:
-      contentSelector: div.art-content
-      removeSelector: script, style
+      contentSelector: "#template-center-mark, .tb-fidelity-root, body"

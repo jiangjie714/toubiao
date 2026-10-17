@@ -4,6 +4,7 @@
  */
 
 import * as cheerio from "cheerio";
+import { formatJsonTenderContent, isJsonString } from "./tender-json-formatter";
 
 export type SectionKind = "project" | "requirement" | "time" | "contact" | "misc";
 
@@ -213,9 +214,15 @@ function parseLinks($: cheerio.CheerioAPI, baseUrl?: string): TenderLink[] {
 }
 
 export function parseTenderSections(content: string, baseUrl?: string): TenderSection[] {
-  if (!isHtmlContent(content)) return parseTextSections(content);
+  let effectiveContent = content;
+  if (isJsonString(content)) {
+    const formatted = formatJsonTenderContent(content);
+    effectiveContent = formatted.plainText;
+  }
 
-  const $ = cheerio.load(`<div>${content}</div>`);
+  if (!isHtmlContent(effectiveContent)) return parseTextSections(effectiveContent);
+
+  const $ = cheerio.load(`<div>${effectiveContent}</div>`);
   $("script,style,noscript,iframe,object,embed,form,input,button,select,textarea").remove();
 
   const tables = parseTables($);

@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { getEntitlement } from "@/lib/quota";
 import { deleteWatchAction, toggleWatchAction } from "./actions";
 import WatchForm from "./watch-form";
+import { getWechatBindStatusAction } from "@/app/actions/wechat-bind";
 
 export const metadata = { title: "关键词订阅" };
 
@@ -17,7 +18,7 @@ export default async function WatchesPage({
     return <div className="rounded-xl border border-slate-200 bg-surface p-8 text-sm text-slate-600">请先登录。</div>;
   }
 
-  const [watches, entitlement, provinces, cities] = await Promise.all([
+  const [watches, entitlement, provinces, cities, wechatStatus] = await Promise.all([
     prisma.pushWatch.findMany({
       where: { userId: user.uid },
       orderBy: { createdAt: "desc" },
@@ -25,6 +26,7 @@ export default async function WatchesPage({
     getEntitlement(user.uid),
     prisma.region.findMany({ where: { level: 1 }, orderBy: { code: "asc" } }),
     prisma.region.findMany({ where: { level: 2 }, orderBy: { code: "asc" } }),
+    getWechatBindStatusAction(),
   ]);
 
   return (
@@ -39,6 +41,7 @@ export default async function WatchesPage({
 
       <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
         <WatchForm
+          initialWechatStatus={wechatStatus}
           provinces={provinces.map((region) => ({ code: region.code, name: region.name }))}
           cities={cities.map((region) => ({
             code: region.code,

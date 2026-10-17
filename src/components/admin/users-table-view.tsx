@@ -6,15 +6,25 @@ import {
   TrophyIcon,
 } from "@/components/icons";
 import { toggleUserStatusAction } from "@/app/admin/actions";
-import UserProfileModal, { UserDetailData, PlanOption } from "./user-profile-modal";
+import UserProfileModal, {
+  UserDetailData,
+  PlanOption,
+  AvailableRoleOption,
+} from "./user-profile-modal";
 
 interface UsersTableViewProps {
   users: UserDetailData[];
   plans: PlanOption[];
+  availableRoles?: AvailableRoleOption[];
   meUid?: number;
 }
 
-export default function UsersTableView({ users, plans, meUid }: UsersTableViewProps) {
+export default function UsersTableView({
+  users,
+  plans,
+  availableRoles = [],
+  meUid,
+}: UsersTableViewProps) {
   const [selectedUser, setSelectedUser] = useState<UserDetailData | null>(null);
 
   return (
@@ -98,13 +108,13 @@ export default function UsersTableView({ users, plans, meUid }: UsersTableViewPr
                             </span>
                             {endsAt && (
                               <div className="text-[10px] text-slate-400 tnum">
-                                至 {new Date(endsAt).toLocaleDateString("zh-CN")}
+                                有效期至 {new Date(endsAt).toLocaleDateString("zh-CN")}
                               </div>
                             )}
                           </div>
                         ) : (
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-                            免费版
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                            {plan?.name || "免费体验版"}
                           </span>
                         )}
                       </td>
@@ -132,15 +142,25 @@ export default function UsersTableView({ users, plans, meUid }: UsersTableViewPr
                       {/* 角色与状态 */}
                       <td className="px-5 py-3.5">
                         <div className="flex flex-col gap-1 items-start">
-                          <span
-                            className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                              u.role === "ADMIN"
-                                ? "bg-purple-50 text-purple-700"
-                                : "bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {u.role === "ADMIN" ? "管理员" : "普通用户"}
-                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                                u.role === "ADMIN"
+                                  ? "bg-purple-50 text-purple-700"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {u.role === "ADMIN" ? "管理员" : "普通用户"}
+                            </span>
+                            {u.userRoles?.map((ur) => (
+                              <span
+                                key={ur.role.id}
+                                className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                              >
+                                {ur.role.name}
+                              </span>
+                            ))}
+                          </div>
                           <span className="flex items-center gap-1 text-[11px]">
                             <span
                               className={`h-1.5 w-1.5 rounded-full ${
@@ -210,6 +230,7 @@ export default function UsersTableView({ users, plans, meUid }: UsersTableViewPr
         <UserProfileModal
           user={selectedUser}
           plans={plans}
+          availableRoles={availableRoles}
           onClose={() => setSelectedUser(null)}
         />
       )}

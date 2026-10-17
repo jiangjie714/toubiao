@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getEntitlement } from "@/lib/quota";
+import { getEntitlement, isEnterpriseUser } from "@/lib/quota";
 import {
   sendToWebhookEndpoint,
   dispatchBusinessWebhookEvent,
@@ -203,6 +203,13 @@ export async function createWebhookEndpointAction(data: {
     }
 
     const entitlement = await getEntitlement(user.uid);
+    if (user.role !== "ADMIN" && !isEnterpriseUser(entitlement)) {
+      return {
+        success: false,
+        error: "企微/钉钉/飞书群机器人预警中枢为企业版专属特权，请升级企业标准版或专业版开通群机器人实时推送权限",
+      };
+    }
+
     const maxEndpoints = entitlement.features.pushGroups > 0 ? entitlement.features.pushGroups * 2 : 3;
     const currentCount = await prisma.webhookEndpoint.count({
       where: { userId: user.uid },

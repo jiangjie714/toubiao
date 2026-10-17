@@ -183,7 +183,11 @@ export async function dispatchSourceTaskAction(formData: FormData) {
   try {
     await requireAdmin();
     const skillCode = String(formData.get("skillCode") || "").trim();
-    const maxPages = Number(formData.get("maxPages") || 1);
+    const mode = String(formData.get("mode") || "resume");
+    const maxPagesRaw = formData.get("maxPages");
+    const maxPages = maxPagesRaw ? Number(maxPagesRaw) : undefined;
+    const sinceDate = String(formData.get("sinceDate") || "").trim() || undefined;
+    const untilDate = String(formData.get("untilDate") || "").trim() || undefined;
     const trigger = String(formData.get("trigger") || "manual");
 
     if (!skillCode) {
@@ -191,7 +195,14 @@ export async function dispatchSourceTaskAction(formData: FormData) {
     }
 
     const { dispatchSourceTask } = await import("@/lib/crawler/task-manager");
-    const res = await dispatchSourceTask({ skillCode, maxPages, trigger });
+    const res = await dispatchSourceTask({
+      skillCode,
+      maxPages: mode === "pages" ? (maxPages ?? 1) : maxPages,
+      resume: mode === "resume",
+      sinceDate: mode === "timerange" ? sinceDate : undefined,
+      untilDate: mode === "timerange" ? untilDate : undefined,
+      trigger,
+    });
     revalidatePath("/admin/sources/tasks");
     revalidatePath("/admin/sources");
     return res;
@@ -246,6 +257,49 @@ export async function triggerSchedulerNowAction() {
     return res;
   } catch (err) {
     return { success: false, enqueuedCount: 0, error: err instanceof Error ? err.message : "触发调度失败" };
+  }
+}
+
+export async function dispatchAllSourcesBatchAction(params: {
+  resume?: boolean;
+  sinceDate?: string;
+  untilDate?: string;
+}): Promise<{ success: boolean; enqueuedCount: number; error?: string }> {
+  try {
+    await requireAdmin();
+    const { prisma } = await import("@/lib/prisma");
+    const { enqueueCrawlTask } = await import("@/../crawler/queue");
+
+    const sources = await prisma.crawlSource.findMany({
+      where: { enabled: true },
+      select: { skillCode: true },
+    });
+
+    let enqueuedCount = 0;
+    const isResume = params.resume !== false && !params.sinceDate && !params.untilDate;
+
+    for (const s of sources) {
+      await enqueueCrawlTask({
+        skillCode: s.skillCode,
+        trigger: "manual",
+        payload: {
+          resume: isResume,
+          sinceDate: params.sinceDate,
+          untilDate: params.untilDate,
+        },
+      });
+      enqueuedCount++;
+    }
+
+    revalidatePath("/admin/sources");
+    revalidatePath("/admin/sources/tasks");
+    return { success: true, enqueuedCount };
+  } catch (err) {
+    return {
+      success: false,
+      enqueuedCount: 0,
+      error: err instanceof Error ? err.message : "批量派发失败",
+    };
   }
 }
 

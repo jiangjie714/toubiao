@@ -1,32 +1,38 @@
 source:
   name: 山东省政府采购网
-  baseUrl: http://www.ccgp-shandong.gov.cn
+  baseUrl: https://www.ccgp-shandong.gov.cn
 settings:
   requestDelayMs: 1500
-  timeoutMs: 20000
+  timeoutMs: 25000
   retries: 2
-  maxPages: 1
+  maxPages: 2
   scheduleCron: 0 */2 * * *
 lists:
   - type: NOTICE
-    mode: html
-    firstPageUrl: http://www.ccgp-shandong.gov.cn/sdgp2017/site/channel__12.html
-    url: http://www.ccgp-shandong.gov.cn/sdgp2017/site/channel__12.html
+    mode: json
+    request:
+      method: POST
+      url: https://www.ccgp-shandong.gov.cn:8087/api/website/site/getListByCode
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      json:
+        colCode: "0301"
+        area: "370000"
+        currentPage: "{page}"
+        pageSize: 15
+        homePage: 0
+        mergeType: 0
+    startPage: 1
+    maxPages: 2
     parse:
-      itemSelector: ul.list_news > li
+      itemsPath: "data.data.records"
       fields:
-        title:
-          selector: a
-          attr: text
-        url:
-          selector: a
-          attr: href
-        date:
-          selector: span.date
-          attr: text
-          regex: \d{4}-\d{2}-\d{2}
+        title: "title"
+        url: "https://www.ccgp-shandong.gov.cn:8087/api/website/site/getDetail?id={id}&colCode=0301&oldData=0"
+        date: "date"
+        purchaser: "userName"
         province:
           const: "37"
+        city: "areaName"
     detail:
-      contentSelector: div.detail_content
-      removeSelector: script, style
+      contentSelector: "#noticeArea, table, .protect, body"

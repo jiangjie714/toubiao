@@ -4,6 +4,10 @@ import {
   calculateDeadlineCountdown,
   detectProjectLifecycleUpdates,
 } from "./lifecycle-alert";
+import {
+  sendTenderTemplateMessage,
+  sendLifecycleAlertTemplateMessage,
+} from "./wechat-service";
 import type { Prisma } from "@prisma/client";
 
 export type DailyPushResult = {
@@ -266,7 +270,17 @@ export async function runDailyPushes(options: {
 
   const watches = await prisma.pushWatch.findMany({
     where: { enabled: true, user: { status: "ACTIVE" } },
-    include: { user: { select: { id: true, email: true, name: true, emailVerified: true } } },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          emailVerified: true,
+          wechatOpenId: true,
+        },
+      },
+    },
     orderBy: { id: "asc" },
   });
 
@@ -393,6 +407,26 @@ export async function runDailyPushes(options: {
         }
       }
 
+      // 3. 微信服务号模板消息推送（针对首条/核心商机即时直推）
+      if (channels.includes("wechat_mp") && watch.user.wechatOpenId && tenderItems.length > 0) {
+        const topItem = tenderItems[0];
+        const dateStr =
+          typeof topItem.publishDate === "string"
+            ? topItem.publishDate
+            : topItem.publishDate.toLocaleDateString("zh-CN");
+        await sendTenderTemplateMessage({
+          openId: watch.user.wechatOpenId,
+          tenderId: topItem.id,
+          title: topItem.title,
+          typeLabel: formatTenderTypeLabel(topItem.type),
+          purchaser: topItem.purchaser || "详见正文",
+          amountStr: formatTenderAmountStr(topItem),
+          publishDateStr: dateStr,
+          keywordMatched: watch.keyword,
+        });
+        hasSentAny = true;
+      }
+
       await prisma.$transaction([
         prisma.pushRecord.createMany({
           data: matched.map((tender) => ({
@@ -477,6 +511,7 @@ export async function runLifecycleAlerts(options: {
           name: true,
           email: true,
           emailVerified: true,
+          wechatOpenId: true,
         },
       },
     },
@@ -582,6 +617,20 @@ export async function runLifecycleAlerts(options: {
           subject: `【标讯通预警】${itemResult.criticalDeadline ? `🚨 48h 截标冲刺: ` : `📢 发现澄清更正: `}${follow.tender.title.slice(0, 20)}...`,
           text: `${alertLines.join("\n")}\n标段详情: ${appUrl}/tender/${follow.tender.id}`,
           html,
+        });
+        itemResult.sent = true;
+      }
+
+      // 2. 微信服务号模板消息实时预警
+      if (follow.user.wechatOpenId) {
+        await sendLifecycleAlertTemplateMessage({
+          openId: follow.user.wechatOpenId,
+          tenderId: follow.tender.id,
+          title: follow.tender.title,
+          alertType: isCriticalDeadline ? "DEADLINE_24H" : "CHANGE_NOTICE",
+          alertTitle: isCriticalDeadline ? "截标倒计时紧急冲刺预警" : "项目变更/答疑动态",
+          deadlineStr: itemResult.criticalDeadline ? `仅剩 ${itemResult.criticalDeadline.hoursLeft} 小时截止` : undefined,
+          changeSummary: itemResult.lifecycleUpdate?.title,
         });
         itemResult.sent = true;
       }

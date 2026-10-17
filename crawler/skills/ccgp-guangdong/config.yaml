@@ -5,28 +5,26 @@ settings:
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2
-  maxPages: 1
+  maxPages: 2
   scheduleCron: 0 */2 * * *
 lists:
   - type: NOTICE
-    mode: html
-    firstPageUrl: https://gdgpo.czt.gd.gov.cn/freecms/rest/v1/notice/selectNoticeInfoList
-    url: https://gdgpo.czt.gd.gov.cn/freecms/rest/v1/notice/selectNoticeInfoList
+    mode: json
+    request:
+      method: GET
+      url: "https://gdgpo.czt.gd.gov.cn/gpcms/rest/web/v2/info/selectInfoForIndex?siteId=cd64e06a-21a7-4620-aebc-0576bab7e07a&channel=fca71be5-fc0c-45db-96af-f513e9abda9d,95ff31f3-a1af-4bc4-b1a2-54c894476193&currPage={page}&pageSize=15"
+    startPage: 1
+    maxPages: 2
     parse:
-      itemSelector: ul.m-list > li
+      itemsPath: "data.rows"
       fields:
-        title:
-          selector: a
-          attr: text
-        url:
-          selector: a
-          attr: href
-        date:
-          selector: span.date
-          attr: text
-          regex: \d{4}-\d{2}-\d{2}
+        title: "title"
+        url: "https://gdgpo.czt.gd.gov.cn/gpcms/rest/web/v2/info/getInfoById?id={id}"
+        date: "noticeTime"
+        purchaser: "purchaser"
+        agency: "agency"
         province:
           const: "44"
+        city: "regionName"
     detail:
-      contentSelector: div.notice-detail
-      removeSelector: script, style
+      contentSelector: ".tb-fidelity-root, .content, body"

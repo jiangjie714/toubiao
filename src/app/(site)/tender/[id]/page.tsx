@@ -2,16 +2,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { getEntitlement } from "@/lib/quota";
+import { getEntitlement, consumeTenderViewQuota } from "@/lib/quota";
 import { getRegionDisplayName } from "@/lib/dict-cache";
 import { tenderTypeLabel, tenderTypeColor, formatDate } from "@/lib/constants";
 import { parseTenderSections, type SectionKind } from "@/lib/tender-sections";
 import { TenderRichContent } from "@/components/tender-rich-content";
+import { TenderContentTabs } from "@/components/tender-content-tabs";
+import { TenderOriginalView } from "@/components/tender-original-view";
 import TenderFeedbackButton from "@/components/tender-feedback-button";
 import { TenderAiCard } from "@/components/tender-ai-card";
 import { TenderFollowButton } from "@/components/tender-follow-button";
 import { getProjectTimeline } from "@/lib/project-timeline";
-import TenderProjectTimeline from "@/components/tender-project-timeline";
+import ProjectGanttView from "@/components/project-gantt-view";
+import { buildProjectLifecycle } from "@/lib/tender-lifecycle";
 import TenderContactsCard from "@/components/tender-contacts-card";
 import TenderAttachmentsCard from "@/components/tender-attachments-card";
 import TenderExportActions from "@/components/tender-export-actions";
@@ -50,6 +53,7 @@ import {
   BriefcaseIcon,
   ChartBarIcon,
   MapPinIcon,
+  DocumentTextIcon,
 } from "@/components/icons";
 import { INDUSTRY_META } from "@/lib/industry";
 
@@ -154,6 +158,10 @@ export default async function TenderDetailPage({
             contentType: true,
             size: true,
             status: true,
+            fileType: true,
+            extractedText: true,
+            snippet: true,
+            pageCount: true,
           },
         },
       },
@@ -162,13 +170,46 @@ export default async function TenderDetailPage({
   ]);
   if (!tender) notFound();
 
+  let siblingNotices: Array<{
+    id: number;
+    title: string;
+    type: string;
+    publishDate: Date;
+    content?: string;
+  }> = [];
+
+  if (tender.projectNo && tender.projectNo.trim().length >= 4) {
+    siblingNotices = await prisma.tender.findMany({
+      where: { projectNo: tender.projectNo.trim() },
+      select: { id: true, title: true, type: true, publishDate: true, content: true },
+      orderBy: { publishDate: "asc" },
+    });
+  } else if (tender.projectRefId) {
+    siblingNotices = await prisma.tender.findMany({
+      where: { projectRefId: tender.projectRefId },
+      select: { id: true, title: true, type: true, publishDate: true, content: true },
+      orderBy: { publishDate: "asc" },
+    });
+  }
+
+  const lifecycle = buildProjectLifecycle({
+    currentTender: tender,
+    siblingNotices,
+  });
+
   const provinceName = (await getRegionDisplayName(tender.provinceCode)) || null;
 
   const user = await getSession();
-  const entitlement = user ? await getEntitlement(user.uid) : null;
-  const canViewFullText = entitlement?.features.fullText ?? false;
-  const canViewContacts = entitlement?.features.contacts ?? false;
-  const canViewAttachments = entitlement?.features.attachments ?? false;
+  const [entitlement, viewQuota] = await Promise.all([
+    user ? getEntitlement(user.uid) : Promise.resolve(null),
+    user
+      ? consumeTenderViewQuota(user.uid, tenderId, { isAdmin: user.role === "ADMIN" })
+      : Promise.resolve(null),
+  ]);
+  const isViewAllowed = viewQuota ? viewQuota.allowed : true;
+  const canViewFullText = isViewAllowed && (entitlement?.features.fullText ?? false);
+  const canViewContacts = isViewAllowed && (entitlement?.features.contacts ?? false);
+  const canViewAttachments = isViewAllowed && (entitlement?.features.attachments ?? false);
   const planName = entitlement?.planName ?? "免费版";
 
   const sections = parseTenderSections(
@@ -247,12 +288,27 @@ export default async function TenderDetailPage({
 
       {/* 顶部导航与操作控制台 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href="/list"
-          className="cursor-pointer text-sm text-slate-500 transition-colors duration-150 hover:text-primary print:hidden"
-        >
-          ← 返回列表
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/list"
+            className="cursor-pointer text-sm text-slate-500 transition-colors duration-150 hover:text-primary print:hidden"
+          >
+            ← 返回列表
+          </Link>
+          {viewQuota?.alreadyViewedToday && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200"
+              title="今日已查阅，反复查看不扣除配额"
+            >
+              ✓ 今日已阅 (免扣配额)
+            </span>
+          )}
+          {viewQuota && !viewQuota.alreadyViewedToday && viewQuota.quota !== Infinity && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
+              今日剩余配额: {viewQuota.remaining}/{viewQuota.quota} 篇
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <TenderExportActions tenderId={tender.id} canExport={canViewFullText} />
           <TenderMobileShareModal
@@ -288,11 +344,40 @@ export default async function TenderDetailPage({
         </div>
       </div>
 
-      {timeline.hasMultipleNotices && (
-        <div className="print:hidden">
-          <TenderProjectTimeline data={timeline} />
+      {viewQuota && !viewQuota.allowed && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-5 text-amber-950 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-900 font-bold text-base">
+                !
+              </span>
+              <div>
+                <h3 className="text-sm font-bold text-slate-950">
+                  今日标讯查阅配额已用尽（已达上限 {viewQuota.quota} 篇/日）
+                </h3>
+                <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                  您今日解锁新标讯的额度已达上限。今日已查阅过的标讯仍可随时无限次免费复看；升级套餐可立即解锁更多每日查阅额度与全部特权。
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/pricing"
+              className="shrink-0 cursor-pointer rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-primary-strong transition-colors"
+            >
+              立即升级套餐
+            </Link>
+          </div>
         </div>
       )}
+
+      <div className="print:hidden">
+        <ProjectGanttView
+          lifecycle={lifecycle}
+          projectNo={tender.projectNo}
+          projectName={tender.title}
+          projectId={timeline.projectId}
+        />
+      </div>
 
       {/* 商业化核心模块：中标结果与供应商穿透透视 */}
       {tender.winningSupplier && (
@@ -319,6 +404,15 @@ export default async function TenderDetailPage({
             >
               {tenderTypeLabel(tender.type)}
             </span>
+            {Boolean(tender.contentHtml && tender.contentHtml.length > 50) && (
+              <span
+                className="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-700 ring-1 ring-inset ring-teal-600/20"
+                title="已归档 1:1 官方原版排版数据"
+              >
+                <DocumentTextIcon className="h-3.5 w-3.5 text-teal-600" />
+                <span>1:1 原文快照已归档</span>
+              </span>
+            )}
             {tender.industryCode && INDUSTRY_META[tender.industryCode] && (
               <Link
                 href={`/industries/${tender.industryCode}`}
@@ -377,43 +471,62 @@ export default async function TenderDetailPage({
           </div>
         )}
 
-        {/* AI 智能标书速读与投标风险雷达 */}
-        <div className="border-b border-slate-100 bg-slate-50/30 px-7 pt-6 pb-2 print:bg-white print:px-0">
-          <TenderAiCard tenderId={tender.id} />
-        </div>
+        {/* 主体选项卡：一页纸速览 vs. 原文展示 */}
+        <TenderContentTabs
+          hasOriginalHtml={Boolean(tender.contentHtml)}
+          summaryContent={
+            <>
+              {/* AI 智能标书速读与投标风险雷达 */}
+              <div className="border-b border-slate-100 bg-slate-50/30 px-7 pt-6 pb-2 print:bg-white print:px-0">
+                <TenderAiCard tenderId={tender.id} />
+              </div>
 
-        {/* 正文：按公告结构分类展示 */}
-        <div className="divide-y divide-slate-100">
-          {sections.map((s, i) => {
-            const Icon = KIND_ICONS[s.kind];
-            return (
-              <section key={`${s.kind}-${i}`} className="px-7 py-6 print:px-0 print:py-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-primary print:hidden">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <h2 className="text-sm font-semibold text-slate-900">{s.title}</h2>
+              {/* 正文：按公告结构分类展示 */}
+              <div className="divide-y divide-slate-100">
+                {sections.map((s, i) => {
+                  const Icon = KIND_ICONS[s.kind];
+                  return (
+                    <section key={`${s.kind}-${i}`} className="px-7 py-6 print:px-0 print:py-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-primary print:hidden">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <h2 className="text-sm font-semibold text-slate-900">{s.title}</h2>
+                      </div>
+                      <TenderRichContent blocks={s.blocks} />
+                    </section>
+                  );
+                })}
+              </div>
+
+              {!canViewFullText && (
+                <div className="border-t border-slate-100 bg-amber-50/60 px-7 py-6 print:hidden">
+                  <h2 className="text-sm font-bold text-slate-900">升级后查看完整公告</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                    免费版仅提供标题与摘要。升级黄金会员可查看正文全文；铂金会员还可查看联系方式与附件。
+                  </p>
+                  <Link
+                    href="/pricing"
+                    className="mt-4 inline-flex cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-strong"
+                  >
+                    查看套餐并升级
+                  </Link>
                 </div>
-                <TenderRichContent blocks={s.blocks} />
-              </section>
-            );
-          })}
-        </div>
-
-        {!canViewFullText && (
-          <div className="border-t border-slate-100 bg-amber-50/60 px-7 py-6 print:hidden">
-            <h2 className="text-sm font-bold text-slate-900">升级后查看完整公告</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              免费版仅提供标题与摘要。升级黄金会员可查看正文全文；铂金会员还可查看联系方式与附件。
-            </p>
-            <Link
-              href="/pricing"
-              className="mt-4 inline-flex cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-strong"
-            >
-              查看套餐并升级
-            </Link>
-          </div>
-        )}
+              )}
+            </>
+          }
+          originalContent={
+            <TenderOriginalView
+              contentHtml={tender.contentHtml}
+              plainContent={tender.content}
+              sourceName={tender.sourceName}
+              sourceUrl={tender.sourceUrl}
+              publishDate={formatDate(tender.publishDate)}
+              canViewFullText={canViewFullText}
+              planName={planName}
+            />
+          }
+        />
 
         {/* 出处 */}
         <footer className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 px-7 py-4 text-xs text-slate-500 print:px-0">

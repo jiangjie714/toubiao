@@ -2,14 +2,19 @@ import { prisma } from "./prisma";
 
 export async function activatePaidOrder(
   orderId: number,
-  options: { transactionNo?: string; paidAt?: Date } = {},
+  options: {
+    transactionNo?: string;
+    paidAt?: Date;
+    auditByUserId?: number;
+    auditNote?: string;
+  } = {},
 ): Promise<boolean> {
   return prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
       include: { plan: true },
     });
-    if (!order || order.status !== "PENDING") return false;
+    if (!order || (order.status !== "PENDING" && order.status !== "WAIT_VERIFY")) return false;
 
     const now = new Date();
     const current = await tx.subscription.findUnique({ where: { userId: order.userId } });
@@ -24,6 +29,10 @@ export async function activatePaidOrder(
       data: {
         status: "PAID",
         paidAt: options.paidAt ?? now,
+        auditStatus: "APPROVED",
+        auditAt: now,
+        ...(options.auditByUserId ? { auditByUserId: options.auditByUserId } : {}),
+        ...(options.auditNote ? { auditNote: options.auditNote } : {}),
         ...(options.transactionNo ? { transactionNo: options.transactionNo } : {}),
       },
     });

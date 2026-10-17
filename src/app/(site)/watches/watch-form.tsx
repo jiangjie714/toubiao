@@ -4,22 +4,31 @@ import { useState, useActionState } from "react";
 import { createWatchAction, type WatchState } from "./actions";
 import { testWebhookAction } from "@/app/actions/webhook";
 import { CheckIcon, AlertCircleIcon, ShieldCheckIcon } from "@/components/icons";
+import WechatBindModal from "@/components/wechat-bind-modal";
+import type { WechatBindStatus } from "@/app/actions/wechat-bind";
 
 type RegionOption = { code: string; name: string; parentCode?: string };
 
 export default function WatchForm({
   provinces,
   cities,
+  initialWechatStatus,
 }: {
   provinces: RegionOption[];
   cities: RegionOption[];
+  initialWechatStatus?: WechatBindStatus;
 }) {
+  const [wechatStatus, setWechatStatus] = useState<WechatBindStatus>(
+    initialWechatStatus ?? { isBound: false, isWechatConfigured: false }
+  );
   const [state, formAction, pending] = useActionState<WatchState, FormData>(
     createWatchAction,
     {},
   );
 
-  const [selectedChannel, setSelectedChannel] = useState<"email" | "wecom" | "dingtalk" | "feishu">("email");
+  const [selectedChannel, setSelectedChannel] = useState<
+    "email" | "wechat_mp" | "wecom" | "dingtalk" | "feishu"
+  >("email");
   const [frequency, setFrequency] = useState<"daily" | "weekly">("daily");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [testPending, setTestPending] = useState(false);
@@ -170,6 +179,24 @@ export default function WatchForm({
 
           <label
             className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs font-medium cursor-pointer transition-colors ${
+              selectedChannel === "wechat_mp"
+                ? "border-primary bg-blue-50/50 text-primary"
+                : "border-slate-200 text-slate-700 hover:border-slate-300"
+            }`}
+          >
+            <input
+              type="radio"
+              name="channel"
+              value="wechat_mp"
+              checked={selectedChannel === "wechat_mp"}
+              onChange={() => setSelectedChannel("wechat_mp")}
+              className="sr-only"
+            />
+            <span>💬 微信服务号 (模板秒推)</span>
+          </label>
+
+          <label
+            className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs font-medium cursor-pointer transition-colors ${
               selectedChannel === "wecom"
                 ? "border-primary bg-blue-50/50 text-primary"
                 : "border-slate-200 text-slate-700 hover:border-slate-300"
@@ -223,8 +250,28 @@ export default function WatchForm({
           </label>
         </div>
 
+        {selectedChannel === "wechat_mp" && (
+          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-800 space-y-2.5">
+            <div className="font-semibold flex items-center gap-1.5 text-emerald-900">
+              <CheckIcon className="w-4 h-4 text-emerald-600" />
+              <span>微信服务号模板消息直达手机通知栏</span>
+            </div>
+            <p className="text-[11px] text-emerald-700 leading-relaxed">
+              无需配置复杂 Webhook，系统检测到命中「{frequency === "weekly" ? "周报精选" : "每日新标"}」时，直接向您的微信下发商机卡片，点击即可在手机微信中查看全文与附件。
+            </p>
+
+            {/* 微信绑定状态与扫码绑定弹窗 */}
+            <div className="pt-1">
+              <WechatBindModal
+                initialStatus={wechatStatus}
+                onStatusChange={setWechatStatus}
+              />
+            </div>
+          </div>
+        )}
+
         {/* 机器人 Webhook URL 输入框与在线测试 */}
-        {selectedChannel !== "email" && (
+        {["wecom", "dingtalk", "feishu"].includes(selectedChannel) && (
           <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/30 p-3 space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-800">

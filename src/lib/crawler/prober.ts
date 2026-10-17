@@ -4,6 +4,7 @@ import { loadCompiledConfig } from "@/../crawler/config-loader";
 import { fetchText } from "@/../crawler/fetcher";
 import { dispatchAlerts } from "@/../crawler/alerts";
 import { attemptAutoHealing } from "./circuit-breaker";
+import type { ListConfig } from "@/../crawler/types";
 
 export interface ProbeResult {
   skillCode: string;
@@ -37,6 +38,60 @@ export interface DebugCrawlResult {
   error?: string;
 }
 
+function getByPath(obj: unknown, path: string): unknown {
+  if (!obj || typeof obj !== "object") return undefined;
+  const parts = path.split(".");
+  let cur: unknown = obj;
+  for (const part of parts) {
+    if (cur == null || typeof cur !== "object") return undefined;
+    cur = (cur as Record<string, unknown>)[part];
+  }
+  return cur;
+}
+
+function getListRequestInfo(
+  listConfig: ListConfig | null | undefined,
+  settings: { headers?: Record<string, string> } | null | undefined,
+) {
+  const isJson = listConfig?.mode === "json";
+  const request = listConfig?.request;
+  const targetUrl = isJson && request?.url
+    ? request.url.replace(/\{page([+-]\d+)?\}/g, "1")
+    : listConfig?.firstPageUrl || listConfig?.url || "";
+  const method = isJson && request?.method ? request.method : "GET";
+  const headers: Record<string, string> = {
+    "User-Agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Accept-Language": "zh-CN,zh;q=0.9",
+    ...(settings?.headers || {}),
+    ...(isJson && request?.headers ? request.headers : {}),
+  };
+
+  let body: string | undefined = undefined;
+  if (isJson) {
+    if (request?.json) {
+      body = JSON.stringify(request.json)
+        .replace(/"\{page([+-]\d+)?\}"/g, "1")
+        .replace(/\{page([+-]\d+)?\}/g, "1");
+      if (!headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json;charset=UTF-8";
+      }
+    } else if (request?.form) {
+      const renderedForm = Object.fromEntries(
+        Object.entries(request.form).map(([k, v]) => [k, String(v).replace(/\{page([+-]\d+)?\}/g, "1")]),
+      );
+      body = new URLSearchParams(renderedForm).toString();
+      if (!headers["Content-Type"]) {
+        headers["Content-Type"] = "application/x-www-form-urlencoded;charset=UTF-8";
+      }
+    } else if (request?.body) {
+      body = request.body.replace(/\{page([+-]\d+)?\}/g, "1");
+    }
+  }
+
+  return { targetUrl, method, headers, body, isJson };
+}
+
 export async function probeSourceHealth(skillCode: string): Promise<ProbeResult> {
   const startTime = Date.now();
   let sourceName = skillCode;
@@ -46,19 +101,15 @@ export async function probeSourceHealth(skillCode: string): Promise<ProbeResult>
     sourceName = config.source.name;
 
     const listConfig = config.lists[0];
-    const targetUrl = listConfig?.firstPageUrl || listConfig?.url || config.source.baseUrl;
+    const { targetUrl, method, headers, body, isJson } = getListRequestInfo(listConfig, config.settings);
     const itemSelector = listConfig?.parse?.itemSelector || "li";
 
     // 1. 发起探测请求
     const res = await fetch(targetUrl, {
-      method: "GET",
+      method,
       signal: AbortSignal.timeout(10_000),
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-        "Accept-Language": "zh-CN,zh;q=0.9",
-        ...(config.settings.headers || {}),
-      },
+      headers,
+      body,
     });
 
     const durationMs = Date.now() - startTime;
@@ -82,9 +133,21 @@ export async function probeSourceHealth(skillCode: string): Promise<ProbeResult>
       };
     }
 
-    const html = await res.text();
-    const $ = cheerio.load(html);
-    const matchedCount = $(itemSelector).length;
+    let matchedCount = 0;
+    if (isJson) {
+      const text = await res.text();
+      try {
+        const parsed = JSON.parse(text);
+        const array = getByPath(parsed, listConfig?.parse?.itemsPath || "data");
+        matchedCount = Array.isArray(array) ? array.length : (array ? 1 : 0);
+      } catch {
+        matchedCount = 0;
+      }
+    } else {
+      const html = await res.text();
+      const $ = cheerio.load(html);
+      matchedCount = $(itemSelector).length;
+    }
 
     let healthScore = 100;
     let status: "OK" | "WARNING" | "ERROR" = "OK";
@@ -97,11 +160,13 @@ export async function probeSourceHealth(skillCode: string): Promise<ProbeResult>
       healthScore -= 5;
     }
 
-    // 评估选择器匹配
+    // 评估选择器或条目匹配
     if (matchedCount === 0) {
       healthScore = Math.min(healthScore, 75);
       status = "WARNING";
-      message = `网络连通正常（${durationMs}ms），但选择器 "${itemSelector}" 匹配为 0，可能站点结构变动`;
+      message = isJson
+        ? `网络连通正常（${durationMs}ms），但 JSON 路径 "${listConfig?.parse?.itemsPath || "data"}" 匹配为 0 条`
+        : `网络连通正常（${durationMs}ms），但选择器 "${itemSelector}" 匹配为 0，可能站点结构变动`;
     }
 
     await updateSourceHealth(skillCode, healthScore, status, message);
@@ -235,54 +300,100 @@ export async function debugCrawlSource(skillCode: string): Promise<DebugCrawlRes
   try {
     const config = await loadCompiledConfig(skillCode);
     const listConfig = config.lists[0];
-    const targetUrl = listConfig?.firstPageUrl || listConfig?.url || config.source.baseUrl;
+    const { targetUrl, method, headers, body, isJson } = getListRequestInfo(listConfig, config.settings);
     const itemSelector = listConfig?.parse?.itemSelector || "li";
 
-    const html = await fetchText(targetUrl, {
+    const items: DebugItem[] = [];
+    let totalFound = 0;
+
+    const raw = await fetchText(targetUrl, {
+      method: method as "GET" | "POST",
+      headers,
+      body,
       timeoutMs: 15_000,
       userAgent: config.settings.userAgent,
-      headers: config.settings.headers,
     });
 
-    const $ = cheerio.load(html);
-    const totalFound = $(itemSelector).length;
-    const items: DebugItem[] = [];
+    if (isJson) {
+      let data: unknown = null;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        data = null;
+      }
+      const rawList = getByPath(data, listConfig?.parse?.itemsPath || "data");
+      const array = Array.isArray(rawList) ? rawList : [];
+      totalFound = array.length;
 
-    const fieldConfig = listConfig?.parse?.fields;
+      const fieldConfig = listConfig?.parse?.fields;
+      for (const rawItem of array.slice(0, 5)) {
+        if (!rawItem || typeof rawItem !== "object") continue;
+        const item = rawItem as Record<string, unknown>;
+        const titleProp = typeof fieldConfig?.title === "string" ? fieldConfig.title : "title";
+        const urlProp = typeof fieldConfig?.url === "string" ? fieldConfig.url : "url";
+        const dateProp = typeof fieldConfig?.date === "string" ? fieldConfig.date : "date";
+        const purchaserProp = typeof fieldConfig?.purchaser === "string" ? fieldConfig.purchaser : "purchaser";
 
-    $(itemSelector)
-      .slice(0, 5)
-      .each((_, el) => {
-        const titleSel = typeof fieldConfig?.title === "object" ? fieldConfig.title.selector : "a";
-        const urlSel = typeof fieldConfig?.url === "object" ? fieldConfig.url.selector : "a";
-        const dateSel = typeof fieldConfig?.date === "object" ? fieldConfig.date.selector : "span";
-
-        const title = $(el).find(titleSel || "a").text().trim();
-        let itemUrl = $(el).find(urlSel || "a").attr("href") || "";
+        const title = String(getByPath(item, titleProp) || "").trim();
+        let itemUrl = String(getByPath(item, urlProp) || "").trim();
         if (itemUrl && !itemUrl.startsWith("http")) {
           try {
-            itemUrl = new URL(itemUrl, targetUrl).toString();
+            itemUrl = new URL(itemUrl, config.source.baseUrl).toString();
           } catch {
             // ignore
           }
         }
-        const date = dateSel ? $(el).find(dateSel).text().trim() : undefined;
+        const date = getByPath(item, dateProp) ? String(getByPath(item, dateProp)).trim() : undefined;
+        const purchaser = getByPath(item, purchaserProp) ? String(getByPath(item, purchaserProp)).trim() : undefined;
 
         if (title) {
           items.push({
             title,
             url: itemUrl,
             date,
+            purchaser,
           });
         }
-      });
+      }
+    } else {
+      const $ = cheerio.load(raw);
+      totalFound = $(itemSelector).length;
+      const fieldConfig = listConfig?.parse?.fields;
+
+      $(itemSelector)
+        .slice(0, 5)
+        .each((_, el) => {
+          const titleSel = typeof fieldConfig?.title === "object" ? fieldConfig.title.selector : "a";
+          const urlSel = typeof fieldConfig?.url === "object" ? fieldConfig.url.selector : "a";
+          const dateSel = typeof fieldConfig?.date === "object" ? fieldConfig.date.selector : "span";
+
+          const title = $(el).find(titleSel || "a").text().trim();
+          let itemUrl = $(el).find(urlSel || "a").attr("href") || "";
+          if (itemUrl && !itemUrl.startsWith("http")) {
+            try {
+              itemUrl = new URL(itemUrl, targetUrl).toString();
+            } catch {
+              // ignore
+            }
+          }
+          const date = dateSel ? $(el).find(dateSel).text().trim() : undefined;
+
+          if (title) {
+            items.push({
+              title,
+              url: itemUrl,
+              date,
+            });
+          }
+        });
+    }
 
     return {
       success: true,
       skillCode,
       sourceName: config.source.name,
       listUrl: targetUrl,
-      itemSelector,
+      itemSelector: isJson ? (listConfig?.parse?.itemsPath || "json") : itemSelector,
       totalFound,
       items,
       durationMs: Date.now() - startTime,

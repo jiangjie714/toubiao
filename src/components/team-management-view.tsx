@@ -7,6 +7,7 @@ import {
   addTeamMemberAction,
   removeTeamMemberAction,
   updateTeamNameAction,
+  updateTeamMemberRoleAction,
 } from "@/app/actions/team";
 import {
   UsersIcon,
@@ -32,8 +33,12 @@ export default function TeamManagementView({ initialTeam }: Props) {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteIdentifier, setInviteIdentifier] = useState("");
   const [inviteTitle, setInviteTitle] = useState("");
+  const [inviteRole, setInviteRole] = useState<"MANAGER" | "MEMBER">("MEMBER");
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
+
+  // 修改成员角色状态
+  const [editingMemberId, setEditingMemberId] = useState<number | null>(null);
 
   // 重命名团队弹窗
   const [showRenameModal, setShowRenameModal] = useState(false);
@@ -50,7 +55,11 @@ export default function TeamManagementView({ initialTeam }: Props) {
     setInviteSuccess("");
 
     startTransition(async () => {
-      const res = await addTeamMemberAction(inviteIdentifier.trim(), inviteTitle.trim());
+      const res = await addTeamMemberAction(
+        inviteIdentifier.trim(),
+        inviteTitle.trim() || undefined,
+        inviteRole,
+      );
       if (!res.success) {
         setInviteError(res.error || "添加成员失败");
         return;
@@ -60,10 +69,25 @@ export default function TeamManagementView({ initialTeam }: Props) {
         setShowInviteModal(false);
         setInviteIdentifier("");
         setInviteTitle("");
+        setInviteRole("MEMBER");
         setInviteSuccess("");
         // 刷新页面数据
         window.location.reload();
       }, 1000);
+    });
+  };
+
+  // 处理切换成员角色
+  const handleRoleChange = (memberId: number, newRole: "MANAGER" | "MEMBER") => {
+    setEditingMemberId(memberId);
+    startTransition(async () => {
+      const res = await updateTeamMemberRoleAction(memberId, newRole);
+      setEditingMemberId(null);
+      if (!res.success) {
+        alert(res.error || "角色更新失败");
+        return;
+      }
+      window.location.reload();
     });
   };
 
@@ -346,9 +370,30 @@ export default function TeamManagementView({ initialTeam }: Props) {
                               <ShieldCheckIcon className="h-3.5 w-3.5 text-amber-500" />
                               团队创建人
                             </span>
+                          ) : team.isOwner ? (
+                            <select
+                              value={member.role === "MANAGER" ? "MANAGER" : "MEMBER"}
+                              disabled={isPending || editingMemberId === member.id}
+                              onChange={(e) =>
+                                handleRoleChange(
+                                  member.id,
+                                  e.target.value as "MANAGER" | "MEMBER",
+                                )
+                              }
+                              className="cursor-pointer rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 focus:border-primary focus:outline-none"
+                            >
+                              <option value="MEMBER">投标专员</option>
+                              <option value="MANAGER">业务总监</option>
+                            </select>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-primary border border-blue-200/50">
-                              团队成员
+                            <span
+                              className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium border ${
+                                member.role === "MANAGER"
+                                  ? "bg-purple-50 text-purple-700 border-purple-200/50"
+                                  : "bg-blue-50 text-primary border-blue-200/50"
+                              }`}
+                            >
+                              {member.role === "MANAGER" ? "业务总监" : "投标专员"}
                             </span>
                           )}
                         </div>
@@ -445,6 +490,55 @@ export default function TeamManagementView({ initialTeam }: Props) {
                 <p className="mt-1 text-[11px] text-slate-500">
                   被添加成员须为平台已注册用户，添加后将立即获得企业级会员权限。
                 </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700">
+                  团队角色 <span className="text-rose-500">*</span>
+                </label>
+                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                  <label
+                    className={`cursor-pointer flex flex-col rounded-xl border p-2.5 text-xs transition-all ${
+                      inviteRole === "MEMBER"
+                        ? "border-primary bg-blue-50/50 text-primary font-semibold"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="inviteRole"
+                      value="MEMBER"
+                      checked={inviteRole === "MEMBER"}
+                      onChange={() => setInviteRole("MEMBER")}
+                      className="sr-only"
+                    />
+                    <span>投标专员 (销售新人)</span>
+                    <span className="mt-0.5 text-[10px] font-normal text-slate-500">
+                      跟进标讯、装配标书、基础协同
+                    </span>
+                  </label>
+
+                  <label
+                    className={`cursor-pointer flex flex-col rounded-xl border p-2.5 text-xs transition-all ${
+                      inviteRole === "MANAGER"
+                        ? "border-primary bg-blue-50/50 text-primary font-semibold"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="inviteRole"
+                      value="MANAGER"
+                      checked={inviteRole === "MANAGER"}
+                      onChange={() => setInviteRole("MANAGER")}
+                      className="sr-only"
+                    />
+                    <span>业务总监 (部门主管)</span>
+                    <span className="mt-0.5 text-[10px] font-normal text-slate-500">
+                      商机漏斗、清标复盘、保证金管控
+                    </span>
+                  </label>
+                </div>
               </div>
 
               <div>

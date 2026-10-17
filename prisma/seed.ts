@@ -303,11 +303,326 @@ async function seedSources() {
   console.log(`数据源：${result.synced} 个，新增配置版本：${result.versions} 个`);
 }
 
+async function seedRbacData() {
+  const { ensureRbacInitialized } = await import("../src/lib/rbac");
+  await ensureRbacInitialized();
+  const admin = await prisma.user.findUnique({
+    where: { username: process.env.ADMIN_USERNAME || "admin" },
+  });
+  const superRole = await prisma.role.findUnique({ where: { code: "SUPER_ADMIN" } });
+  if (admin && superRole) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: admin.id, roleId: superRole.id } },
+      update: {},
+      create: { userId: admin.id, roleId: superRole.id },
+    });
+  }
+  console.log("RBAC 权限、内置角色与动态菜单：初始化完毕");
+}
+
+async function seedTestUsers() {
+  const testPassword = "123456";
+  const passwordHash = await bcrypt.hash(testPassword, 10);
+
+  // 1. 辅助函数：根据 code 查找角色
+  const findRole = async (code: string) => prisma.role.findUnique({ where: { code } });
+
+  // 2. 平台后台管理体系测试账号
+  const adminUsers = [
+    {
+      username: "ops_admin",
+      name: "张运营 (运营主管)",
+      roleCode: "OPS_ADMIN",
+    },
+    {
+      username: "finance_admin",
+      name: "李财务 (财务审核)",
+      roleCode: "FINANCE_ADMIN",
+    },
+    {
+      username: "crawler_admin",
+      name: "赵运维 (爬虫运维)",
+      roleCode: "CRAWLER_ADMIN",
+    },
+  ];
+
+  for (const u of adminUsers) {
+    const user = await prisma.user.upsert({
+      where: { username: u.username },
+      update: {
+        name: u.name,
+        passwordHash,
+        role: "ADMIN",
+        status: "ACTIVE",
+      },
+      create: {
+        username: u.username,
+        name: u.name,
+        passwordHash,
+        role: "ADMIN",
+        status: "ACTIVE",
+      },
+    });
+
+    const role = await findRole(u.roleCode);
+    if (role) {
+      await prisma.userRole.upsert({
+        where: { userId_roleId: { userId: user.id, roleId: role.id } },
+        update: {},
+        create: { userId: user.id, roleId: role.id },
+      });
+    }
+  }
+
+  // 3. 企业组织租户体系 (北京智汇云创科技有限公司)
+  // 3.1 企业法定代表人/主账号 (TENANT_OWNER)
+  const bossUser = await prisma.user.upsert({
+    where: { username: "boss_liu" },
+    update: {
+      name: "刘总 (企业法定代表)",
+      passwordHash,
+      role: "USER",
+      email: "boss_liu@zhihui.com",
+      emailVerified: true,
+      status: "ACTIVE",
+    },
+    create: {
+      username: "boss_liu",
+      name: "刘总 (企业法定代表)",
+      passwordHash,
+      role: "USER",
+      email: "boss_liu@zhihui.com",
+      emailVerified: true,
+      status: "ACTIVE",
+    },
+  });
+
+  const ownerRole = await findRole("TENANT_OWNER");
+  if (ownerRole) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: bossUser.id, roleId: ownerRole.id } },
+      update: {},
+      create: { userId: bossUser.id, roleId: ownerRole.id },
+    });
+  }
+
+  // 3.2 挂接企业资料 CompanyProfile
+  await prisma.companyProfile.upsert({
+    where: { userId: bossUser.id },
+    update: {
+      companyName: "北京智汇云创科技有限公司",
+      registeredCapital: "5000万元人民币",
+      certifications: ["ISO9001质量管理体系认证", "CMMI-3软件成熟度认证", "信息安全等保三级"],
+      qualifications: ["电子与智能化工程专业承包壹级", "建筑机电安装工程专业承包壹级"],
+      keyCases: ["某省政务云平台二期集成建设项目 (4200万)", "某市智慧交通信号统一管控平台 (1850万)"],
+    },
+    create: {
+      userId: bossUser.id,
+      companyName: "北京智汇云创科技有限公司",
+      registeredCapital: "5000万元人民币",
+      certifications: ["ISO9001质量管理体系认证", "CMMI-3软件成熟度认证", "信息安全等保三级"],
+      qualifications: ["电子与智能化工程专业承包壹级", "建筑机电安装工程专业承包壹级"],
+      keyCases: ["某省政务云平台二期集成建设项目 (4200万)", "某市智慧交通信号统一管控平台 (1850万)"],
+    },
+  });
+
+  // 3.3 开通企业标准版订阅 (有效期限 1 年)
+  const enterprisePlan = await prisma.plan.findUnique({ where: { code: "ENTERPRISE_STANDARD" } });
+  if (enterprisePlan) {
+    const oneYearLater = new Date();
+    oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+    await prisma.subscription.upsert({
+      where: { userId: bossUser.id },
+      update: {
+        planId: enterprisePlan.id,
+        status: "ACTIVE",
+        billingCycle: "yearly",
+        endsAt: oneYearLater,
+      },
+      create: {
+        userId: bossUser.id,
+        planId: enterprisePlan.id,
+        status: "ACTIVE",
+        billingCycle: "yearly",
+        endsAt: oneYearLater,
+      },
+    });
+  }
+
+  // 3.4 创建企业协同团队并挂接 Owner
+  const team = await prisma.team.upsert({
+    where: { ownerId: bossUser.id },
+    update: {
+      name: "智汇云创招投标协同战队",
+      maxSeats: 5,
+    },
+    create: {
+      ownerId: bossUser.id,
+      name: "智汇云创招投标协同战队",
+      maxSeats: 5,
+    },
+  });
+
+  await prisma.teamMember.upsert({
+    where: { userId: bossUser.id },
+    update: {
+      teamId: team.id,
+      role: "OWNER",
+      title: "董事长 / 法定代表人",
+    },
+    create: {
+      teamId: team.id,
+      userId: bossUser.id,
+      role: "OWNER",
+      title: "董事长 / 法定代表人",
+    },
+  });
+
+  // 3.5 团队成员：陈总监 (TENANT_MANAGER)
+  const directorUser = await prisma.user.upsert({
+    where: { username: "director_chen" },
+    update: {
+      name: "陈总监 (投标总监)",
+      passwordHash,
+      role: "USER",
+      email: "director_chen@zhihui.com",
+      emailVerified: true,
+      status: "ACTIVE",
+    },
+    create: {
+      username: "director_chen",
+      name: "陈总监 (投标总监)",
+      passwordHash,
+      role: "USER",
+      email: "director_chen@zhihui.com",
+      emailVerified: true,
+      status: "ACTIVE",
+    },
+  });
+
+  const managerRole = await findRole("TENANT_MANAGER");
+  if (managerRole) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: directorUser.id, roleId: managerRole.id } },
+      update: {},
+      create: { userId: directorUser.id, roleId: managerRole.id },
+    });
+  }
+
+  await prisma.teamMember.upsert({
+    where: { userId: directorUser.id },
+    update: {
+      teamId: team.id,
+      role: "MANAGER",
+      title: "政企事业部投标总监",
+    },
+    create: {
+      teamId: team.id,
+      userId: directorUser.id,
+      role: "MANAGER",
+      title: "政企事业部投标总监",
+    },
+  });
+
+  // 3.6 团队成员：小肖 (TENANT_MEMBER)
+  const salesUser = await prisma.user.upsert({
+    where: { username: "sales_xiao" },
+    update: {
+      name: "小肖 (投标专员)",
+      passwordHash,
+      role: "USER",
+      email: "sales_xiao@zhihui.com",
+      emailVerified: true,
+      status: "ACTIVE",
+    },
+    create: {
+      username: "sales_xiao",
+      name: "小肖 (投标专员)",
+      passwordHash,
+      role: "USER",
+      email: "sales_xiao@zhihui.com",
+      emailVerified: true,
+      status: "ACTIVE",
+    },
+  });
+
+  const memberRole = await findRole("TENANT_MEMBER");
+  if (memberRole) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: salesUser.id, roleId: memberRole.id } },
+      update: {},
+      create: { userId: salesUser.id, roleId: memberRole.id },
+    });
+  }
+
+  await prisma.teamMember.upsert({
+    where: { userId: salesUser.id },
+    update: {
+      teamId: team.id,
+      role: "MEMBER",
+      title: "资深招投标专员",
+    },
+    create: {
+      teamId: team.id,
+      userId: salesUser.id,
+      role: "MEMBER",
+      title: "资深招投标专员",
+    },
+  });
+
+  // 4. 个人散客会员 (黄金会员)
+  const scatterUser = await prisma.user.upsert({
+    where: { username: "scatter_user" },
+    update: {
+      name: "王散客 (个人黄金会员)",
+      passwordHash,
+      role: "USER",
+      email: "scatter@example.com",
+      emailVerified: true,
+      status: "ACTIVE",
+    },
+    create: {
+      username: "scatter_user",
+      name: "王散客 (个人黄金会员)",
+      passwordHash,
+      role: "USER",
+      email: "scatter@example.com",
+      emailVerified: true,
+      status: "ACTIVE",
+    },
+  });
+
+  const goldPlan = await prisma.plan.findUnique({ where: { code: "GOLD" } });
+  if (goldPlan) {
+    const thirtyDaysLater = new Date(Date.now() + 30 * 24 * 3600 * 1000);
+    await prisma.subscription.upsert({
+      where: { userId: scatterUser.id },
+      update: {
+        planId: goldPlan.id,
+        status: "ACTIVE",
+        billingCycle: "monthly",
+        endsAt: thirtyDaysLater,
+      },
+      create: {
+        userId: scatterUser.id,
+        planId: goldPlan.id,
+        status: "ACTIVE",
+        billingCycle: "monthly",
+        endsAt: thirtyDaysLater,
+      },
+    });
+  }
+
+  console.log("测试体验角色账号：7 个角色账号初始化/同步完毕 (默认密码统一为 123456)");
+}
+
 async function main() {
   await seedRegions();
   await seedAdmin();
+  await seedRbacData();
   await seedPlans();
   await seedIndustries();
+  await seedTestUsers();
   await seedTenders();
   await seedSources();
   await seedAlertRule();

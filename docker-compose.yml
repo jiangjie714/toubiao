@@ -1,86 +1,67 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: always
     environment:
       POSTGRES_USER: toubiao
-      POSTGRES_PASSWORD: toubiao
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toubiao_db_pass_2026}
       POSTGRES_DB: toubiao
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U toubiao"]
-      interval: 10s
-      timeout: 5s
+      interval: 5s
+      timeout: 3s
       retries: 10
 
   app:
-    image: node:22-alpine
-    working_dir: /app
-    command: sh -c "npm ci && npx prisma migrate deploy && npm run build && npm run start"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: toubiao-app:latest
+    restart: always
     environment:
-      DATABASE_URL: postgresql://toubiao:toubiao@postgres:5432/toubiao?schema=public
-      AUTH_SECRET: ${AUTH_SECRET:-change-me}
-      APP_URL: ${APP_URL:-http://127.0.0.1:3000}
+      DATABASE_URL: postgresql://toubiao:${POSTGRES_PASSWORD:-toubiao_db_pass_2026}@postgres:5432/toubiao?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:-bx7f3a9c2e1d84b6f0a5c3e7d9b1f4a2c6e8d0b3f5a7c9e1d3f5b7a9c1e3f5d7b}
+      APP_URL: ${APP_URL:-http://124.220.98.81:3000}
       NODE_ENV: production
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-no-reply@example.com}
-      ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
-      ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
-      ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
-      ALIPAY_PUBLIC_CERT: ${ALIPAY_PUBLIC_CERT:-}
-      WECHAT_PAY_MERCHANT_CERT_SERIAL: ${WECHAT_PAY_MERCHANT_CERT_SERIAL:-}
-      WECHAT_PAY_MERCHANT_PRIVATE_KEY: ${WECHAT_PAY_MERCHANT_PRIVATE_KEY:-}
-      WECHAT_PAY_PLATFORM_CERT_SERIAL: ${WECHAT_PAY_PLATFORM_CERT_SERIAL:-}
-      WECHAT_PAY_PLATFORM_PUBLIC_KEY: ${WECHAT_PAY_PLATFORM_PUBLIC_KEY:-}
-      WECHAT_PAY_PLATFORM_CERT: ${WECHAT_PAY_PLATFORM_CERT:-}
-      WECHAT_PAY_API_V3_KEY: ${WECHAT_PAY_API_V3_KEY:-}
+      RUN_DB_PUSH: "true"
+      RUN_DB_SEED: "true"
+      COMPANY_NAME: ${COMPANY_NAME:-北京云尖字节信息科技有限公司}
+      COMPANY_BANK_NAME: ${COMPANY_BANK_NAME:-中国工商银行股份有限公司紫竹院支行}
+      COMPANY_BANK_ACCOUNT: ${COMPANY_BANK_ACCOUNT:-0200007609200202973}
+      COMPANY_BANK_BRANCH_CODE: ${COMPANY_BANK_BRANCH_CODE:-102100000763}
+      COMPANY_TAX_NUMBER: ${COMPANY_TAX_NUMBER:-91110108MA017XYZ88}
     ports:
-      - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
+      - "0.0.0.0:3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
 
   push-worker:
-    image: node:22-alpine
-    working_dir: /app
-    command: sh -c "npm ci && npx prisma migrate deploy && npm run push:worker"
+    image: toubiao-app:latest
+    restart: always
+    command: ["npm", "run", "push:worker"]
     environment:
-      DATABASE_URL: postgresql://toubiao:toubiao@postgres:5432/toubiao?schema=public
-      APP_URL: ${APP_URL:-http://127.0.0.1:3000}
+      DATABASE_URL: postgresql://toubiao:${POSTGRES_PASSWORD:-toubiao_db_pass_2026}@postgres:5432/toubiao?schema=public
+      APP_URL: ${APP_URL:-http://124.220.98.81:3000}
       PUSH_CRON: ${PUSH_CRON:-0 8 * * *}
       NODE_ENV: production
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-no-reply@example.com}
-    volumes:
-      - .:/app
-      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
 
-  worker:
-    image: node:22-alpine
-    working_dir: /app
-    command: sh -c "npm ci && npx prisma migrate deploy && npm run crawl:worker"
+  crawler-worker:
+    image: toubiao-app:latest
+    restart: always
+    command: ["npm", "run", "crawl:worker"]
     environment:
-      DATABASE_URL: postgresql://toubiao:toubiao@postgres:5432/toubiao?schema=public
+      DATABASE_URL: postgresql://toubiao:${POSTGRES_PASSWORD:-toubiao_db_pass_2026}@postgres:5432/toubiao?schema=public
       NODE_ENV: production
+      CRAWL_CRON: ${CRAWL_CRON:-0 */2 * * *}
     volumes:
-      - .:/app
-      - /app/node_modules
       - storage-data:/app/.data/storage
     depends_on:
       postgres:

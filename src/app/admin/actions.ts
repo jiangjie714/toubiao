@@ -30,6 +30,10 @@ export async function createUserAction(
   const email = String(formData.get("email") ?? "").trim();
   const companyName = String(formData.get("companyName") ?? "").trim();
   const planCode = String(formData.get("planCode") ?? "").trim();
+  const roleIds = formData
+    .getAll("roleIds")
+    .map(Number)
+    .filter((id) => !isNaN(id) && id > 0);
 
   if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
     return { error: "用户名需为 3-20 位字母、数字或下划线" };
@@ -54,6 +58,7 @@ export async function createUserAction(
       email: email || undefined,
       companyName: companyName || undefined,
       planCode: planCode || undefined,
+      roleIds: roleIds.length > 0 ? roleIds : undefined,
     });
     revalidatePath("/admin/users");
     return {};

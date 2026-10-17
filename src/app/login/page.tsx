@@ -14,7 +14,7 @@ export default async function LoginPage({
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-primary-strong via-primary to-accent px-4">
       <div className="pointer-events-none absolute -top-32 left-1/4 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 right-1/4 h-96 w-96 rounded-full bg-accent/40 blur-3xl" />
-      <div className="relative w-full max-w-sm">
+      <div className="relative w-full max-w-md">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-2xl font-bold text-primary shadow-lg">
             标

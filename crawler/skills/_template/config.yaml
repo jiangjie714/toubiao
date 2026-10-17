@@ -25,7 +25,7 @@ lists:
       fields:
         title:  { selector: "a.title", attr: "text" }
         url:    { selector: "a.title", attr: "href" }
-        date:   { selector: "span.date", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        date:   { selector: "span.date", attr: "text", regex: '\d{4}-\d{2}-\d{2}(?:\s+\d{1,2}:\d{1,2}(?::\d{1,2})?)?' }
         hint:   { selector: "span.summary", attr: "text" }
     detail:
       contentSelector: "div.article-content"

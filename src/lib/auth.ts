@@ -29,11 +29,15 @@ export async function createSession(user: SessionUser) {
     .setIssuedAt()
     .setExpirationTime(SESSION_TTL)
     .sign(getSecret());
+  const isHttps =
+    process.env.APP_URL?.startsWith("https://") ||
+    process.env.SECURE_COOKIE === "true";
+
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isHttps,
     path: "/",
     maxAge: 7 * 24 * 3600,
   });
@@ -71,7 +75,13 @@ export async function verifyPassword(
   username: string,
   password: string,
 ): Promise<SessionUser | null> {
-  const user = await prisma.user.findUnique({ where: { username } });
+  let user;
+  try {
+    user = await prisma.user.findUnique({ where: { username: username } });
+  } catch (e) {
+    console.error('Error fetching user in verifyPassword:', e);
+    return null;
+  }
   if (!user || user.status !== "ACTIVE") return null;
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return null;

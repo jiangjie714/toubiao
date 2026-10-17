@@ -34,6 +34,8 @@ type NavItem = {
   icon: ComponentType<{ className?: string }>;
   /** 命中任一前缀即视为该栏目激活 */
   match: string[];
+  /** 商业化权益徽章：CORP=企业专属, PRO=会员权益 */
+  badge?: "CORP" | "PRO" | "HOT";
 };
 
 const SEARCH_ITEMS = [
@@ -47,29 +49,29 @@ const SEARCH_ITEMS = [
 
 const INTEL_ITEMS: NavItem[] = [
   { href: "/intentions", label: "意向雷达", desc: "提前 30~90 天锁定潜在商机", icon: SparklesIcon, match: ["/intentions"] },
-  { href: "/competitors", label: "竞对雷达", desc: "核心竞对监控与后院起火预警", icon: RadarIcon, match: ["/competitors"] },
+  { href: "/competitors", label: "竞对雷达", desc: "核心竞对监控与后院起火预警", icon: RadarIcon, match: ["/competitors"], badge: "CORP" },
   { href: "/suppliers", label: "供应商库", desc: "全网供应商中标画像与PK", icon: TargetIcon, match: ["/suppliers"] },
   { href: "/purchasers", label: "买方画像", desc: "采购单位画像与采购偏好", icon: BuildingIcon, match: ["/purchasers"] },
   { href: "/projects", label: "项目大盘", desc: "重点项目全过程进展", icon: FolderIcon, match: ["/projects"] },
   { href: "/industries", label: "重点赛道", desc: "行业赛道招标热度", icon: BoltIcon, match: ["/industries"] },
   { href: "/regions", label: "区域大盘", desc: "全国区域招标分布", icon: MapPinIcon, match: ["/regions"] },
   { href: "/analytics", label: "行业情报", desc: "行业统计与每周简报", icon: ChartBarIcon, match: ["/analytics", "/brief"] },
-  { href: "/history", label: "历史穿透库", desc: "对标千里马10年库与下浮罗盘", icon: ScaleIcon, match: ["/history"] },
+  { href: "/history", label: "历史穿透库", desc: "对标千里马10年库与下浮罗盘", icon: ScaleIcon, match: ["/history"], badge: "PRO" },
 ];
 
 const WORKBENCH_ITEMS: NavItem[] = [
-  { href: "/pipeline", label: "销售 CRM 漏斗", desc: "商机全周期漏斗、加权预测与公海池", icon: ChartBarIcon, match: ["/pipeline"] },
-  { href: "/proposals", label: "标书装配工场", desc: "资质业绩贯通与六卷模块化装配", icon: DocumentTextIcon, match: ["/proposals"] },
-  { href: "/qualifications", label: "资质与商机雷达", desc: "企业资质管理与全网智能赢面匹配", icon: RadarIcon, match: ["/qualifications"] },
-  { href: "/cases", label: "业绩案例库", desc: "合同业绩归档与类似项目智能匹配", icon: TrophyIcon, match: ["/cases"] },
-  { href: "/deposits", label: "保证金台账", desc: "在途资金监控与超期催款维权", icon: ScaleIcon, match: ["/deposits"] },
+  { href: "/pipeline", label: "销售 CRM 漏斗", desc: "商机全周期漏斗、加权预测与公海池", icon: ChartBarIcon, match: ["/pipeline"], badge: "CORP" },
+  { href: "/proposals", label: "标书装配工场", desc: "资质业绩贯通与六卷模块化装配", icon: DocumentTextIcon, match: ["/proposals"], badge: "CORP" },
+  { href: "/qualifications", label: "资质与商机雷达", desc: "企业资质管理与全网智能赢面匹配", icon: RadarIcon, match: ["/qualifications"], badge: "CORP" },
+  { href: "/cases", label: "业绩案例库", desc: "合同业绩归档与类似项目智能匹配", icon: TrophyIcon, match: ["/cases"], badge: "CORP" },
+  { href: "/deposits", label: "保证金台账", desc: "在途资金监控与超期催款维权", icon: ScaleIcon, match: ["/deposits"], badge: "CORP" },
   { href: "/tracker", label: "跟进看板", desc: "商机跟进与投标状态管理", icon: ClipboardIcon, match: ["/tracker"] },
   { href: "/calendar", label: "投标日历", desc: "截标倒计时与关键里程碑排期大盘", icon: CalendarIcon, match: ["/calendar"] },
-  { href: "/audit", label: "标书质检", desc: "清标查重与一票废标风险深度扫描", icon: ShieldCheckIcon, match: ["/audit"] },
-  { href: "/reviews", label: "复盘归因罗盘", desc: "开标数据对标与胜败六维归因诊断", icon: ScaleIcon, match: ["/reviews"] },
+  { href: "/audit", label: "标书质检", desc: "清标查重与一票废标风险深度扫描", icon: ShieldCheckIcon, match: ["/audit"], badge: "CORP" },
+  { href: "/reviews", label: "复盘归因罗盘", desc: "开标数据对标与胜败六维归因诊断", icon: ScaleIcon, match: ["/reviews"], badge: "CORP" },
   { href: "/tenders/compare", label: "标讯对比", desc: "多标段横向立项决策罗盘", icon: ScaleIcon, match: ["/tenders/compare"] },
   { href: "/watches", label: "关键词订阅", desc: "按关键词追踪新公告", icon: BellIcon, match: ["/watches"] },
-  { href: "/webhooks", label: "预警推送中枢", desc: "企微/钉钉/飞书机器人事件路由", icon: BoltIcon, match: ["/webhooks"] },
+  { href: "/webhooks", label: "预警推送中枢", desc: "企微/钉钉/飞书机器人事件路由", icon: BoltIcon, match: ["/webhooks"], badge: "CORP" },
   { href: "/compliance", label: "安全合规中心", desc: "等保二级自检与防篡改审计报告", icon: ShieldCheckIcon, match: ["/compliance"] },
   { href: "/exports", label: "商机导出", desc: "筛选结果批量导出", icon: ArrowDownTrayIcon, match: ["/exports"] },
 ];
@@ -227,13 +229,23 @@ export default function SiteNav() {
                           </span>
                           <span className="min-w-0">
                             <span
-                              className={`block text-sm ${
+                              className={`flex items-center gap-1.5 text-sm ${
                                 itemActive(item)
                                   ? "font-semibold text-primary"
                                   : "font-medium text-slate-800"
                               }`}
                             >
-                              {item.label}
+                              <span>{item.label}</span>
+                              {item.badge === "CORP" && (
+                                <span className="rounded bg-gradient-to-r from-amber-500 to-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                                  企业
+                                </span>
+                              )}
+                              {item.badge === "PRO" && (
+                                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                                  VIP
+                                </span>
+                              )}
                             </span>
                             <span className="mt-0.5 block text-xs leading-snug text-slate-500">
                               {item.desc}
@@ -320,13 +332,23 @@ export default function SiteNav() {
                     </span>
                     <span className="min-w-0">
                       <span
-                        className={`block text-sm ${
+                        className={`flex items-center gap-1.5 text-sm ${
                           itemActive(item)
                             ? "font-semibold text-primary"
                             : "font-medium text-slate-800"
                         }`}
                       >
-                        {item.label}
+                        <span>{item.label}</span>
+                        {item.badge === "CORP" && (
+                          <span className="rounded bg-gradient-to-r from-amber-500 to-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                            企业
+                          </span>
+                        )}
+                        {item.badge === "PRO" && (
+                          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                            VIP
+                          </span>
+                        )}
                       </span>
                       <span className="mt-0.5 block text-xs leading-snug text-slate-500">
                         {item.desc}

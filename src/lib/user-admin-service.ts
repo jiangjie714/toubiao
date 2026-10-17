@@ -24,6 +24,7 @@ export interface AdminUserProfileInput {
   planCode?: string;
   extendMonths?: number;
   newPassword?: string;
+  roleIds?: number[];
 }
 
 export interface AdminCreateUserInput {
@@ -35,6 +36,7 @@ export interface AdminCreateUserInput {
   companyName?: string;
   registeredCapital?: string;
   planCode?: string;
+  roleIds?: number[];
 }
 
 export async function getUserAdminOverview(options: UserAdminQueryOptions = {}) {
@@ -136,6 +138,11 @@ export async function getUserAdminOverview(options: UserAdminQueryOptions = {}) 
             },
           },
         },
+        userRoles: {
+          include: {
+            role: true,
+          },
+        },
         _count: {
           select: {
             orders: true,
@@ -174,6 +181,7 @@ export async function adminCreateUserWithProfile(input: AdminCreateUserInput) {
     companyName,
     registeredCapital,
     planCode,
+    roleIds,
   } = input;
 
   const passwordHash = await hashPassword(password);
@@ -189,6 +197,17 @@ export async function adminCreateUserWithProfile(input: AdminCreateUserInput) {
         status: "ACTIVE",
       },
     });
+
+    if (roleIds && roleIds.length > 0) {
+      for (const rId of roleIds) {
+        await tx.userRole.create({
+          data: {
+            userId: user.id,
+            roleId: rId,
+          },
+        });
+      }
+    }
 
     if (companyName?.trim()) {
       await tx.companyProfile.create({
@@ -235,6 +254,7 @@ export async function adminUpdateUserProfile(input: AdminUserProfileInput) {
     planCode,
     extendMonths,
     newPassword,
+    roleIds,
   } = input;
 
   return await prisma.$transaction(async (tx) => {
@@ -257,6 +277,21 @@ export async function adminUpdateUserProfile(input: AdminUserProfileInput) {
         where: { id: userId },
         data: userData,
       });
+    }
+
+    // 角色关联更新
+    if (roleIds !== undefined) {
+      await tx.userRole.deleteMany({ where: { userId } });
+      if (roleIds.length > 0) {
+        for (const rId of roleIds) {
+          await tx.userRole.create({
+            data: {
+              userId,
+              roleId: rId,
+            },
+          });
+        }
+      }
     }
 
     // 企业信息处理
@@ -321,5 +356,11 @@ export async function adminUpdateUserProfile(input: AdminUserProfileInput) {
     }
 
     return { success: true };
+  });
+}
+
+export async function getAllAvailableRoles() {
+  return await prisma.role.findMany({
+    orderBy: [{ scope: "asc" }, { id: "asc" }],
   });
 }

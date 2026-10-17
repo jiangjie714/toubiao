@@ -17,3 +17,26 @@ export function parseDate(input: string | null | undefined): Date | null {
   const date = new Date(text);
   return isNaN(date.getTime()) ? null : date;
 }
+
+/** 格式化日期为 YYYY-MM-DD 字符串 */
+export function formatDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** 返回指定日期当天的起始时刻（00:00:00.000） */
+export function toDayStart(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** 返回指定日期当天的结束时刻（23:59:59.999） */
+export function toDayEnd(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import PrintButton from "@/components/print-button";
 import { getCompanyPaymentConfig } from "@/lib/company-config";
+import { allocateMatchingCode } from "@/lib/payments";
 
 export const metadata = {
   title: "电子服务采购合同 - 标讯通",
@@ -71,6 +72,15 @@ export default async function ContractPage({
   });
 
   if (!order) notFound();
+
+  if (!order.matchingCode) {
+    const code = await allocateMatchingCode(order.orderNo);
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { matchingCode: code },
+    });
+    order.matchingCode = code;
+  }
 
   const numAmount = Number(order.amount);
   const chineseAmount = amountToChinese(numAmount);
@@ -197,9 +207,9 @@ export default async function ContractPage({
                 结算方式：甲方通过银行对公转账电汇方式，全额汇入本合同首部乙方指定的官方对公银行账户。
               </li>
               <li>
-                转账附言：甲方汇款时须注明订单识别号【
-                <span className="font-mono font-bold">{order.orderNo}</span>
-                】，乙方财务人员在确认款项到账后 1 个工作日内核销并正式开通对应会员权限。
+                转账附言：甲方汇款时须在银行转账附言/备注栏注明专属核销码【
+                <span className="font-mono font-bold text-sm text-primary">{order.matchingCode}</span>
+                】（或注明订单号：<span className="font-mono">{order.orderNo}</span>），乙方财务人员在确认款项到账后即刻核销并正式激活对应会员权限。
               </li>
               <li>
                 发票索取：乙方确认收到款项后，依据甲方在标讯通发票中心提交的开票信息，开具等额增值税普通发票或增值税专用发票。

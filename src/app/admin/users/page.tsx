@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
-import { getUserAdminOverview } from "@/lib/user-admin-service";
+import { getUserAdminOverview, getAllAvailableRoles } from "@/lib/user-admin-service";
 import UserCreateForm from "./user-create-form";
 import UsersTableView from "@/components/admin/users-table-view";
 import {
@@ -27,7 +27,7 @@ export default async function UsersPage({
     ? (filterParam as FilterType)
     : "ALL";
 
-  const [overviewData, me] = await Promise.all([
+  const [overviewData, me, availableRoles] = await Promise.all([
     getUserAdminOverview({
       search: q,
       filter,
@@ -35,6 +35,7 @@ export default async function UsersPage({
       pageSize: 15,
     }),
     getSession(),
+    getAllAvailableRoles(),
   ]);
 
   const { metrics, plans, pagination, users } = overviewData;
@@ -117,7 +118,7 @@ export default async function UsersPage({
       </div>
 
       {/* 新建客户与账号表单 */}
-      <UserCreateForm plans={plans} />
+      <UserCreateForm plans={plans} availableRoles={availableRoles} />
 
       {/* 多维检索与分类筛选工具栏 */}
       <div className="rounded-xl border border-slate-200 bg-surface p-4 shadow-xs space-y-3">
@@ -158,7 +159,12 @@ export default async function UsersPage({
       </div>
 
       {/* 客户全景表格及画像模态窗 */}
-      <UsersTableView users={users} plans={plans} meUid={me?.uid} />
+      <UsersTableView
+        users={users}
+        plans={plans}
+        availableRoles={availableRoles}
+        meUid={me?.uid}
+      />
 
       {/* 分页导航 */}
       {pagination.totalPages > 1 && (

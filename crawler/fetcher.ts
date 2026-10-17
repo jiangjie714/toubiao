@@ -9,12 +9,14 @@ export type FetchOptions = {
   method?: "GET" | "POST";
   headers?: Record<string, string>;
   form?: Record<string, string>;
+  body?: string;
+  json?: unknown;
   timeoutMs?: number;
   retries?: number;
   userAgent?: string;
 };
 
-/** 根据响应头/HTML meta 判断 charset 并解码（兼容 GBK 老站点） */
+/** 根据响应头/HTML meta 判断 charset 并解码（双向检测自动回退，杜绝 GBK/UTF-8 错配乱码） */
 function decodeBody(buf: ArrayBuffer, contentType: string | null): string {
   const m = contentType?.match(/charset=([\w-]+)/i);
   let charset = m?.[1]?.toLowerCase() ?? "";
@@ -22,11 +24,37 @@ function decodeBody(buf: ArrayBuffer, contentType: string | null): string {
     const head = new TextDecoder("utf-8", { fatal: false }).decode(buf.slice(0, 2048));
     charset = head.match(/charset=["']?([\w-]+)/i)?.[1]?.toLowerCase() ?? "utf-8";
   }
+
+  const normalizeCharset = (cs: string) => {
+    if (cs === "gb2312" || cs === "gbk" || cs === "gb18030") return "gb18030";
+    return cs || "utf-8";
+  };
+
+  const primaryEncoding = normalizeCharset(charset);
+  const secondaryEncoding = primaryEncoding === "gb18030" ? "utf-8" : "gb18030";
+
+  let primaryText = "";
   try {
-    return new TextDecoder(charset === "gb2312" ? "gbk" : charset).decode(buf);
+    primaryText = new TextDecoder(primaryEncoding, { fatal: false }).decode(buf);
   } catch {
-    return new TextDecoder("utf-8").decode(buf);
+    primaryText = new TextDecoder("utf-8", { fatal: false }).decode(buf);
   }
+
+  // 若初步解码含有替代字符 \uFFFD，尝试备用编码对比乱码率
+  if (primaryText.includes("\uFFFD")) {
+    try {
+      const secondaryText = new TextDecoder(secondaryEncoding, { fatal: false }).decode(buf);
+      const primaryErrors = (primaryText.match(/\uFFFD/g) || []).length;
+      const secondaryErrors = (secondaryText.match(/\uFFFD/g) || []).length;
+      if (secondaryErrors < primaryErrors) {
+        return secondaryText;
+      }
+    } catch {
+      // 保持 primaryText
+    }
+  }
+
+  return primaryText;
 }
 
 export class FetchError extends Error {
@@ -39,8 +67,25 @@ export class FetchError extends Error {
 
 /** 带超时与重试的页面抓取，自动处理编码 */
 export async function fetchText(url: string, opts: FetchOptions = {}): Promise<string> {
-  const { method = "GET", headers = {}, form, timeoutMs = 20000, retries = 2 } = opts;
+  const { method = "GET", headers = {}, form, body, json, timeoutMs = 20000, retries = 2 } = opts;
   let lastErr: unknown;
+
+  let requestBody: string | undefined = undefined;
+  const requestHeaders = { ...headers };
+
+  if (json !== undefined) {
+    requestBody = typeof json === "string" ? json : JSON.stringify(json);
+    if (!requestHeaders["Content-Type"]) {
+      requestHeaders["Content-Type"] = "application/json; charset=UTF-8";
+    }
+  } else if (form) {
+    requestBody = new URLSearchParams(form).toString();
+    if (!requestHeaders["Content-Type"]) {
+      requestHeaders["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8";
+    }
+  } else if (body !== undefined) {
+    requestBody = body;
+  }
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController();
@@ -53,12 +98,9 @@ export async function fetchText(url: string, opts: FetchOptions = {}): Promise<s
         headers: {
           "User-Agent": opts.userAgent ?? DEFAULT_UA,
           "Accept-Language": "zh-CN,zh;q=0.9",
-          ...(form
-            ? { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" }
-            : {}),
-          ...headers,
+          ...requestHeaders,
         },
-        body: form ? new URLSearchParams(form).toString() : undefined,
+        body: requestBody,
       });
       if (!res.ok) {
         throw new FetchError(`HTTP ${res.status}`, res.status);

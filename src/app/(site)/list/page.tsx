@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { consumeSearchQuota, getEntitlement, getExportQuota } from "@/lib/quota";
+import {
+  getSearchQuota,
+  getTodayViewedTenderIds,
+  getEntitlement,
+  getExportQuota,
+} from "@/lib/quota";
 import { getCachedRegionsData, getCachedIndustriesData } from "@/lib/dict-cache";
 import FilterBar from "@/components/filter-bar";
 import {
@@ -20,6 +25,10 @@ import {
   BuildingIcon,
   DatabaseIcon,
   SearchIcon,
+  DocumentTextIcon,
+  PaperClipIcon,
+  ArrowDownTrayIcon,
+  CheckIcon,
 } from "@/components/icons";
 
 export const metadata = { title: "信息检索" };
@@ -56,12 +65,12 @@ export default async function ListPage({
   }
 
   const [quota, entitlement] = await Promise.all([
-    consumeSearchQuota(user.uid, { isAdmin: user.role === "ADMIN" }),
+    getSearchQuota(user.uid, { isAdmin: user.role === "ADMIN" }),
     getEntitlement(user.uid),
   ]);
   const exportEnabled = entitlement.features.exportDaily > 0;
   const exportQuota = exportEnabled ? await getExportQuota(user.uid) : null;
-  const where = quota.allowed ? buildWhere(sp) : undefined;
+  const where = buildWhere(sp);
   const page = Math.max(1, parseInt(sp.page || "1", 10) || 1);
 
   const [dictRegions, dictIndustries] = await Promise.all([
@@ -71,42 +80,48 @@ export default async function ListPage({
   const { provinces, cities, provinceMap, cityMap } = dictRegions;
   const { industries, industryMap } = dictIndustries;
 
-  const [total, items] = quota.allowed
-    ? await Promise.all([
-        prisma.tender.count({ where }),
-        prisma.tender.findMany({
-          where,
-          select: {
-            id: true,
-            title: true,
-            type: true,
-            provinceCode: true,
-            cityCode: true,
-            purchaser: true,
-            winningSupplier: true,
-            budgetAmount: true,
-            awardAmount: true,
-            publishDate: true,
-            sourceName: true,
-            industryCode: true,
-            _count: {
-              select: { attachments: true },
-            },
-          },
-          orderBy: { publishDate: "desc" },
-          skip: (page - 1) * PAGE_SIZE,
-          take: PAGE_SIZE,
-        }),
-      ])
-    : [0, []];
+  const [total, items] = await Promise.all([
+    prisma.tender.count({ where }),
+    prisma.tender.findMany({
+      where,
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        provinceCode: true,
+        cityCode: true,
+        purchaser: true,
+        winningSupplier: true,
+        budgetAmount: true,
+        awardAmount: true,
+        publishDate: true,
+        sourceName: true,
+        industryCode: true,
+        contentHtml: true,
+        _count: {
+          select: { attachments: true },
+        },
+      },
+      orderBy: { publishDate: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
+
+  const todayViewedTenderIds = await getTodayViewedTenderIds(
+    user.uid,
+    items.map((i) => i.id),
+  );
 
   const regionName = (code: string | null) => (code ? provinceMap.get(code) || cityMap.get(code) || "" : "");
 
-  const totalPages = quota.allowed ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : 1;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const qs = (overrides: Record<string, string | undefined>) =>
     buildQueryString(sp, overrides);
   const quotaLabel =
-    quota.quota === Infinity ? "搜索不限次" : `今日剩余搜索 ${quota.remaining}/${quota.quota} 次`;
+    quota.quota === Infinity
+      ? "查阅不限次"
+      : `今日剩余查阅 ${quota.remaining}/${quota.quota} 篇（已查阅数据再次点击免扣额）`;
   const exportHref = `/api/export/tenders?${buildQueryString(sp, { page: undefined })}`;
   const pageLink =
     "cursor-pointer rounded-lg border border-slate-200 bg-surface px-4 py-2 text-sm text-slate-700 transition-colors duration-200 hover:border-accent/60 hover:text-primary";
@@ -135,8 +150,26 @@ export default async function ListPage({
         }}
       />
 
-      {quota.allowed ? (
-        <div className="rounded-2xl border border-slate-200 bg-surface shadow-xs">
+      {!quota.allowed && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50/90 px-4 py-3 text-xs text-amber-950 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-900 font-bold">
+              !
+            </span>
+            <span>
+              您今日的标讯查阅配额已用尽（{quota.used}/{quota.quota} 篇）。标有 <strong>✓ 今日已阅</strong> 的招标公告仍可随时免费查阅。
+            </span>
+          </div>
+          <Link
+            href="/pricing"
+            className="shrink-0 font-semibold text-primary underline hover:text-primary-strong"
+          >
+            升级套餐解锁更多
+          </Link>
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-slate-200 bg-surface shadow-xs">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 text-sm">
             <div className="flex items-center gap-2">
               <span className="text-slate-500 text-xs sm:text-sm">
@@ -177,9 +210,10 @@ export default async function ListPage({
               ) : (
                 <Link
                   href="/exports"
-                  className="cursor-pointer inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                  className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
                 >
-                  <span>📥 批量导出商机 (VIP)</span>
+                  <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                  <span>批量导出商机 (VIP)</span>
                 </Link>
               )}
             </div>
@@ -190,6 +224,8 @@ export default async function ListPage({
               const titleSegments = tokenizeHighlight(t.title, sp.q);
               const indName = t.industryCode ? industryMap.get(t.industryCode) : null;
               const attachmentCount = t._count?.attachments ?? 0;
+              const isViewedToday = todayViewedTenderIds.has(t.id);
+              const hasOriginalSnapshot = Boolean(t.contentHtml && t.contentHtml.length > 50);
 
               return (
                 <li
@@ -207,6 +243,26 @@ export default async function ListPage({
                           >
                             {tenderTypeLabel(t.type)}
                           </span>
+
+                          {isViewedToday && (
+                            <span
+                              className="inline-flex shrink-0 items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200"
+                              title="今日已查阅，再次点击不扣减配额"
+                            >
+                              <CheckIcon className="h-3 w-3" />
+                              今日已阅
+                            </span>
+                          )}
+
+                          {hasOriginalSnapshot && (
+                            <span
+                              className="inline-flex shrink-0 items-center gap-1 rounded bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700 border border-teal-200"
+                              title="已采集官方 1:1 原版公文排版快照"
+                            >
+                              <DocumentTextIcon className="h-3 w-3 text-teal-600" />
+                              1:1 原文快照
+                            </span>
+                          )}
 
                           {indName && (
                             <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 border border-slate-200">
@@ -227,8 +283,9 @@ export default async function ListPage({
                           )}
 
                           {attachmentCount > 0 && (
-                            <span className="rounded bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 border border-purple-200">
-                              📎 含 {attachmentCount} 个附件
+                            <span className="inline-flex items-center gap-1 rounded bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 border border-purple-200">
+                              <PaperClipIcon className="h-3 w-3" />
+                              含 {attachmentCount} 个附件
                             </span>
                           )}
                         </div>
@@ -291,6 +348,16 @@ export default async function ListPage({
                       <DatabaseIcon className="h-3.5 w-3.5" />
                       {t.sourceName}
                     </span>
+                    {hasOriginalSnapshot && (
+                      <Link
+                        href={`/tender/${t.id}#original`}
+                        className="inline-flex items-center gap-1 font-medium text-teal-700 hover:text-teal-900 hover:underline"
+                        title="直接以原版公文排版查阅"
+                      >
+                        <DocumentTextIcon className="h-3.5 w-3.5" />
+                        <span>查看原文快照</span>
+                      </Link>
+                    )}
                   </div>
                 </li>
               );
@@ -311,32 +378,9 @@ export default async function ListPage({
             )}
           </ul>
         </div>
-      ) : (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/60 px-6 py-10 text-center">
-          <h2 className="text-lg font-bold text-slate-900">今日免费搜索次数已用完</h2>
-          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-600">
-            免费版每日可搜索 {quota.quota} 次。升级黄金会员可获得正文全文与每日 20 次搜索；
-            铂金会员还可查看联系方式、附件并获得更多导出额度。
-          </p>
-          <div className="mt-5 flex justify-center gap-3">
-            <Link
-              href="/pricing"
-              className="cursor-pointer rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-strong"
-            >
-              查看套餐并升级
-            </Link>
-            <Link
-              href="/list"
-              className="cursor-pointer rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors duration-200 hover:border-blue-300"
-            >
-              明日再试
-            </Link>
-          </div>
-        </div>
-      )}
 
-      {quota.allowed && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2">
           {page > 1 && (
             <Link href={`/list?${qs({ page: String(page - 1) })}`} className={pageLink}>
               上一页

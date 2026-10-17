@@ -21,7 +21,7 @@ lists:
       fields:
         title: { selector: "a", attr: "text" }
         url: { selector: "a", attr: "href" }
-        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}(?:\s+\d{1,2}:\d{1,2})?' }
         province: { selector: "em:eq(1)", attr: "text" }
         purchaser: { selector: "em:eq(2)", attr: "text" }
     detail:
@@ -38,7 +38,7 @@ lists:
       fields:
         title: { selector: "a", attr: "text" }
         url: { selector: "a", attr: "href" }
-        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}(?:\s+\d{1,2}:\d{1,2})?' }
         province: { selector: "em:eq(1)", attr: "text" }
         purchaser: { selector: "em:eq(2)", attr: "text" }
     detail:
@@ -55,7 +55,7 @@ lists:
       fields:
         title: { selector: "a", attr: "text" }
         url: { selector: "a", attr: "href" }
-        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}(?:\s+\d{1,2}:\d{1,2})?' }
         province: { selector: "em:eq(1)", attr: "text" }
         purchaser: { selector: "em:eq(2)", attr: "text" }
     detail:
@@ -72,7 +72,7 @@ lists:
       fields:
         title: { selector: "a", attr: "text" }
         url: { selector: "a", attr: "href" }
-        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}(?:\s+\d{1,2}:\d{1,2})?' }
         province: { selector: "em:eq(1)", attr: "text" }
         purchaser: { selector: "em:eq(2)", attr: "text" }
     detail:
@@ -89,7 +89,7 @@ lists:
       fields:
         title: { selector: "a", attr: "text" }
         url: { selector: "a", attr: "href" }
-        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}(?:\s+\d{1,2}:\d{1,2})?' }
         province: { selector: "em:eq(1)", attr: "text" }
         purchaser: { selector: "em:eq(2)", attr: "text" }
     detail:
@@ -106,7 +106,7 @@ lists:
       fields:
         title: { selector: "a", attr: "text" }
         url: { selector: "a", attr: "href" }
-        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}(?:\s+\d{1,2}:\d{1,2})?' }
         province: { selector: "em:eq(1)", attr: "text" }
         purchaser: { selector: "em:eq(2)", attr: "text" }
     detail:
@@ -123,7 +123,7 @@ lists:
       fields:
         title: { selector: "a", attr: "text" }
         url: { selector: "a", attr: "href" }
-        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}' }
+        date: { selector: "em", attr: "text", regex: '\d{4}-\d{2}-\d{2}(?:\s+\d{1,2}:\d{1,2})?' }
         province: { selector: "em:eq(1)", attr: "text" }
         purchaser: { selector: "em:eq(2)", attr: "text" }
     detail:

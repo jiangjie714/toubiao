@@ -31,6 +31,8 @@ export type ListConfig = {
     url: string;
     headers?: Record<string, string>;
     form?: Record<string, string>;
+    body?: string;
+    json?: Record<string, unknown>;
   };
   startPage?: number;
   maxPages?: number;

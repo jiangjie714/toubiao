@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Tender } from "@prisma/client";
+import { formatJsonTenderContent, isJsonString } from "@/lib/tender-json-formatter";
 
 export interface AiExecutiveSummary {
   projectOverview: string;
@@ -102,17 +103,29 @@ export function analyzeWithHeuristics(tender: TenderWithRelations): {
   timelineAndKey: AiTimelineAndKey;
   modelUsed: string;
 } {
-  const text = cleanHtmlAndNormalize(tender.content ?? "");
+  let rawContent = tender.content ?? "";
+  let jsonFields: Record<string, string> = {};
+  if (isJsonString(rawContent)) {
+    const formatted = formatJsonTenderContent(rawContent, tender.title);
+    rawContent = formatted.plainText;
+    jsonFields = formatted.fields;
+  }
+
+  const text = cleanHtmlAndNormalize(rawContent);
   const title = tender.title ?? "";
 
   // 1. 一页纸速读 (Executive Summary)
   const procuringEntity =
     tender.purchaser ??
+    jsonFields["采购单位"] ??
+    jsonFields["发布机构"] ??
     extractMatch(text, /(?:采购人|招标人|采购单位|招标单位|业主单位)[：:\s]*([^,\n;，；]{2,40})/);
 
   const budgetOrPrice = tender.budgetAmount
     ? `${tender.budgetAmount} 万元`
-    : extractMatch(
+    : jsonFields["预算金额 (元)"] ??
+      jsonFields["成交金额 (元)"] ??
+      extractMatch(
         text,
         /(?:最高限价|预算金额|预算总计|控制价|招标控制价)[：:\s]*([^,\n;，；]{2,30})/,
         "按招标文件规定/未披露具体上限",

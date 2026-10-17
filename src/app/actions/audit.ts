@@ -2,6 +2,7 @@
 
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { consumeAiQuota } from "@/lib/quota";
 import { revalidatePath } from "next/cache";
 import {
   runDeepBidAudit,
@@ -58,6 +59,15 @@ export async function runDocumentAuditAction(input: RunAuditInput): Promise<{
 
     if (!input.content || input.content.trim().length < 10) {
       return { success: false, error: "送检文本内容过短，请至少提供10个字符的标书章节内容" };
+    }
+
+    // 校验 AI 算力与清标配额
+    const aiCheck = await consumeAiQuota(user.uid, { isAdmin: user.role === "ADMIN" });
+    if (!aiCheck.allowed) {
+      return {
+        success: false,
+        error: "AI 标书清标质检额度已用尽。该功能为企业版尊享高价值服务，请升级企业版获取专属质检配额与大标书质检通道。",
+      };
     }
 
     // 调取企业资质名称列表辅助核查

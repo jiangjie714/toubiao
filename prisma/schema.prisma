@@ -16,6 +16,8 @@ model User {
   status             String                   @default("ACTIVE")
   email              String?                  @unique
   emailVerified      Boolean                  @default(false)
+  wechatOpenId       String?                  @unique
+  wechatUnionId      String?                  @unique
   lastLoginAt        DateTime?
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
@@ -44,6 +46,8 @@ model User {
   competitorWatches  CompetitorWatch[]
   webhookEndpoints   WebhookEndpoint[]
   proposalProjects   ProposalProject[]
+  userRoles          UserRole[]
+  tenderViews        TenderViewLog[]
 }
 
 
@@ -69,13 +73,23 @@ model IndustryDict {
 }
 
 model Project {
-  id             Int      @id @default(autoincrement())
-  projectNo      String?  @unique
-  canonicalTitle String
-  provinceCode   String?
-  firstSeenAt    DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  notices        Tender[]
+  id              Int       @id @default(autoincrement())
+  projectNo       String?   @unique
+  canonicalTitle  String
+  provinceCode    String?
+  stage           String    @default("BIDDING") // INTENTION | BIDDING | CLARIFYING | EVALUATING | AWARDED | TERMINATED
+  bidOpenTime     DateTime?
+  clarifyDeadline DateTime?
+  budgetTotal     Decimal?  @db.Decimal(14, 2)
+  awardTotal      Decimal?  @db.Decimal(14, 2)
+  winnerName      String?
+  purchaserName   String?
+  firstSeenAt     DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  notices         Tender[]
+
+  @@index([stage])
+  @@index([bidOpenTime])
 }
 
 model Tender {
@@ -95,9 +109,12 @@ model Tender {
   budgetAmount     Decimal?     @db.Decimal(14, 2)
   awardAmount      Decimal?     @db.Decimal(14, 2)
   openTime         DateTime?
+  clarifyDeadline  DateTime?
+  depositDeadline  DateTime?
   industryCode     String?
   winningSupplier  String?
   contentHtml      String?
+  diffHighlights   Json?
   projectRefId     Int?
   project          Project?     @relation(fields: [projectRefId], references: [id])
   fieldsConfidence Json?
@@ -113,6 +130,7 @@ model Tender {
   bidDeposits      BidDeposit[]
   bidAudits        BidAuditRecord[]
   proposals        ProposalProject[]
+  viewLogs         TenderViewLog[]
 
   @@index([projectNo])
   @@index([projectRefId])
@@ -126,18 +144,25 @@ model Tender {
 }
 
 model Attachment {
-  id          Int      @id @default(autoincrement())
-  tenderId    Int
-  tender      Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
-  name        String
-  sourceUrl   String
-  storageKey  String?
-  size        Int?
-  contentType String?
-  status      String   @default("pending")
-  createdAt   DateTime @default(now())
+  id            Int       @id @default(autoincrement())
+  tenderId      Int
+  tender        Tender    @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  name          String
+  sourceUrl     String
+  storageKey    String?
+  size          Int?
+  contentType   String?
+  status        String    @default("pending") // pending | parsed | failed
+  fileType      String?   // PDF | DOCX | XLSX | ZIP | OTHER
+  pageCount     Int?
+  itemCount     Int?
+  extractedText String?   @db.Text
+  snippet       String?
+  parsedAt      DateTime?
+  createdAt     DateTime  @default(now())
 
   @@index([tenderId])
+  @@index([status])
 }
 
 model OrgContact {
@@ -303,12 +328,21 @@ model Order {
   paidAt        DateTime?
   invoiceStatus String    @default("NONE") // NONE | REQUESTED | ISSUED | REJECTED
   note          String?
+  matchingCode  String?   @db.VarChar(16)
+  proofUrl      String?
+  paidNoticeAt  DateTime?
+  auditStatus   String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  auditNote     String?
+  auditByUserId Int?
+  auditAt       DateTime?
   invoice       Invoice?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
+  @@index([matchingCode])
+  @@index([auditStatus, createdAt])
 }
 
 model ExportAudit {
@@ -352,6 +386,20 @@ model QuotaLedger {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, kind, date])
+}
+
+model TenderViewLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenderId  Int
+  tender    Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tenderId, date])
+  @@index([userId, date])
+  @@index([tenderId])
 }
 
 model EmailVerificationToken {
@@ -845,4 +893,96 @@ model ProposalProject {
   @@index([tenderId])
   @@index([followId])
   @@index([teamId])
+}
+
+// -------------------------------------------------------------
+// RBAC 权限体系与动态菜单配置模型
+// -------------------------------------------------------------
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  code        String           @unique
+  name        String
+  scope       String           @default("PLATFORM") // PLATFORM (平台级运营角色) | TENANT (企业租户级角色)
+  description String?
+  isSystem    Boolean          @default(false)
+  userRoles   UserRole[]
+  roleMenus   RoleMenu[]
+  rolePerms   RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([scope])
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  code        String           @unique
+  name        String
+  category    String           // TENDER | FINANCE | OPS | SYSTEM | CRM | DATA | AI
+  type        String           @default("BUTTON") // MENU | BUTTON | API | DATA
+  description String?
+  rolePerms   RolePermission[]
+
+  @@index([category])
+}
+
+model Menu {
+  id          Int        @id @default(autoincrement())
+  parentId    Int?
+  parent      Menu?      @relation("MenuHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Menu[]     @relation("MenuHierarchy")
+  title       String
+  path        String
+  icon        String?
+  sortOrder   Int        @default(0)
+  target      String     @default("ADMIN") // ADMIN (后台导航) | SITE (前台导航)
+  badge       String?    // CORP | VIP | HOT 等
+  permission  String?    // 绑定的权限点编码
+  active      Boolean    @default(true)
+  roleMenus   RoleMenu[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([target, sortOrder])
+  @@index([parentId])
+}
+
+model UserRole {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId    Int
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+model RoleMenu {
+  id        Int      @id @default(autoincrement())
+  roleId    Int
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  menuId    Int
+  menu      Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([roleId, menuId])
+  @@index([roleId])
+  @@index([menuId])
+}
+
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  roleId       Int
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
 }

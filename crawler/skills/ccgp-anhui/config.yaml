@@ -1,32 +1,35 @@
 source:
   name: 安徽省政府采购网
-  baseUrl: http://www.ccgp-anhui.gov.cn
+  baseUrl: https://www.ccgp-anhui.gov.cn
 settings:
-  requestDelayMs: 1500
+  requestDelayMs: 1200
   timeoutMs: 20000
   retries: 2
-  maxPages: 1
+  maxPages: 2
   scheduleCron: 0 */2 * * *
 lists:
   - type: NOTICE
-    mode: html
-    firstPageUrl: http://www.ccgp-anhui.gov.cn/cms/channel/purchase_notice/index.htm
-    url: http://www.ccgp-anhui.gov.cn/cms/channel/purchase_notice/index.htm
+    mode: json
+    request:
+      method: POST
+      url: https://www.ccgp-anhui.gov.cn/front/search/category
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      json:
+        pageNo: "{page}"
+        pageSize: 15
+        categoryCode: ZcyAnnouncement
+    startPage: 1
+    maxPages: 2
     parse:
-      itemSelector: ul.line_list > li
+      itemsPath: "hits.hits"
       fields:
-        title:
-          selector: a
-          attr: text
-        url:
-          selector: a
-          attr: href
-        date:
-          selector: span
-          attr: text
-          regex: \d{4}-\d{2}-\d{2}
+        title: "_source.title"
+        url: "https://www.ccgp-anhui.gov.cn/portal/detail?articleId={_source.articleId}"
+        date: "_source.publishDate"
+        purchaser: "_source.author"
         province:
           const: "34"
+        city: "_source.districtName"
     detail:
-      contentSelector: div.detail_con
-      removeSelector: script, style
+      contentSelector: "#template-center-mark, .tb-fidelity-root, body"

@@ -7,7 +7,9 @@ import {
   LockClosedIcon,
   CheckCircleIcon,
   BoltIcon,
+  EyeIcon,
 } from "@/components/icons";
+import AttachmentPreviewModal from "@/components/attachment-preview-modal";
 
 export interface AttachmentItem {
   id: number;
@@ -16,6 +18,10 @@ export interface AttachmentItem {
   contentType?: string | null;
   size?: number | null;
   status: string;
+  fileType?: string | null;
+  extractedText?: string | null;
+  snippet?: string | null;
+  pageCount?: number | null;
 }
 
 interface Props {
@@ -31,6 +37,7 @@ export default function TenderAttachmentsCard({
   planName,
 }: Props) {
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [previewFile, setPreviewFile] = useState<AttachmentItem | null>(null);
 
   // 格式化文件大小
   const formatSize = (bytes?: number | null) => {
@@ -143,17 +150,42 @@ export default function TenderAttachmentsCard({
                       </span>
                     )}
                   </div>
-                  <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                     <span className="font-mono">{formatSize(file.size)}</span>
+                    {file.pageCount && file.pageCount > 0 ? (
+                      <>
+                        <span>·</span>
+                        <span className="font-medium text-slate-600">{file.pageCount} 页</span>
+                      </>
+                    ) : null}
                     <span>·</span>
                     <span className={file.status === "STORED" ? "text-emerald-600" : "text-slate-500"}>
                       {file.status === "STORED" ? "本地对象存储已就绪" : "会员触发时即时转存"}
                     </span>
+                    {(file.extractedText || file.snippet) && (
+                      <>
+                        <span>·</span>
+                        <span className="rounded bg-indigo-50 px-1.5 py-0.2 text-[10px] font-medium text-indigo-700 border border-indigo-200">
+                          支持划词检索
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 shrink-0">
+                {(file.extractedText || file.snippet) && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewFile(file)}
+                    className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:border-primary hover:text-primary transition-colors"
+                    title="免下载在线划词与关键字定位"
+                  >
+                    <EyeIcon className="h-3.5 w-3.5" />
+                    <span>划词预览</span>
+                  </button>
+                )}
                 {canViewAttachments ? (
                   <button
                     disabled={downloadingId === file.id}
@@ -211,6 +243,19 @@ export default function TenderAttachmentsCard({
             </Link>
           </div>
         </div>
+      )}
+
+      {/* 免下载在线划词预览弹窗 */}
+      {previewFile && (
+        <AttachmentPreviewModal
+          isOpen={!!previewFile}
+          onClose={() => setPreviewFile(null)}
+          attachmentName={previewFile.name}
+          fileType={previewFile.fileType || getFileBadge(previewFile.name).label}
+          extractedText={previewFile.extractedText}
+          snippet={previewFile.snippet}
+          pageCount={previewFile.pageCount}
+        />
       )}
     </div>
   );

@@ -5,16 +5,26 @@ import { processTaskQueue } from "./queue";
 import { scheduleDueSources } from "./scheduler";
 
 const POLL_MS = Number(process.env.CRAWL_POLL_MS || 30_000);
+let isRunning = false;
 
 async function tick() {
-  const enqueued = await scheduleDueSources();
-  if (enqueued > 0) console.log(`已入队 ${enqueued} 个抓取任务`);
-  await processTaskQueue({ once: true });
+  if (isRunning) return;
+  isRunning = true;
+  try {
+    const enqueued = await scheduleDueSources();
+    if (enqueued > 0) console.log(`[${new Date().toLocaleTimeString("zh-CN")}] 已入队 ${enqueued} 个抓取任务`);
+    const processed = await processTaskQueue({ drain: true });
+    if (processed > 0) console.log(`[${new Date().toLocaleTimeString("zh-CN")}] 本轮队列处理完成，已执行 ${processed} 个抓取任务`);
+  } catch (error) {
+    console.error("采集任务异常：", error);
+  } finally {
+    isRunning = false;
+  }
 }
 
 async function main() {
   await syncSkillConfigs();
-  console.log(`[${new Date().toLocaleString("zh-CN")}] 采集 Worker 已启动`);
+  console.log(`[${new Date().toLocaleString("zh-CN")}] 采集 Worker 已启动 (轮询间隔: ${POLL_MS / 1000}秒)`);
 
   if (process.env.CRAWL_ONCE === "1") {
     await tick();
@@ -23,7 +33,7 @@ async function main() {
 
   await tick();
   setInterval(() => {
-    tick().catch((error) => console.error("采集任务异常：", error));
+    void tick();
   }, POLL_MS);
 }
 

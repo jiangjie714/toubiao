@@ -83,19 +83,40 @@ export interface UserDetailData {
       };
     };
   } | null;
+  userRoles?: Array<{
+    role: {
+      id: number;
+      name: string;
+      code: string;
+      scope: string;
+    };
+  }>;
   _count: {
     orders: number;
     tenderFollows: number;
   };
 }
 
+export interface AvailableRoleOption {
+  id: number;
+  name: string;
+  code: string;
+  scope: string;
+}
+
 interface UserProfileModalProps {
   user: UserDetailData;
   plans: PlanOption[];
+  availableRoles?: AvailableRoleOption[];
   onClose: () => void;
 }
 
-export default function UserProfileModal({ user, plans, onClose }: UserProfileModalProps) {
+export default function UserProfileModal({
+  user,
+  plans,
+  availableRoles = [],
+  onClose,
+}: UserProfileModalProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "edit">("overview");
   const [isPending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -105,6 +126,9 @@ export default function UserProfileModal({ user, plans, onClose }: UserProfileMo
   const [email, setEmail] = useState(user.email || "");
   const [role, setRole] = useState<"USER" | "ADMIN">(user.role as "USER" | "ADMIN");
   const [status, setStatus] = useState<"ACTIVE" | "DISABLED">(user.status as "ACTIVE" | "DISABLED");
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>(
+    user.userRoles?.map((ur) => ur.role.id) ?? [],
+  );
   const [companyName, setCompanyName] = useState(user.companyProfile?.companyName || "");
   const [registeredCapital, setRegisteredCapital] = useState(user.companyProfile?.registeredCapital || "");
   const [planCode, setPlanCode] = useState(user.subscription?.plan?.code || "FREE");
@@ -116,6 +140,12 @@ export default function UserProfileModal({ user, plans, onClose }: UserProfileMo
   const endsAtStr = user.subscription?.endsAt
     ? new Date(user.subscription.endsAt).toLocaleDateString("zh-CN")
     : isVip ? "永久有效" : "无限制";
+
+  const toggleRoleId = (id: number) => {
+    setSelectedRoleIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,6 +162,7 @@ export default function UserProfileModal({ user, plans, onClose }: UserProfileMo
         planCode,
         extendMonths,
         newPassword: newPassword || undefined,
+        roleIds: selectedRoleIds,
       });
 
       if (res.success) {
@@ -448,6 +479,37 @@ export default function UserProfileModal({ user, plans, onClose }: UserProfileMo
                     </select>
                   </div>
                 </div>
+
+                {availableRoles.length > 0 && (
+                  <div className="pt-3 border-t border-slate-200/80">
+                    <label className="mb-2 block text-xs font-semibold text-slate-700">
+                      分配 RBAC 细粒度角色权限
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {availableRoles.map((r) => {
+                        const checked = selectedRoleIds.includes(r.id);
+                        return (
+                          <label
+                            key={r.id}
+                            className={`flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-xs transition-colors ${
+                              checked
+                                ? "border-blue-300 bg-blue-50/80 text-primary font-medium"
+                                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleRoleId(r.id)}
+                              className="h-3.5 w-3.5 rounded-sm border-slate-300 text-primary focus:ring-primary"
+                            />
+                            <span className="truncate">{r.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 企业资质档案 */}

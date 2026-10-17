@@ -1,32 +1,35 @@
 source:
   name: 上海市政府采购网
-  baseUrl: http://www.zfcg.sh.gov.cn
+  baseUrl: https://www.zfcg.sh.gov.cn
 settings:
-  requestDelayMs: 1500
+  requestDelayMs: 1200
   timeoutMs: 20000
   retries: 2
-  maxPages: 1
+  maxPages: 2
   scheduleCron: 0 */2 * * *
 lists:
   - type: NOTICE
-    mode: html
-    firstPageUrl: http://www.zfcg.sh.gov.cn/cms/channel/purchase_notice/index.htm
-    url: http://www.zfcg.sh.gov.cn/cms/channel/purchase_notice/index.htm
+    mode: json
+    request:
+      method: POST
+      url: https://www.zfcg.sh.gov.cn/front/search/category
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      json:
+        pageNo: "{page}"
+        pageSize: 15
+        categoryCode: ZcyAnnouncement
+    startPage: 1
+    maxPages: 2
     parse:
-      itemSelector: ul.newsList > li
+      itemsPath: "hits.hits"
       fields:
-        title:
-          selector: a
-          attr: text
-        url:
-          selector: a
-          attr: href
-        date:
-          selector: span.time
-          attr: text
-          regex: \d{4}-\d{2}-\d{2}
+        title: "_source.title"
+        url: "https://www.zfcg.sh.gov.cn/portal/detail?articleId={_source.articleId}"
+        date: "_source.publishDate"
+        purchaser: "_source.author"
         province:
           const: "31"
+        city: "_source.districtName"
     detail:
-      contentSelector: div.content_detail
-      removeSelector: script, style
+      contentSelector: "#template-center-mark, .tb-fidelity-root, body"

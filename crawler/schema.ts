@@ -69,6 +69,8 @@ const listConfigSchema = z
         url: z.string().min(1),
         headers: z.record(z.string(), z.string()).optional(),
         form: z.record(z.string(), z.string()).optional(),
+        body: z.string().optional(),
+        json: z.record(z.string(), z.any()).optional(),
       })
       .strict()
       .optional(),

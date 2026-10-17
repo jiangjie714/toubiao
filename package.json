@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "db:push": "prisma db push",
@@ -14,7 +14,9 @@
     "crawl:dry": "tsx crawler/cli.ts --dry-run --file --max-pages=1",
     "migrate:sqlite": "tsx scripts/migrate-sqlite-to-postgres.ts",
     "push:daily": "tsx scripts/push-daily.ts",
-    "push:worker": "tsx scripts/push-worker.ts"
+    "push:worker": "tsx scripts/push-worker.ts",
+    "service:start": "bash ./start.sh",
+    "service:stop": "bash ./stop.sh"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -24,32 +26,32 @@
     "@types/qrcode": "^1.5.6",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
-    "docx": "^9.7.1",
+    "docx": "^9.8.1",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "jose": "^6.2.12",
     "next": "16.3.4",
     "node-cron": "^4.6.0",
-    "nodemailer": "^10.0.3",
+    "nodemailer": "^10.0.12",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
-    "yaml": "^2.9.0",
-    "zod": "^4.5.4"
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/nodemailer": "^8.0.1",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^20.19.43",
+    "@types/nodemailer": "^8.0.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "china-division": "^2.7.0",
-    "eslint": "^9",
+    "eslint": "^9.39.5",
     "eslint-config-next": "16.3.4",
     "prisma": "^6.19.3",
-    "tailwindcss": "^4",
-    "tsx": "^4.23.13",
-    "typescript": "^5"
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
   }
 }

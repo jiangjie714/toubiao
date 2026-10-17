@@ -10,21 +10,21 @@ settings:
 lists:
   - type: NOTICE
     mode: html
-    firstPageUrl: https://www.crecgec.com/cms/channel/purchase_notice/index.htm
-    url: https://www.crecgec.com/cms/channel/purchase_notice/index.htm
+    firstPageUrl: https://www.crecgec.com/
+    url: https://www.crecgec.com/
     parse:
-      itemSelector: ul.notice-ul > li
+      itemSelector: div.luban-notice-row
       fields:
         title:
-          selector: a
-          attr: text
+          selector: a.name
+          attr: title
         url:
-          selector: a
+          selector: a.name
           attr: href
         date:
-          selector: span
+          selector: div.date
           attr: text
-          regex: \d{4}-\d{2}-\d{2}
+          regex: '\d{4}-\d{2}-\d{2}'
     detail:
-      contentSelector: div.notice-info
+      contentSelector: ".tb-fidelity-root, .content, body"
       removeSelector: script, style

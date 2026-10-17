@@ -109,11 +109,19 @@ export async function createApiKeyAction(name: string): Promise<{
 
     const entitlement = await getEntitlement(user.uid);
     const isAdmin = user.role === "ADMIN";
-    const isEnterprise =
-      entitlement.planCode === "PLATINUM" || entitlement.planCode === "ENTERPRISE";
+    const hasApiAccess =
+      isAdmin ||
+      entitlement.features.apiAccess ||
+      entitlement.planCode.startsWith("ENTERPRISE");
 
-    // 默认月度配额：企业/白金/管理员为 10,000 次，普通体验用户为 200 次（提供免费开发者体验）
-    const quota = isAdmin || isEnterprise ? 10000 : 200;
+    if (!hasApiAccess) {
+      return {
+        success: false,
+        error: "开放 API 接口调用为企业专业版（16,800元/年）专属特权。请升级企业专业版开通 API Key 访问与系统集成对接权限。",
+      };
+    }
+
+    const quota = entitlement.planCode.includes("PRO") ? 50000 : 10000;
 
     const { rawKey, keyPrefix, keyHash } = generateRawApiKey();
 

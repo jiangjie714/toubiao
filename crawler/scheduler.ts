@@ -6,7 +6,7 @@ export async function scheduleDueSources(now = new Date()): Promise<number> {
   const sources = await prisma.crawlSource.findMany({
     where: {
       enabled: true,
-      status: { not: "RUNNING" },
+      AND: [{ OR: [{ status: null }, { status: { not: "RUNNING" } }] }],
       OR: [{ nextRunAt: null }, { nextRunAt: { lte: now } }],
     },
     orderBy: [{ priority: "asc" }, { nextRunAt: "asc" }],
@@ -31,7 +31,11 @@ export async function scheduleDueSources(now = new Date()): Promise<number> {
       continue;
     }
 
-    await enqueueCrawlTask({ skillCode: source.skillCode, trigger: "cron" });
+    await enqueueCrawlTask({
+      skillCode: source.skillCode,
+      trigger: "cron",
+      payload: { resume: true },
+    });
     await prisma.crawlSource.update({
       where: { id: source.id },
       data: { nextRunAt: nextRun },

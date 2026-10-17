@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { activatePaidOrder } from "./commerce";
 
-export type PaymentProvider = "alipay" | "wechat";
+export type PaymentProvider = "alipay" | "wechat" | "jeepay";
 
 export type PaymentNotification = {
   provider: PaymentProvider;
@@ -157,6 +157,38 @@ export function parseWechatNotification(
   };
 }
 
+export function parseJeepayNotification(
+  params: Record<string, unknown>,
+): PaymentNotification | null {
+  const orderNo = String(params.mchOrderNo ?? "").trim();
+  const transactionNo = String(params.payOrderId ?? "").trim();
+  const providerEventId = String(params.payOrderId || params.mchOrderNo || "").trim();
+  if (!orderNo || !providerEventId) return null;
+
+  const state = Number(params.state);
+  const amount = Number(params.amount);
+  if (!Number.isFinite(amount)) return null;
+
+  const success = state === 2;
+  let paidAt: Date | null = null;
+  if (params.successTime) {
+    const parsedDate = new Date(Number(params.successTime) || String(params.successTime));
+    paidAt = !isNaN(parsedDate.getTime()) ? parsedDate : null;
+  }
+
+  return {
+    provider: "jeepay",
+    providerEventId,
+    eventType: String(params.state ?? ""),
+    orderNo,
+    transactionNo,
+    paidAmount: Math.round(amount),
+    paidAt,
+    success,
+    payload: params,
+  };
+}
+
 export function decryptWechatResource(rawBody: string): Record<string, unknown> | null {
   const apiV3Key = process.env.WECHAT_PAY_API_V3_KEY;
   if (!apiV3Key || apiV3Key.length !== 32) return null;
@@ -233,7 +265,11 @@ export async function processPaymentNotification(
     });
     return { accepted: false, duplicate: false, reason: "ORDER_NOT_FOUND" };
   }
-  if (order.channel !== notification.provider) {
+  const channelMatched =
+    notification.provider === "jeepay"
+      ? order.channel === "jeepay" || order.channel === "wechat" || order.channel === "alipay"
+      : order.channel === notification.provider;
+  if (!channelMatched) {
     await prisma.paymentEvent.update({
       where: { id: event.id },
       data: { status: "FAILED", error: "支付渠道不匹配" },
@@ -291,3 +327,55 @@ export async function processPaymentNotification(
   });
   return { accepted: true, duplicate: false };
 }
+
+/** 为订单分配 4 位数字附言识别码（1000-9999），避免未支付订单之间碰撞 */
+export async function allocateMatchingCode(orderNo: string): Promise<string> {
+  let hash = 0;
+  for (let i = 0; i < orderNo.length; i++) {
+    hash = (hash * 31 + orderNo.charCodeAt(i)) % 9000;
+  }
+  let candidate = String(1000 + Math.abs(hash));
+  let attempts = 0;
+  while (attempts < 15) {
+    const existing = await prisma.order.findFirst({
+      where: {
+        matchingCode: candidate,
+        status: { in: ["PENDING", "WAIT_VERIFY"] },
+        NOT: { orderNo },
+      },
+      select: { id: true },
+    });
+    if (!existing) return candidate;
+    candidate = String(1000 + ((Number(candidate) - 1000 + 37) % 9000));
+    attempts++;
+  }
+  return candidate;
+}
+
+const AUDIT_SECRET = process.env.AUTH_SECRET || "toubiao_audit_token_secret_key_2026";
+
+/** 生成管理员移动端免密一键审核放行的 HMAC-SHA256 Token（默认 24 小时有效） */
+export function generateAuditToken(orderNo: string, expiresInSeconds: number = 86400): string {
+  const expiresAt = Math.floor(Date.now() / 1000) + expiresInSeconds;
+  const payload = `${orderNo}:${expiresAt}`;
+  const hmac = crypto.createHmac("sha256", AUDIT_SECRET).update(payload).digest("hex");
+  return `${Buffer.from(payload).toString("base64url")}.${hmac}`;
+}
+
+/** 校验管理员移动端免密一键审核放行的 Token */
+export function verifyAuditToken(token: string, expectedOrderNo: string): boolean {
+  try {
+    const [encodedPayload, signature] = token.split(".");
+    if (!encodedPayload || !signature) return false;
+    const payload = Buffer.from(encodedPayload, "base64url").toString("utf8");
+    const [orderNo, expiresAtStr] = payload.split(":");
+    if (orderNo !== expectedOrderNo) return false;
+    const expiresAt = Number(expiresAtStr);
+    if (!expiresAt || expiresAt < Math.floor(Date.now() / 1000)) return false;
+    const expectedHmac = crypto.createHmac("sha256", AUDIT_SECRET).update(payload).digest("hex");
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedHmac));
+  } catch {
+    return false;
+  }
+}
+

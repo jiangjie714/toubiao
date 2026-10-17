@@ -10,10 +10,10 @@ settings:
 lists:
   - type: NOTICE
     mode: html
-    firstPageUrl: http://www.ccgp-jiangsu.gov.cn/jiangsu/cggg/
-    url: http://www.ccgp-jiangsu.gov.cn/jiangsu/cggg/
+    firstPageUrl: http://www.ccgp-jiangsu.gov.cn/
+    url: http://www.ccgp-jiangsu.gov.cn/
     parse:
-      itemSelector: ul.list_news > li
+      itemSelector: table.notice_tableBox tr:has(a)
       fields:
         title:
           selector: a
@@ -22,11 +22,11 @@ lists:
           selector: a
           attr: href
         date:
-          selector: span
+          selector: td:last-child
           attr: text
-          regex: \d{4}-\d{2}-\d{2}
+          regex: '\d{4}-\d{2}-\d{2}'
         province:
           const: "32"
     detail:
-      contentSelector: div.detail_txt
+      contentSelector: div.article_content, .content, body
       removeSelector: script, style

@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 import type { Order } from "@prisma/client";
+import { isJeepayConfigured, createJeepayOrder } from "./jeepay";
 
-export type PaymentChannel = "wechat" | "alipay";
+export type PaymentChannel = "wechat" | "alipay" | "jeepay";
 
 export type PrepayResult = {
   code: string;
@@ -170,12 +171,42 @@ export async function createPrepay(
   description: string,
 ): Promise<PrepayResult> {
   try {
+    if (isJeepayConfigured()) {
+      let wayCode: string;
+      if (channel === "wechat") {
+        wayCode = process.env.JEEPAY_WAYCODE_WECHAT || "WX_NATIVE";
+      } else if (channel === "alipay") {
+        wayCode = process.env.JEEPAY_WAYCODE_ALIPAY || "ALI_QR";
+      } else if (channel === "jeepay") {
+        wayCode = process.env.JEEPAY_WAYCODE_CASHIER || "QR_CASHIER";
+      } else {
+        throw new PaymentPrepayError(`不支持的支付渠道: ${channel}`);
+      }
+
+      const res = await createJeepayOrder({
+        mchOrderNo: order.orderNo,
+        wayCode,
+        amount: cents(order.amount),
+        subject: description,
+      });
+
+      if (!res.payData) {
+        throw new PaymentPrepayError(res.errMsg || "Jeepay 预下单未返回支付数据");
+      }
+
+      return { code: res.payData, expiresAt: twoHoursFromNow() };
+    }
+
     if (channel === "wechat") return await createWechatNativePrepay(order, description);
-    return await createAlipayPrecreate(order, description);
+    if (channel === "alipay") return await createAlipayPrecreate(order, description);
+    throw new PaymentPrepayError("聚合支付网关未配置，且不支持该支付渠道");
   } catch (error) {
     if (error instanceof PaymentPrepayError) throw error;
     if (error instanceof Error && error.name === "AbortError") {
       throw new PaymentPrepayError("支付渠道请求超时");
+    }
+    if (error instanceof Error) {
+      throw new PaymentPrepayError(error.message);
     }
     throw new PaymentPrepayError("支付渠道请求失败");
   }

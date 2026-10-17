@@ -2,7 +2,7 @@
 
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getEntitlement } from "@/lib/quota";
+import { getEntitlement, canCreateTeam } from "@/lib/quota";
 import { revalidatePath } from "next/cache";
 
 export interface TeamMemberInfo {
@@ -67,11 +67,8 @@ export async function getMyTeamAction(): Promise<TeamActionResult> {
       });
 
       if (!existingMembership) {
-        // 如果是白金、企业版或管理员，自动初始化企业团队
-        const isEligible =
-          session.role === "ADMIN" ||
-          entitlement.planCode.startsWith("PLATINUM") ||
-          entitlement.planCode.startsWith("ENTERPRISE");
+        // 严格限定：仅企业版或超级管理员才自动初始化企业团队（个人黄金/铂金版为单人单端，不可创建多席位团队）
+        const isEligible = canCreateTeam(entitlement, session.role);
 
         if (isEligible) {
           const maxSeats = entitlement.planCode.includes("PRO") ? 10 : 3;
@@ -224,6 +221,7 @@ export async function getMyTeamAction(): Promise<TeamActionResult> {
 export async function addTeamMemberAction(
   identifier: string,
   title?: string,
+  role: "MANAGER" | "MEMBER" = "MEMBER",
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await getSession();
@@ -236,7 +234,7 @@ export async function addTeamMemberAction(
       return { success: false, error: "请输入成员用户名或绑定邮箱" };
     }
 
-    // 查找用户管理的团队 (OWNER 或 MANAGER)
+    // 查找用户管理的团队 (OWNER)
     const team = await prisma.team.findUnique({
       where: { ownerId: session.uid },
       include: { members: true },
@@ -284,14 +282,26 @@ export async function addTeamMemberAction(
       };
     }
 
-    // 添加成员
-    await prisma.teamMember.create({
-      data: {
-        teamId: team.id,
-        userId: targetUser.id,
-        role: "MEMBER",
-        title: title?.trim() || "项目组员",
-      },
+    // 添加成员并联动 RBAC 租户角色
+    await prisma.$transaction(async (tx) => {
+      await tx.teamMember.create({
+        data: {
+          teamId: team.id,
+          userId: targetUser.id,
+          role,
+          title: title?.trim() || (role === "MANAGER" ? "业务总监" : "投标专员"),
+        },
+      });
+
+      const roleCode = role === "MANAGER" ? "TENANT_MANAGER" : "TENANT_MEMBER";
+      const tenantRole = await tx.role.findUnique({ where: { code: roleCode } });
+      if (tenantRole) {
+        await tx.userRole.upsert({
+          where: { userId_roleId: { userId: targetUser.id, roleId: tenantRole.id } },
+          update: {},
+          create: { userId: targetUser.id, roleId: tenantRole.id },
+        });
+      }
     });
 
     revalidatePath("/team");
@@ -299,6 +309,74 @@ export async function addTeamMemberAction(
   } catch (error) {
     console.error("addTeamMemberAction error:", error);
     return { success: false, error: "添加成员失败，请稍后重试" };
+  }
+}
+
+export async function updateTeamMemberRoleAction(
+  memberId: number,
+  newRole: "MANAGER" | "MEMBER",
+  title?: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "请先登录" };
+    }
+
+    const member = await prisma.teamMember.findUnique({
+      where: { id: memberId },
+      include: { team: true },
+    });
+
+    if (!member) {
+      return { success: false, error: "未找到席位成员" };
+    }
+
+    if (member.team.ownerId !== session.uid) {
+      return { success: false, error: "仅团队负责人有权调配成员业务角色" };
+    }
+
+    if (member.role === "OWNER") {
+      return { success: false, error: "团队创建人角色不可修改" };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.teamMember.update({
+        where: { id: memberId },
+        data: {
+          role: newRole,
+          title: title !== undefined ? title.trim() || null : undefined,
+        },
+      });
+
+      // 切换 RBAC 租户角色
+      const oldRoleCode = member.role === "MANAGER" ? "TENANT_MANAGER" : "TENANT_MEMBER";
+      const newRoleCode = newRole === "MANAGER" ? "TENANT_MANAGER" : "TENANT_MEMBER";
+
+      const [oldRole, nextRole] = await Promise.all([
+        tx.role.findUnique({ where: { code: oldRoleCode } }),
+        tx.role.findUnique({ where: { code: newRoleCode } }),
+      ]);
+
+      if (oldRole) {
+        await tx.userRole.deleteMany({
+          where: { userId: member.userId, roleId: oldRole.id },
+        });
+      }
+      if (nextRole) {
+        await tx.userRole.upsert({
+          where: { userId_roleId: { userId: member.userId, roleId: nextRole.id } },
+          update: {},
+          create: { userId: member.userId, roleId: nextRole.id },
+        });
+      }
+    });
+
+    revalidatePath("/team");
+    return { success: true };
+  } catch (error) {
+    console.error("updateTeamMemberRoleAction error:", error);
+    return { success: false, error: "修改成员角色失败" };
   }
 }
 
@@ -332,8 +410,25 @@ export async function removeTeamMemberAction(
       return { success: false, error: "团队负责人不能移除自己的席位" };
     }
 
-    await prisma.teamMember.delete({
-      where: { id: memberId },
+    await prisma.$transaction(async (tx) => {
+      await tx.teamMember.delete({
+        where: { id: memberId },
+      });
+
+      // 解绑租户相关角色
+      const tenantRoles = await tx.role.findMany({
+        where: { scope: "TENANT" },
+        select: { id: true },
+      });
+      const tIds = tenantRoles.map((r) => r.id);
+      if (tIds.length > 0) {
+        await tx.userRole.deleteMany({
+          where: {
+            userId: membership.userId,
+            roleId: { in: tIds },
+          },
+        });
+      }
     });
 
     revalidatePath("/team");

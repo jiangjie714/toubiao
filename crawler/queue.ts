@@ -3,6 +3,9 @@ import { runSourceWithLogging } from "./runner";
 
 export type CrawlTaskPayload = {
   maxPages?: number;
+  resume?: boolean;
+  sinceDate?: string;
+  untilDate?: string;
 };
 
 export async function enqueueCrawlTask(input: {
@@ -82,21 +85,27 @@ export async function failCrawlTask(taskId: number, error: unknown): Promise<"qu
   return "failed";
 }
 
-export async function processTaskQueue(options: { once?: boolean; pollMs?: number } = {}) {
+export async function processTaskQueue(options: { once?: boolean; drain?: boolean; pollMs?: number } = {}) {
   let processed = 0;
 
   while (true) {
     const task = await claimNextCrawlTask();
     if (!task) {
-      if (options.once) break;
+      if (options.once || options.drain) break;
       await new Promise((resolve) => setTimeout(resolve, options.pollMs ?? 5_000));
       continue;
     }
 
     try {
       const payload = task.payload as CrawlTaskPayload | null;
+      const sinceDate = payload?.sinceDate ? new Date(payload.sinceDate) : undefined;
+      const untilDate = payload?.untilDate ? new Date(payload.untilDate) : undefined;
+
       await runSourceWithLogging(task.skillCode, {
         maxPages: payload?.maxPages,
+        resume: payload?.resume ?? (sinceDate || untilDate ? false : true),
+        sinceDate: sinceDate && !isNaN(sinceDate.getTime()) ? sinceDate : undefined,
+        untilDate: untilDate && !isNaN(untilDate.getTime()) ? untilDate : undefined,
         trigger: task.trigger as "cron" | "manual" | "api" | "retry",
       });
       await completeCrawlTask(task.id);

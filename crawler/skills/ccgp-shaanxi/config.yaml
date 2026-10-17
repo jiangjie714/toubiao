@@ -10,10 +10,10 @@ settings:
 lists:
   - type: NOTICE
     mode: html
-    firstPageUrl: http://www.ccgp-shaanxi.gov.cn/notice/noticeaframe.do
-    url: http://www.ccgp-shaanxi.gov.cn/notice/noticeaframe.do
+    firstPageUrl: http://www.ccgp-shaanxi.gov.cn/
+    url: http://www.ccgp-shaanxi.gov.cn/
     parse:
-      itemSelector: ul.newsList > li
+      itemSelector: a.ckxq
       fields:
         title:
           selector: a
@@ -22,11 +22,11 @@ lists:
           selector: a
           attr: href
         date:
-          selector: span.time
+          selector: a
           attr: text
-          regex: \d{4}-\d{2}-\d{2}
+          regex: '\d{4}-\d{2}-\d{2}'
         province:
           const: "61"
     detail:
-      contentSelector: div.notice-detail
+      contentSelector: .content, body
       removeSelector: script, style

@@ -9,7 +9,20 @@ interface PlanOption {
   name: string;
 }
 
-export default function UserCreateForm({ plans = [] }: { plans?: PlanOption[] }) {
+export interface AvailableRoleOption {
+  id: number;
+  name: string;
+  code: string;
+  scope: string;
+}
+
+export default function UserCreateForm({
+  plans = [],
+  availableRoles = [],
+}: {
+  plans?: PlanOption[];
+  availableRoles?: AvailableRoleOption[];
+}) {
   const [state, formAction, pending] = useActionState<{ error?: string }, FormData>(
     createUserAction,
     {},
@@ -111,6 +124,30 @@ export default function UserCreateForm({ plans = [] }: { plans?: PlanOption[] })
                 ))}
             </select>
           </div>
+
+          {availableRoles.length > 0 && (
+            <div className="col-span-1 sm:col-span-3 pt-2">
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                分配 RBAC 细粒度角色权限（可多选）
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {availableRoles.map((r) => (
+                  <label
+                    key={r.id}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 hover:border-slate-300 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      name="roleIds"
+                      value={r.id}
+                      className="h-3.5 w-3.5 rounded-sm border-slate-300 text-primary focus:ring-primary"
+                    />
+                    <span className="truncate">{r.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

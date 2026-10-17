@@ -1,14 +1,13 @@
 import * as cheerio from "cheerio";
 import { prisma } from "@/lib/prisma";
 import { fetchText, sleep } from "./fetcher";
-import { parseDate } from "./dates";
+import { parseDate, formatDate, toDayStart, toDayEnd } from "./dates";
 import { loadRegionMatcher } from "./regions";
 import { loadCompiledConfig } from "./config-loader";
 import { recalculateHealthScore } from "./health";
 import { dispatchAlerts } from "./alerts";
 import { handleFailureAndDegrade, attemptAutoHealing } from "@/lib/crawler/circuit-breaker";
 import {
-  extractAttachments,
   extractBuiltinFields,
   extractConfiguredFields,
   normalizeExtraFields,
@@ -17,19 +16,27 @@ import {
   type NormalizedExtraFields,
   type RawExtraFields,
 } from "./extraction";
+import { extractFidelityHtml } from "./fidelity";
 import { persistTender } from "./persist";
+import { formatJsonTenderContent, isJsonString } from "@/lib/tender-json-formatter";
 import type { FieldSpec, ListConfig, ParsedItem, SkillConfig } from "./types";
 
 const MAX_CONTENT_LEN = 50_000;
-const MAX_HTML_LEN = 200_000;
+const MAX_HTML_LEN = 500_000;
 
 export type RunOptions = {
   maxPages?: number;
   dryRun?: boolean;
   file?: boolean;
   trigger?: "cron" | "manual" | "api" | "retry";
+  /** 是否启用断点续采（默认 true，若显式传 false 或传了 sinceDate 则关闭） */
+  resume?: boolean;
   /** 只保留发布日期不早于该时刻的公告，列表按日期倒序、整页过期时提前停止翻页 */
   sinceDate?: Date;
+  /** 只保留发布日期不晚于该时刻的公告，晚于该日期的公告跳过不抓详情 */
+  untilDate?: Date;
+  /** 断点续采或时间段补采时的最大安全翻页深度，默认 50 */
+  safeMaxPages?: number;
 };
 
 export type DryRunItem = {
@@ -50,6 +57,11 @@ export type RunResult = {
   avgLatencyMs: number;
   dryRun: boolean;
   skippedOld: number;
+  skippedFuture: number;
+  skippedExisting: number;
+  checkpointDate: string | null;
+  checkpointHit: boolean;
+  mode: "resume" | "timerange" | "normal";
   items?: DryRunItem[];
   errors?: string[];
 };
@@ -81,19 +93,23 @@ function extractHtmlField(
 
 function extractJsonField(item: Record<string, unknown>, spec: FieldSpec | undefined): string {
   if (spec === undefined) return "";
-  if (typeof spec === "string") return spec;
+  if (typeof spec === "string") {
+    if (spec.includes("{") && spec.includes("}")) {
+      return spec.replace(/\{([A-Za-z0-9_.]+)\}/g, (_, p) => String(getByPath(item, p) ?? ""));
+    }
+    const val = getByPath(item, spec);
+    if (val !== undefined && val !== null) {
+      return typeof val === "string" ? val : String(val);
+    }
+    return "";
+  }
 
   if (spec.const !== undefined) return spec.const;
   const path = spec.selector ?? "";
   if (!path) return "";
-  const segments = path.split(".");
-  let current: unknown = item;
-  for (const segment of segments) {
-    if (current == null || typeof current !== "object") return "";
-    current = (current as Record<string, unknown>)[segment];
-  }
-  if (current == null) return "";
-  const raw = typeof current === "string" ? current : JSON.stringify(current);
+  const val = getByPath(item, path);
+  if (val == null) return "";
+  const raw = typeof val === "string" ? val : JSON.stringify(val);
   return applyRegex(raw.trim(), spec.regex).trim();
 }
 
@@ -131,14 +147,33 @@ async function fetchListPage(
           Object.entries(request.form).map(([key, value]) => [key, renderPageUrl(value, page)]),
         )
       : undefined;
-    return fetchText(url, {
+
+    let body = request.body ? renderPageUrl(request.body, page) : undefined;
+    if (request.json) {
+      body = JSON.stringify(request.json)
+        .replace(/"\{page([+-]\d+)?\}"/g, (_, offset) =>
+          String(page + (offset ? Number.parseInt(offset, 10) : 0)),
+        )
+        .replace(/\{page([+-]\d+)?\}/g, (_, offset) =>
+          String(page + (offset ? Number.parseInt(offset, 10) : 0)),
+        );
+    }
+
+    const raw = await fetchText(url, {
       method: request.method,
       headers: { ...settings.headers, ...request.headers },
       form,
+      body,
       timeoutMs: settings.timeoutMs,
       retries: settings.retries,
       userAgent: settings.userAgent,
     });
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw;
+    }
   }
 
   const url = isFirstPage && list.firstPageUrl ? list.firstPageUrl : renderPageUrl(list.url ?? "", page);
@@ -185,7 +220,15 @@ function parseListItems(
   };
 
   if (list.mode === "json") {
-    const array = getByPath(payload, list.parse.itemsPath ?? "data");
+    let dataObj = payload;
+    if (typeof payload === "string") {
+      try {
+        dataObj = JSON.parse(payload);
+      } catch {
+        dataObj = null;
+      }
+    }
+    const array = getByPath(dataObj, list.parse.itemsPath ?? "data");
     if (!Array.isArray(array)) return [];
     for (const raw of array) {
       if (raw == null || typeof raw !== "object") continue;
@@ -226,7 +269,11 @@ function resolveDetailUrl(
   if (!template) return item.url;
   const date = item.date ?? new Date();
   const params = new URL(item.url, "http://placeholder.invalid").searchParams;
+  const slugMatch = item.url.match(/[\/=]([a-zA-Z0-9_-]{8,})\b/);
+  const autoId = params.get("id") || params.get("articleId") || (slugMatch ? slugMatch[1] : "");
+
   return template
+    .replace(/\{id\}/g, autoId)
     .replace(/\{query:([A-Za-z0-9_]+)\}/g, (_, name: string) => params.get(name) ?? "")
     .replace(/\{YYYY\}/g, String(date.getFullYear()))
     .replace(/\{MM\}/g, String(date.getMonth() + 1).padStart(2, "0"))
@@ -238,67 +285,98 @@ async function fetchDetail(
   detail: NonNullable<ListConfig["detail"]>,
   settings: SkillConfig["settings"],
 ): Promise<FetchedDetail> {
-  const html = await fetchText(itemUrl, {
+  const rawText = await fetchText(itemUrl, {
     headers: settings.headers,
     timeoutMs: settings.timeoutMs,
     retries: settings.retries,
     userAgent: settings.userAgent,
   });
-  const $ = cheerio.load(html);
-  if (detail.removeSelector) $(detail.removeSelector).remove();
 
-  const content = $(detail.contentSelector).first().clone();
-  if (content.length === 0) {
-    return {
-      content: $("body").text().replace(/\s{3,}/g, "\n").trim().slice(0, MAX_CONTENT_LEN),
-      contentHtml: null,
-      attachments: [],
-    };
-  }
-
-  content
-    .find("script,style,noscript,iframe,object,embed,form,input,button,select,textarea,link,meta,svg")
-    .remove();
-  content.find("*").each((_, node) => {
-    const element = $(node);
-    for (const attribute of Object.keys(element.attr() ?? {})) {
-      if (!["href", "colspan", "rowspan"].includes(attribute.toLowerCase())) {
-        element.removeAttr(attribute);
-      }
-    }
-  });
-  content.find("a[href]").each((_, node) => {
-    const element = $(node);
-    const rawHref = element.attr("href");
-    if (!rawHref) return;
+  let htmlToParse = rawText;
+  const trimmed = rawText.trim();
+  if (
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]"))
+  ) {
     try {
-      const href = new URL(rawHref, itemUrl);
-      if (href.protocol === "http:" || href.protocol === "https:") {
-        element.attr("href", href.toString());
+      const parsed = JSON.parse(trimmed);
+      const candidateHtml =
+        parsed?.data?.data?.body ||
+        parsed?.data?.body ||
+        parsed?.data?.content ||
+        parsed?.data?.noticeContent ||
+        parsed?.data?.html ||
+        parsed?.result?.data?.content ||
+        parsed?.result?.content ||
+        parsed?.content ||
+        parsed?.noticeContent;
+
+      if (typeof candidateHtml === "string" && candidateHtml.trim()) {
+        const str = candidateHtml.trim();
+        // 判断是否为 base64 字符串（如山东省政府采购网接口）
+        if (/^[A-Za-z0-9+/=\s]+$/.test(str) && str.length > 50) {
+          try {
+            const buf = Buffer.from(str.replace(/\s+/g, ""), "base64");
+            let decoded = buf.toString("utf-8");
+            // 若 UTF-8 出现替换字符，自动尝试 GB18030（山东等政采站标准编码）
+            if (decoded.includes("\uFFFD")) {
+              try {
+                const gbkDecoded = new TextDecoder("gb18030", { fatal: false }).decode(buf);
+                if (!gbkDecoded.includes("\uFFFD")) {
+                  decoded = gbkDecoded;
+                }
+              } catch {
+                // keep utf-8
+              }
+            }
+            if (decoded.includes("<") && decoded.includes(">")) {
+              htmlToParse = decoded;
+            } else {
+              htmlToParse = decoded || candidateHtml;
+            }
+          } catch {
+            htmlToParse = candidateHtml;
+          }
+        } else {
+          htmlToParse = candidateHtml;
+        }
       } else {
-        element.removeAttr("href");
+        // 无富文本 HTML 字段，说明是纯结构化 JSON 接口（如广东省政府采购网）
+        const formatted = formatJsonTenderContent(trimmed);
+        if (formatted.isJson && Object.keys(formatted.fields).length > 0) {
+          htmlToParse = formatted.htmlText;
+        }
       }
     } catch {
-      element.removeAttr("href");
+      // 保持 rawText
     }
+  }
+
+  const fidelity = extractFidelityHtml(htmlToParse, {
+    contentSelector: detail.contentSelector,
+    removeSelector: detail.removeSelector,
+    baseUrl: itemUrl,
+    maxHtmlLen: MAX_HTML_LEN,
+    maxContentLen: MAX_CONTENT_LEN,
   });
 
-  const contentHtml = (content.html() ?? "").trim().slice(0, MAX_HTML_LEN);
-  const attachments = extractAttachments(contentHtml, itemUrl);
-  content.find("table").remove();
-  content.find("a").each((_, node) => {
-    $(node).replaceWith($(node).text());
-  });
-  $("br").replaceWith("\n");
-  content.find("p,div,li,h1,h2,h3,h4,h5,h6,section,article,tr").append("\n");
-  const plain = content
-    .text()
-    .replace(/\u00a0/g, " ")
-    .replace(/[ \t]{2,}/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  let finalContent = fidelity.plainText;
+  let finalHtml = fidelity.fidelityHtml;
 
-  return { content: plain.slice(0, MAX_CONTENT_LEN), contentHtml, attachments };
+  // 兜底保障：若提取结果仍为原始未解开的 JSON 串，强制转换为公文排版
+  if (isJsonString(finalContent)) {
+    const formatted = formatJsonTenderContent(finalContent);
+    finalContent = formatted.plainText;
+    if (!finalHtml || isJsonString(finalHtml)) {
+      finalHtml = formatted.htmlText;
+    }
+  }
+
+  return {
+    content: finalContent,
+    contentHtml: finalHtml,
+    attachments: fidelity.attachments,
+  };
 }
 
 function extractExpireDate(text: string): Date | null {
@@ -314,29 +392,67 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
     autoSync: !options.dryRun,
   });
   const source = options.file ? null : await prisma.crawlSource.findUnique({ where: { skillCode } });
+
+  const isTimeRangeMode = Boolean(options.sinceDate || options.untilDate);
+  const isResumeMode = !isTimeRangeMode && options.resume !== false;
+  const mode: "resume" | "timerange" | "normal" = isTimeRangeMode
+    ? "timerange"
+    : isResumeMode
+      ? "resume"
+      : "normal";
+
+  let checkpointDate: Date | null = null;
+  if (isResumeMode && !options.file) {
+    const latestTender = await prisma.tender.findFirst({
+      where: { sourceName: config.source.name },
+      orderBy: { publishDate: "desc" },
+      select: { publishDate: true },
+    });
+    if (latestTender?.publishDate) {
+      checkpointDate = toDayStart(latestTender.publishDate);
+    }
+  }
+
+  const sinceMs = isTimeRangeMode
+    ? (options.sinceDate ? toDayStart(options.sinceDate).getTime() : null)
+    : isResumeMode
+      ? (checkpointDate ? checkpointDate.getTime() : null)
+      : (options.sinceDate ? options.sinceDate.getTime() : null);
+
+  const untilMs = isTimeRangeMode
+    ? (options.untilDate ? toDayEnd(options.untilDate).getTime() : null)
+    : null;
+
+  const defaultMaxPages = (isResumeMode || isTimeRangeMode)
+    ? (options.safeMaxPages ?? 50)
+    : (config.settings.maxPages ?? source?.maxPages ?? 2);
+  const maxPagesLimit = options.maxPages ?? defaultMaxPages;
+
   const settings = {
     requestDelayMs: config.settings.requestDelayMs ?? 1500,
     timeoutMs: config.settings.timeoutMs ?? 20_000,
     retries: config.settings.retries ?? 2,
-    maxPages: options.maxPages ?? config.settings.maxPages ?? source?.maxPages ?? 2,
+    maxPages: maxPagesLimit,
     headers: config.settings.headers,
     userAgent: config.settings.userAgent,
   };
   const regionMatcher = await loadRegionMatcher();
-  const sinceMs = options.sinceDate ? options.sinceDate.getTime() : null;
   const dryItems: DryRunItem[] = [];
   const errors: string[] = [];
   let newCount = 0;
   let fetched = 0;
   let itemsParsed = 0;
   let skippedOld = 0;
+  let skippedFuture = 0;
+  let skippedExisting = 0;
+  let checkpointHit = false;
   let httpOk = 0;
   let httpFail = 0;
   let latencyTotal = 0;
 
   for (const list of config.lists) {
     const startPage = list.startPage ?? 1;
-    const maxPages = Math.min(list.maxPages ?? settings.maxPages, settings.maxPages);
+    const maxPages = options.maxPages ?? (list.maxPages ? Math.min(list.maxPages, maxPagesLimit) : maxPagesLimit);
 
     for (let page = startPage; page < startPage + maxPages; page++) {
       const startedAt = Date.now();
@@ -372,11 +488,36 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
         break;
       }
 
+      const urls = items.map((it) => it.url).filter(Boolean);
+      const existingList = options.file || options.dryRun
+        ? []
+        : await prisma.tender.findMany({
+            where: { sourceUrl: { in: urls } },
+            select: { sourceUrl: true },
+          });
+      const existingUrls = new Set(existingList.map((t) => t.sourceUrl));
+
       for (const item of items) {
-        if (sinceMs !== null && (!item.date || item.date.getTime() < sinceMs)) {
-          skippedOld++;
-          continue;
+        if (item.date) {
+          const itemMs = item.date.getTime();
+          if (untilMs !== null && itemMs > untilMs) {
+            skippedFuture++;
+            continue;
+          }
+          if (sinceMs !== null && itemMs < sinceMs) {
+            skippedOld++;
+            continue;
+          }
         }
+
+        // 断点续采模式下的去重短路：数据库已存在且日期不晚于断点，无需重新拉取详情
+        if (isResumeMode && checkpointDate && existingUrls.has(item.url)) {
+          if (!item.date || item.date.getTime() <= checkpointDate.getTime()) {
+            skippedExisting++;
+            continue;
+          }
+        }
+
         const detailStartedAt = Date.now();
         try {
           const detail = list.detail
@@ -453,9 +594,27 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
         await sleep(settings.requestDelayMs);
       }
 
-      // 列表按发布日期倒序，整页都早于截止时间时无需继续翻页
-      if (sinceMs !== null && items.length > 0 && items.every((it) => it.date && it.date.getTime() < sinceMs)) {
-        break;
+      // 时间段模式下：列表按发布日期倒序，当整页所有已知日期的条目都早于起始时间时，提前终止翻页
+      if (isTimeRangeMode && sinceMs !== null && items.length > 0) {
+        const datedItems = items.filter((it) => it.date !== null);
+        if (datedItems.length > 0 && datedItems.every((it) => it.date!.getTime() < sinceMs)) {
+          break;
+        }
+      }
+
+      // 断点续采模式下：如果存在历史断点，且整页条目均早于断点，或者整页所有条目均已入库且日期不晚于断点，说明已触及断点，提前停止翻页
+      if (isResumeMode && checkpointDate !== null && items.length > 0) {
+        const datedItems = items.filter((it) => it.date !== null);
+        const allDatedBeforeCheckpoint =
+          datedItems.length > 0 && datedItems.every((it) => it.date!.getTime() < sinceMs!);
+        const allItemsAlreadyExisting =
+          items.every((it) => existingUrls.has(it.url)) &&
+          items.every((it) => !it.date || it.date.getTime() <= checkpointDate!.getTime());
+
+        if (allDatedBeforeCheckpoint || allItemsAlreadyExisting) {
+          checkpointHit = true;
+          break;
+        }
       }
     }
   }
@@ -469,6 +628,11 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
     avgLatencyMs: Math.round(latencyTotal / Math.max(httpOk + httpFail, 1)),
     dryRun: Boolean(options.dryRun),
     skippedOld,
+    skippedFuture,
+    skippedExisting,
+    checkpointDate: checkpointDate ? formatDate(checkpointDate) : null,
+    checkpointHit,
+    mode,
     ...(options.dryRun ? { items: dryItems.slice(0, 20), errors } : { errors }),
   };
 }
@@ -512,9 +676,28 @@ export async function runSourceWithLogging(
     const result = await runSource(skillCode, options);
     const finishedAt = new Date();
     const durationMs = finishedAt.getTime() - startedAt.getTime();
-    const message = `抓取 ${result.fetched} 条，新增 ${result.newCount} 条，解析 ${result.itemsParsed} 条${
-      result.skippedOld > 0 ? `，跳过截止日期前旧数据 ${result.skippedOld} 条` : ""
-    }`;
+
+    let message = "";
+    if (result.mode === "timerange") {
+      const rangeStr = `${options.sinceDate ? formatDate(options.sinceDate) : "起始"} 至 ${options.untilDate ? formatDate(options.untilDate) : "最新"}`;
+      message = `时间段采集 [${rangeStr}]：抓取 ${result.fetched} 条，新增 ${result.newCount} 条，解析 ${result.itemsParsed} 条${
+        result.skippedOld > 0 ? `，过滤范围外旧数据 ${result.skippedOld} 条` : ""
+      }${result.skippedFuture > 0 ? `，过滤范围外新数据 ${result.skippedFuture} 条` : ""}`;
+    } else if (result.mode === "resume") {
+      message = `断点续采：抓取 ${result.fetched} 条，新增 ${result.newCount} 条，解析 ${result.itemsParsed} 条${
+        result.skippedExisting > 0 ? `，跳过已入库历史数据 ${result.skippedExisting} 条` : ""
+      }${
+        result.checkpointDate
+          ? result.checkpointHit
+            ? `，已衔接历史断点 (${result.checkpointDate}) 自动停止`
+            : `，从历史断点 (${result.checkpointDate}) 补采`
+          : "，首次抓取建立初始断点"
+      }`;
+    } else {
+      message = `抓取 ${result.fetched} 条，新增 ${result.newCount} 条，解析 ${result.itemsParsed} 条${
+        result.skippedOld > 0 ? `，跳过截止日期前旧数据 ${result.skippedOld} 条` : ""
+      }`;
+    }
 
     await prisma.crawlLog.create({
       data: {

@@ -2,6 +2,7 @@
 
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canApplySpecialInvoice } from "@/lib/quota";
 import { revalidatePath } from "next/cache";
 
 export interface InvoiceItem {
@@ -238,19 +239,10 @@ export async function applyInvoiceAction(
       return { success: false, error: "请输入有效的电子发票接收邮箱" };
     }
 
-    if (type === "SPECIAL") {
-      if (!bankName?.trim() || !bankAccount?.trim()) {
-        return { success: false, error: "增值税专用发票必须提供开户银行及银行账号" };
-      }
-      if (!address?.trim() || !phone?.trim()) {
-        return { success: false, error: "增值税专用发票必须提供企业注册地址及联系电话" };
-      }
-    }
-
     // 检查订单所属及状态
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { invoice: true },
+      include: { invoice: true, plan: true },
     });
 
     if (!order || order.userId !== session.uid) {
@@ -259,6 +251,21 @@ export async function applyInvoiceAction(
 
     if (order.status !== "PAID") {
       return { success: false, error: "仅已支付成功的订单可申请开票" };
+    }
+
+    if (type === "SPECIAL") {
+      if (!canApplySpecialInvoice(order.plan.code)) {
+        return {
+          success: false,
+          error: "个人会员套餐（黄金版/铂金版）仅支持申请增值税普通发票；6% 增值税专用发票仅限企业版（6,800/16,800元）客户申请",
+        };
+      }
+      if (!bankName?.trim() || !bankAccount?.trim()) {
+        return { success: false, error: "增值税专用发票必须提供开户银行及银行账号" };
+      }
+      if (!address?.trim() || !phone?.trim()) {
+        return { success: false, error: "增值税专用发票必须提供企业注册地址及联系电话" };
+      }
     }
 
     if (order.invoiceStatus === "ISSUED") {

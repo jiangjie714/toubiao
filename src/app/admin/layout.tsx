@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { logoutAction } from "@/app/actions/auth";
 import { LogoutIcon, HomeIcon } from "@/components/icons";
+import { getUserMenus, getUserPermissions } from "@/lib/rbac";
 import AdminNav from "./admin-nav";
 
 export default async function AdminLayout({
@@ -10,7 +11,14 @@ export default async function AdminLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const user = await getSession();
   if (!user) redirect("/login?next=/admin");
-  if (user.role !== "ADMIN") redirect("/");
+
+  // 校验后台访问权限：原 ADMIN 用户或者分配有后台权限的成员
+  const perms = await getUserPermissions(user.uid);
+  const canAccessAdmin = user.role === "ADMIN" || perms.includes("*") || perms.length > 0;
+  if (!canAccessAdmin) redirect("/");
+
+  // 加载当前登录用户的动态菜单树
+  const dynamicMenus = await getUserMenus(user.uid, "ADMIN");
 
   return (
     <div className="flex min-h-screen bg-canvas">
@@ -24,7 +32,7 @@ export default async function AdminLayout({
             <div className="text-[11px] text-slate-500">Management Console</div>
           </div>
         </div>
-        <AdminNav />
+        <AdminNav dynamicMenus={dynamicMenus} />
         <div className="border-t border-slate-100 p-4 text-xs">
           <p className="font-medium text-slate-600">{user.name}</p>
           <div className="mt-2.5 flex gap-3">

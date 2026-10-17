@@ -64,10 +64,17 @@ export async function persistTender(
   const projectRefId = await findOrCreateProjectId({
     projectNo: input.extraFields.projectNo,
     title: input.title,
+    type: input.type,
     provinceCode: input.provinceCode ?? region.provinceCode,
+    purchaser: input.purchaser,
+    content: input.content,
+    budgetAmount: input.extraFields.budgetAmount ?? null,
+    awardAmount: input.extraFields.awardAmount ?? null,
+    openTime: input.extraFields.openTime ?? null,
+    winningSupplier: input.extraFields.winningSupplier ?? null,
   });
 
-  const contentHtml = input.contentHtml?.slice(0, 200_000) ?? null;
+  const contentHtml = input.contentHtml?.slice(0, 500_000) ?? null;
   if (contentHtml) {
     await defaultStorage.saveSnapshot(input.sourceUrl, contentHtml);
   }

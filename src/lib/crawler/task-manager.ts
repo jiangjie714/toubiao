@@ -12,7 +12,7 @@ export interface CrawlTaskItem {
   attempts: number;
   maxAttempts: number;
   nextRetryAt: string | null;
-  payload: { maxPages?: number } | null;
+  payload: { maxPages?: number; resume?: boolean; sinceDate?: string; untilDate?: string } | null;
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
@@ -154,6 +154,9 @@ export async function getTasksOverview(options: {
 export async function dispatchSourceTask(input: {
   skillCode: string;
   maxPages?: number;
+  resume?: boolean;
+  sinceDate?: string;
+  untilDate?: string;
   trigger?: string;
 }): Promise<{ success: boolean; taskId?: number; error?: string }> {
   try {
@@ -164,10 +167,17 @@ export async function dispatchSourceTask(input: {
       return { success: false, error: "未找到该数据源" };
     }
 
+    const payload = {
+      ...(input.maxPages ? { maxPages: input.maxPages } : {}),
+      ...(typeof input.resume === "boolean" ? { resume: input.resume } : {}),
+      ...(input.sinceDate ? { sinceDate: input.sinceDate } : {}),
+      ...(input.untilDate ? { untilDate: input.untilDate } : {}),
+    };
+
     const taskId = await enqueueCrawlTask({
       skillCode: input.skillCode,
       trigger: input.trigger || "manual",
-      payload: input.maxPages ? { maxPages: input.maxPages } : undefined,
+      payload: Object.keys(payload).length > 0 ? payload : undefined,
     });
 
     return { success: true, taskId };

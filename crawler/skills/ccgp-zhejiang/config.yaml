@@ -1,32 +1,35 @@
 source:
   name: 浙江省政府采购网
-  baseUrl: http://zfcg.czt.zj.gov.cn
+  baseUrl: https://zfcg.czt.zj.gov.cn
 settings:
-  requestDelayMs: 1500
+  requestDelayMs: 1200
   timeoutMs: 20000
   retries: 2
-  maxPages: 1
+  maxPages: 2
   scheduleCron: 0 */2 * * *
 lists:
   - type: NOTICE
-    mode: html
-    firstPageUrl: http://zfcg.czt.zj.gov.cn/innerUsed_noticeList/index.html
-    url: http://zfcg.czt.zj.gov.cn/innerUsed_noticeList/index.html
+    mode: json
+    request:
+      method: POST
+      url: https://zfcg.czt.zj.gov.cn/front/search/category
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      json:
+        pageNo: "{page}"
+        pageSize: 15
+        categoryCode: ZcyAnnouncement
+    startPage: 1
+    maxPages: 2
     parse:
-      itemSelector: ul.notice-list > li
+      itemsPath: "hits.hits"
       fields:
-        title:
-          selector: a
-          attr: text
-        url:
-          selector: a
-          attr: href
-        date:
-          selector: span.time
-          attr: text
-          regex: \d{4}-\d{2}-\d{2}
+        title: "_source.title"
+        url: "https://zfcg.czt.zj.gov.cn/portal/detail?articleId={_source.articleId}"
+        date: "_source.publishDate"
+        purchaser: "_source.author"
         province:
           const: "33"
+        city: "_source.districtName"
     detail:
-      contentSelector: div.notice-content
-      removeSelector: script, style
+      contentSelector: "#template-center-mark, .tb-fidelity-root, body"

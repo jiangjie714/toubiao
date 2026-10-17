@@ -40,7 +40,7 @@ export async function createWatchAction(
 
   if (!name || name.length > 30) return { error: "请填写 1-30 位订阅名称" };
   if (!keyword || keyword.length > 50) return { error: "请填写 1-50 位关键词" };
-  if (channel !== "email" && webhookUrl && !webhookUrl.startsWith("http")) {
+  if (["wecom", "dingtalk", "feishu"].includes(channel) && webhookUrl && !webhookUrl.startsWith("http")) {
     return { error: "请输入有效的机器人 Webhook 完整链接" };
   }
 

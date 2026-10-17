@@ -16,11 +16,21 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const skillCode = typeof body.skillCode === "string" ? body.skillCode : "";
   const maxPages = Number(body.maxPages) || undefined;
+  const resume = typeof body.resume === "boolean" ? body.resume : undefined;
+  const sinceDate = body.sinceDate ? new Date(body.sinceDate) : undefined;
+  const untilDate = body.untilDate ? new Date(body.untilDate) : undefined;
+
   if (!skillCode) {
     return NextResponse.json({ error: "缺少 skillCode" }, { status: 400 });
   }
 
-  // 同步等待完成并返回结果；抓取量由 maxPages 控制，前端按钮置 loading 等待
-  const result = await runSourceWithLogging(skillCode, { maxPages });
+  // 同步等待完成并返回结果；抓取量由 maxPages/断点控制，前端按钮置 loading 等待
+  const result = await runSourceWithLogging(skillCode, {
+    maxPages,
+    resume,
+    sinceDate: sinceDate && !isNaN(sinceDate.getTime()) ? sinceDate : undefined,
+    untilDate: untilDate && !isNaN(untilDate.getTime()) ? untilDate : undefined,
+    trigger: "manual",
+  });
   return NextResponse.json(result, { status: result.ok ? 200 : 500 });
 }
