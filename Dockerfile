@@ -14,6 +14,10 @@ RUN npm install
 # 拷贝代码
 COPY . .
 
+# 构建期占位环境变量（非真实密钥，仅在 next build 期间满足 env 读取；运行时由 docker compose 注入真实值）
+ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build?schema=public"
+ENV AUTH_SECRET="build-only-placeholder-not-a-real-secret"
+
 # 生成 Prisma Client 并构建生产代码
 RUN npx prisma generate
 RUN npm run build

@@ -14,9 +14,15 @@ done
 echo "✅ PostgreSQL 连接正常！"
 
 # 同步最新的 Prisma 数据结构
+# 生产默认关闭；开启后默认不做破坏性变更，仅当显式设置 RUN_DB_PUSH_ACCEPT_DATA_LOSS=true 才允许丢数据。
 if [ "$RUN_DB_PUSH" = "true" ]; then
   echo "📦 正在同步数据库 Schema (prisma db push)..."
-  npx prisma db push --skip-generate --accept-data-loss || true
+  if [ "$RUN_DB_PUSH_ACCEPT_DATA_LOSS" = "true" ]; then
+    echo "⚠️  已启用 --accept-data-loss：允许破坏性结构变更"
+    npx prisma db push --skip-generate --accept-data-loss || true
+  else
+    npx prisma db push --skip-generate || true
+  fi
 fi
 
 # 初始化基础数据（若指定了 SEED）

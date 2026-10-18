@@ -1,0 +1,41 @@
+# 依赖与构建产物（镜像内会重新安装/构建）
+node_modules
+.next
+out
+build
+dist
+
+# 密钥与本地配置：严禁打入镜像（运行时由 docker compose env_file 注入）
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.p12
+
+# 本地数据库与运行期数据
+prisma/dev.db
+prisma/dev.db-journal
+prisma/*.db
+.data
+*.sqlite
+*.sqlite3
+
+# 版本控制与编辑器
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+.cursor
+
+# 文档、样例与临时脚本（不参与运行）
+docs
+scratch
+*.log
+*.backup.*
+
+# 系统文件
+.DS_Store
+*.swp

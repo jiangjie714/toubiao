@@ -1,17 +1,24 @@
+# ==============================================================================
+# 标讯通 (toubiao) 生产部署编排
+# 配置来源：项目根目录 `.env`（唯一配置源，由 docker compose 自动读取）。
+# 首次部署：cp .env.example .env → 填写全部【必填】项 → docker compose up -d --build
+# 标有 ${VAR:?...} 的变量若未配置，compose 会立即报错退出（fail-fast，避免 insecure fallback）。
+# ==============================================================================
 services:
   postgres:
     image: postgres:16-alpine
     restart: always
     environment:
-      POSTGRES_USER: toubiao
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toubiao_db_pass_2026}
-      POSTGRES_DB: toubiao
+      POSTGRES_USER: ${POSTGRES_USER:-toubiao}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 未配置，请在 .env 中设置}
+      POSTGRES_DB: ${POSTGRES_DB:-toubiao}
     ports:
+      # 仅绑定回环地址，供本机开发直连；不对公网暴露数据库端口
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U toubiao"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-toubiao}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -22,20 +29,21 @@ services:
       dockerfile: Dockerfile
     image: toubiao-app:latest
     restart: always
+    # 全部业务配置（SMTP / 支付 / 企业微信 / AI 等）统一从 .env 注入，避免逐项遗漏
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://toubiao:${POSTGRES_PASSWORD:-toubiao_db_pass_2026}@postgres:5432/toubiao?schema=public
-      AUTH_SECRET: ${AUTH_SECRET:-bx7f3a9c2e1d84b6f0a5c3e7d9b1f4a2c6e8d0b3f5a7c9e1d3f5b7a9c1e3f5d7b}
-      APP_URL: ${APP_URL:-http://124.220.98.81:3000}
       NODE_ENV: production
-      RUN_DB_PUSH: "true"
-      RUN_DB_SEED: "true"
-      COMPANY_NAME: ${COMPANY_NAME:-北京云尖字节信息科技有限公司}
-      COMPANY_BANK_NAME: ${COMPANY_BANK_NAME:-中国工商银行股份有限公司紫竹院支行}
-      COMPANY_BANK_ACCOUNT: ${COMPANY_BANK_ACCOUNT:-0200007609200202973}
-      COMPANY_BANK_BRANCH_CODE: ${COMPANY_BANK_BRANCH_CODE:-102100000763}
-      COMPANY_TAX_NUMBER: ${COMPANY_TAX_NUMBER:-91110108MA017XYZ88}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-toubiao}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 未配置}@postgres:5432/${POSTGRES_DB:-toubiao}?schema=public
+      # 【必填】生产域名，必须为 https（决定 Secure Cookie 等安全行为）
+      APP_URL: ${APP_URL:?APP_URL 未配置，请填写生产域名，如 https://www.example.com}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET 未配置，请填写随机 32+ 字节字符串}
+      # 数据库结构同步与种子仅在显式开启时执行（生产默认关闭，防止误清库）
+      RUN_DB_PUSH: ${RUN_DB_PUSH:-false}
+      RUN_DB_SEED: ${RUN_DB_SEED:-false}
     ports:
-      - "0.0.0.0:3000:3000"
+      # 仅监听本机回环，对外由前置反向代理（Caddy/Nginx）终止 TLS 并转发
+      - "127.0.0.1:3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,11 +52,12 @@ services:
     image: toubiao-app:latest
     restart: always
     command: ["npm", "run", "push:worker"]
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://toubiao:${POSTGRES_PASSWORD:-toubiao_db_pass_2026}@postgres:5432/toubiao?schema=public
-      APP_URL: ${APP_URL:-http://124.220.98.81:3000}
-      PUSH_CRON: ${PUSH_CRON:-0 8 * * *}
       NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-toubiao}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 未配置}@postgres:5432/${POSTGRES_DB:-toubiao}?schema=public
+      APP_URL: ${APP_URL:?APP_URL 未配置}
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,10 +66,11 @@ services:
     image: toubiao-app:latest
     restart: always
     command: ["npm", "run", "crawl:worker"]
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://toubiao:${POSTGRES_PASSWORD:-toubiao_db_pass_2026}@postgres:5432/toubiao?schema=public
       NODE_ENV: production
-      CRAWL_CRON: ${CRAWL_CRON:-0 */2 * * *}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-toubiao}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 未配置}@postgres:5432/${POSTGRES_DB:-toubiao}?schema=public
     volumes:
       - storage-data:/app/.data/storage
     depends_on:
