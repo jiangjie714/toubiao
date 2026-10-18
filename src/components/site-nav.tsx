@@ -7,23 +7,14 @@ import type { ComponentType } from "react";
 import {
   ArrowDownTrayIcon,
   BellIcon,
-  BoltIcon,
   BuildingIcon,
-  ChartBarIcon,
   ChevronDownIcon,
-  ClipboardIcon,
   FolderIcon,
   MapPinIcon,
   MenuIcon,
-  SearchIcon,
-  SparklesIcon,
-  TargetIcon,
   ScaleIcon,
-  RadarIcon,
-  TrophyIcon,
-  CalendarIcon,
-  ShieldCheckIcon,
-  DocumentTextIcon,
+  SearchIcon,
+  TargetIcon,
   XMarkIcon,
 } from "@/components/icons";
 
@@ -47,33 +38,17 @@ const SEARCH_ITEMS = [
   { href: "/intentions", label: "采购意向", type: "INTENTION" },
 ] as const;
 
-const INTEL_ITEMS: NavItem[] = [
-  { href: "/intentions", label: "意向雷达", desc: "提前 30~90 天锁定潜在商机", icon: SparklesIcon, match: ["/intentions"] },
-  { href: "/competitors", label: "竞对雷达", desc: "核心竞对监控与后院起火预警", icon: RadarIcon, match: ["/competitors"], badge: "CORP" },
-  { href: "/suppliers", label: "供应商库", desc: "全网供应商中标画像与PK", icon: TargetIcon, match: ["/suppliers"] },
-  { href: "/purchasers", label: "买方画像", desc: "采购单位画像与采购偏好", icon: BuildingIcon, match: ["/purchasers"] },
-  { href: "/projects", label: "项目大盘", desc: "重点项目全过程进展", icon: FolderIcon, match: ["/projects"] },
-  { href: "/industries", label: "重点赛道", desc: "行业赛道招标热度", icon: BoltIcon, match: ["/industries"] },
-  { href: "/regions", label: "区域大盘", desc: "全国区域招标分布", icon: MapPinIcon, match: ["/regions"] },
-  { href: "/analytics", label: "行业情报", desc: "行业统计与每周简报", icon: ChartBarIcon, match: ["/analytics", "/brief"] },
-  { href: "/history", label: "历史穿透库", desc: "对标千里马10年库与下浮罗盘", icon: ScaleIcon, match: ["/history"], badge: "PRO" },
+const TRACK_ITEMS: NavItem[] = [
+  { href: "/watches", label: "关键词订阅", desc: "按关键词盯标，新公告邮件/微信推送", icon: BellIcon, match: ["/watches"] },
+  { href: "/exports", label: "商机导出", desc: "筛选结果批量导出 Excel", icon: ArrowDownTrayIcon, match: ["/exports"] },
+  { href: "/history", label: "历史穿透库", desc: "历史中标与下浮率参考", icon: ScaleIcon, match: ["/history"], badge: "PRO" },
 ];
 
-const WORKBENCH_ITEMS: NavItem[] = [
-  { href: "/pipeline", label: "销售 CRM 漏斗", desc: "商机全周期漏斗、加权预测与公海池", icon: ChartBarIcon, match: ["/pipeline"], badge: "CORP" },
-  { href: "/proposals", label: "标书装配工场", desc: "资质业绩贯通与六卷模块化装配", icon: DocumentTextIcon, match: ["/proposals"], badge: "CORP" },
-  { href: "/qualifications", label: "资质与商机雷达", desc: "企业资质管理与全网智能赢面匹配", icon: RadarIcon, match: ["/qualifications"], badge: "CORP" },
-  { href: "/cases", label: "业绩案例库", desc: "合同业绩归档与类似项目智能匹配", icon: TrophyIcon, match: ["/cases"], badge: "CORP" },
-  { href: "/deposits", label: "保证金台账", desc: "在途资金监控与超期催款维权", icon: ScaleIcon, match: ["/deposits"], badge: "CORP" },
-  { href: "/tracker", label: "跟进看板", desc: "商机跟进与投标状态管理", icon: ClipboardIcon, match: ["/tracker"] },
-  { href: "/calendar", label: "投标日历", desc: "截标倒计时与关键里程碑排期大盘", icon: CalendarIcon, match: ["/calendar"] },
-  { href: "/audit", label: "标书质检", desc: "清标查重与一票废标风险深度扫描", icon: ShieldCheckIcon, match: ["/audit"], badge: "CORP" },
-  { href: "/reviews", label: "复盘归因罗盘", desc: "开标数据对标与胜败六维归因诊断", icon: ScaleIcon, match: ["/reviews"], badge: "CORP" },
-  { href: "/tenders/compare", label: "标讯对比", desc: "多标段横向立项决策罗盘", icon: ScaleIcon, match: ["/tenders/compare"] },
-  { href: "/watches", label: "关键词订阅", desc: "按关键词追踪新公告", icon: BellIcon, match: ["/watches"] },
-  { href: "/webhooks", label: "预警推送中枢", desc: "企微/钉钉/飞书机器人事件路由", icon: BoltIcon, match: ["/webhooks"], badge: "CORP" },
-  { href: "/compliance", label: "安全合规中心", desc: "等保二级自检与防篡改审计报告", icon: ShieldCheckIcon, match: ["/compliance"] },
-  { href: "/exports", label: "商机导出", desc: "筛选结果批量导出", icon: ArrowDownTrayIcon, match: ["/exports"] },
+const INSIGHT_ITEMS: NavItem[] = [
+  { href: "/projects", label: "项目大盘", desc: "重点项目全过程进展", icon: FolderIcon, match: ["/projects"] },
+  { href: "/purchasers", label: "买方画像", desc: "采购单位画像与采购偏好", icon: BuildingIcon, match: ["/purchasers"] },
+  { href: "/suppliers", label: "供应商库", desc: "全网供应商中标画像", icon: TargetIcon, match: ["/suppliers"] },
+  { href: "/regions", label: "区域大盘", desc: "全国区域招标分布", icon: MapPinIcon, match: ["/regions"] },
 ];
 
 const GROUPS: {
@@ -86,8 +61,8 @@ const GROUPS: {
   wide?: boolean;
 }[] = [
   { id: "search", label: "信息检索", links: [...SEARCH_ITEMS] },
-  { id: "intel", label: "情报洞察", items: INTEL_ITEMS, wide: true },
-  { id: "bench", label: "工作台", items: WORKBENCH_ITEMS, wide: true },
+  { id: "track", label: "商机追踪", items: TRACK_ITEMS },
+  { id: "insight", label: "数据洞察", items: INSIGHT_ITEMS, wide: true },
 ];
 
 const triggerCls = (active: boolean) =>
@@ -288,75 +263,72 @@ export default function SiteNav() {
               className="h-10 w-full rounded-xl border border-transparent bg-slate-100 pl-9 pr-3 text-sm text-slate-700 outline-none transition-colors duration-200 placeholder:text-slate-500 focus:border-accent/40 focus:bg-white focus:ring-4 focus:ring-accent/10"
             />
           </form>
-          <p className="mt-4 px-1 text-xs font-semibold tracking-wide text-slate-400">
-            快速检索
-          </p>
-          <div className="mt-2 grid grid-cols-3 gap-1.5">
-            {SEARCH_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={closeMobile}
-                className={`rounded-lg px-2 py-2 text-center text-sm transition-colors duration-150 ${
-                  isListType(item.type)
-                    ? "bg-blue-50 font-semibold text-primary"
-                    : "bg-slate-50 font-medium text-slate-700 hover:bg-blue-50/60 hover:text-primary"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-          {[
-            { label: "情报洞察", items: INTEL_ITEMS },
-            { label: "工作台", items: WORKBENCH_ITEMS },
-          ].map((section) => (
-            <div key={section.label}>
+          {GROUPS.map((group) => (
+            <div key={group.id}>
               <p className="mt-4 px-1 text-xs font-semibold tracking-wide text-slate-400">
-                {section.label}
+                {group.label}
               </p>
-              <div className="mt-2 grid gap-0.5">
-                {section.items.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={closeMobile}
-                    className={`flex items-center gap-3 rounded-xl p-2.5 transition-colors duration-150 ${
-                      itemActive(item)
-                        ? "bg-blue-50/70"
-                        : "hover:bg-blue-50/60"
-                    }`}
-                  >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-primary">
-                      <item.icon className="h-4.5 w-4.5" />
-                    </span>
-                    <span className="min-w-0">
-                      <span
-                        className={`flex items-center gap-1.5 text-sm ${
-                          itemActive(item)
-                            ? "font-semibold text-primary"
-                            : "font-medium text-slate-800"
-                        }`}
-                      >
-                        <span>{item.label}</span>
-                        {item.badge === "CORP" && (
-                          <span className="rounded bg-gradient-to-r from-amber-500 to-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                            企业
-                          </span>
-                        )}
-                        {item.badge === "PRO" && (
-                          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
-                            VIP
-                          </span>
-                        )}
+              {group.links ? (
+                <div className="mt-2 grid grid-cols-3 gap-1.5">
+                  {group.links.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={closeMobile}
+                      className={`rounded-lg px-2 py-2 text-center text-sm transition-colors duration-150 ${
+                        isListType(item.type)
+                          ? "bg-blue-50 font-semibold text-primary"
+                          : "bg-slate-50 font-medium text-slate-700 hover:bg-blue-50/60 hover:text-primary"
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-2 grid gap-0.5">
+                  {group.items?.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={closeMobile}
+                      className={`flex items-center gap-3 rounded-xl p-2.5 transition-colors duration-150 ${
+                        itemActive(item)
+                          ? "bg-blue-50/70"
+                          : "hover:bg-blue-50/60"
+                      }`}
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-primary">
+                        <item.icon className="h-4.5 w-4.5" />
                       </span>
-                      <span className="mt-0.5 block text-xs leading-snug text-slate-500">
-                        {item.desc}
+                      <span className="min-w-0">
+                        <span
+                          className={`flex items-center gap-1.5 text-sm ${
+                            itemActive(item)
+                              ? "font-semibold text-primary"
+                              : "font-medium text-slate-800"
+                          }`}
+                        >
+                          <span>{item.label}</span>
+                          {item.badge === "CORP" && (
+                            <span className="rounded bg-gradient-to-r from-amber-500 to-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                              企业
+                            </span>
+                          )}
+                          {item.badge === "PRO" && (
+                            <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                              VIP
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-snug text-slate-500">
+                          {item.desc}
+                        </span>
                       </span>
-                    </span>
-                  </Link>
-                ))}
-              </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
