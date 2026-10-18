@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { getAppUrl } from "@/lib/mailer";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getAppUrl()),
   title: { default: "标讯通 - 招投标信息服务平台", template: "%s - 标讯通" },
   description: "招投标公告聚合检索平台：招标公告、中标公告、变更更正、询价竞谈",
 };

@@ -10,6 +10,7 @@ const PUBLIC_PREFIXES = [
   "/verify-email",
   "/terms",
   "/privacy",
+  "/gonggao",
   "/robots.txt",
   "/sitemap.xml",
   "/tender",
