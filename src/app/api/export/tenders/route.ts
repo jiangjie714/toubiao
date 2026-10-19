@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { consumeExportQuota, getEntitlement } from "@/lib/quota";
 import { buildWhere, type ListSearchParams } from "@/lib/query";
-import { tenderTypeLabel } from "@/lib/constants";
+import { tenderTypeLabel, yuanToWan } from "@/lib/constants";
 import { parseEstimatedProcurementDate, calculateIntentionWindow } from "@/lib/intention";
 import { calculateProjectStage, projectStageLabel } from "@/lib/project";
 
@@ -207,8 +207,8 @@ export async function GET(request: NextRequest) {
     const provinceName = tender.provinceCode ? regionMap.get(tender.provinceCode) ?? "" : "";
     const regionStr = [provinceName, tender.cityCode].filter(Boolean).join(" ");
 
-    const budget = tender.budgetAmount ? Number(tender.budgetAmount) : null;
-    const award = tender.awardAmount ? Number(tender.awardAmount) : null;
+    const budget = yuanToWan(tender.budgetAmount);
+    const award = yuanToWan(tender.awardAmount);
     let savingsRateStr = "";
     if (budget && award && budget > award) {
       savingsRateStr = `${(((budget - award) / budget) * 100).toFixed(1)}%`;

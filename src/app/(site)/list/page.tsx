@@ -16,7 +16,7 @@ import {
   PAGE_SIZE,
   type ListSearchParams,
 } from "@/lib/query";
-import { tenderTypeLabel, tenderTypeColor, formatDate } from "@/lib/constants";
+import { tenderTypeLabel, tenderTypeColor, formatDate, yuanToWan } from "@/lib/constants";
 import TenderCompareTray from "@/components/tender-compare-tray";
 import TenderCompareButton from "@/components/tender-compare-button";
 import {
@@ -295,7 +295,7 @@ export default async function ListPage({
                             id: t.id,
                             title: t.title,
                             type: t.type,
-                            budgetAmount: t.budgetAmount ? Number(t.budgetAmount) : null,
+                            budgetAmount: yuanToWan(t.budgetAmount),
                           }}
                         />
                       </div>

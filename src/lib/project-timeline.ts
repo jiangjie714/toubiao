@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { tenderTypeLabel, tenderTypeColor } from "@/lib/constants";
+import { tenderTypeLabel, tenderTypeColor, yuanToWan } from "@/lib/constants";
 
 export interface TimelineNotice {
   id: number;
@@ -90,8 +90,8 @@ export async function getProjectTimeline(tenderId: number): Promise<ProjectTimel
 
   const timelineNotices: TimelineNotice[] = notices.map((n) => {
     let money = "";
-    if (n.awardAmount) money = `中标: ${Number(n.awardAmount)}万元`;
-    else if (n.budgetAmount) money = `预算: ${Number(n.budgetAmount)}万元`;
+    if (n.awardAmount) money = `中标: ${yuanToWan(n.awardAmount)}万元`;
+    else if (n.budgetAmount) money = `预算: ${yuanToWan(n.budgetAmount)}万元`;
 
     return {
       id: n.id,

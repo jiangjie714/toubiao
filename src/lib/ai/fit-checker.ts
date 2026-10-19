@@ -1,6 +1,7 @@
 import type { Tender } from "@prisma/client";
 import type { CompanyProfileData } from "@/app/actions/company-profile";
 import type { AiAnalysisData } from "./bid-reader";
+import { yuanToWan } from "@/lib/constants";
 
 export interface FitCheckResult {
   winRateScore: number; // 0-100 综合胜率指数
@@ -96,7 +97,7 @@ export function checkEnterpriseFit(
   // 3. 注册资本与履约资金力
   let capitalScore = 70;
   const userCapital = parseCapitalNumber(profile.registeredCapital || "0");
-  const tenderBudget = tender.budgetAmount ? Number(tender.budgetAmount) : 0;
+  const tenderBudget = yuanToWan(tender.budgetAmount) ?? 0;
 
   if (userCapital > 0) {
     if (tenderBudget > 0 && userCapital >= tenderBudget * 2) {

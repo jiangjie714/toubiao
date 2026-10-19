@@ -1,3 +1,5 @@
+import { yuanToWan } from "@/lib/constants";
+
 export type DecisionType = "GO" | "CONDITIONAL_GO" | "NO_GO";
 
 export const DECISION_META: Record<
@@ -183,7 +185,7 @@ export function generateProjectDossierDocument(
   data: WarRoomDetailData,
   format: "markdown" | "html" = "markdown"
 ): string {
-  const budgetStr = data.budgetAmount ? `${data.budgetAmount} 万元` : "未公开/详见标书";
+  const budgetStr = data.budgetAmount ? `${yuanToWan(data.budgetAmount)} 万元` : "未公开/详见标书";
   const evalData = data.evaluation;
 
   if (format === "markdown") {

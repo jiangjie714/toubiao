@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Tender } from "@prisma/client";
 import { formatJsonTenderContent, isJsonString } from "@/lib/tender-json-formatter";
+import { yuanToWan } from "@/lib/constants";
 
 export interface AiExecutiveSummary {
   projectOverview: string;
@@ -122,7 +123,7 @@ export function analyzeWithHeuristics(tender: TenderWithRelations): {
     extractMatch(text, /(?:采购人|招标人|采购单位|招标单位|业主单位)[：:\s]*([^,\n;，；]{2,40})/);
 
   const budgetOrPrice = tender.budgetAmount
-    ? `${tender.budgetAmount} 万元`
+    ? `${yuanToWan(tender.budgetAmount)} 万元`
     : jsonFields["预算金额 (元)"] ??
       jsonFields["成交金额 (元)"] ??
       extractMatch(
@@ -385,7 +386,7 @@ async function analyzeWithLlm(
 【标书基本信息】
 标题：${tender.title}
 采购人：${tender.purchaser ?? "未知"}
-预算：${tender.budgetAmount ? `${tender.budgetAmount}万元` : "未明确"}
+预算：${tender.budgetAmount ? `${yuanToWan(tender.budgetAmount)}万元` : "未明确"}
 截止时间：${tender.expireDate ? tender.expireDate.toISOString() : "未明确"}
 省市代码：${tender.provinceCode ?? "未知"}
 

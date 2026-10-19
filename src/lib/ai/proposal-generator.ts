@@ -1,3 +1,5 @@
+import { yuanToWan } from "@/lib/constants";
+
 export interface ProposalOutlineSection {
   title: string;
   items: string[];
@@ -182,7 +184,7 @@ export function generateProposalKit(tender: {
     id: "cm-12",
     category: "实质性条款",
     requirement: tender.budgetAmount
-      ? `投标总报价不得超过最高限价（预算金额 ${tender.budgetAmount} 万元），否则作无效标处理`
+      ? `投标总报价不得超过最高限价（预算金额 ${yuanToWan(tender.budgetAmount)} 万元），否则作无效标处理`
       : "投标总报价必须合理合规，严禁低于成本恶性竞争，开标一览表与明细汇总必须一致",
     responseStrategy: "严格核算分项明细单价乘积与总价，确保开标一览表大写金额与小写金额、明细表绝对一致",
     evidenceRequired: "开标一览表、分项报价明细表、主营成本核算单",
@@ -289,7 +291,7 @@ export function generateProposalKit(tender: {
       id: "chk-3",
       item: "预算超限核查",
       checkPoint: tender.budgetAmount
-        ? `确认投标总价绝对不得超过最高限价 ${tender.budgetAmount} 万元`
+        ? `确认投标总价绝对不得超过最高限价 ${yuanToWan(tender.budgetAmount)} 万元`
         : "确认无负偏离或超出招标限价的违规项",
       critical: true,
     },

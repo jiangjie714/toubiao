@@ -7,6 +7,7 @@ import {
   getTenderCompareData,
   type TenderCompareResult,
 } from "@/lib/tender-compare";
+import { yuanToWan } from "@/lib/constants";
 
 export type CompareActionResponse = {
   success: boolean;
@@ -94,7 +95,7 @@ export async function searchTendersForCompareAction(
         id: t.id,
         title: t.title,
         type: t.type,
-        budgetAmount: t.budgetAmount ? Number(t.budgetAmount) : null,
+        budgetAmount: yuanToWan(t.budgetAmount),
         purchaser: t.purchaser,
         publishDate: t.publishDate.toISOString().slice(0, 10),
       })),

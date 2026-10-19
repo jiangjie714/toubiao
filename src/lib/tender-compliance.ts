@@ -1,4 +1,5 @@
 import type { CompanyProfileData } from "@/app/actions/company-profile";
+import { yuanToWan } from "@/lib/constants";
 
 export type ComplianceCategory =
   | "QUALIFICATION" // 资格前置
@@ -225,7 +226,7 @@ export function runTenderComplianceScan(
     categoryLabel: "商务与报价合规",
     title: "投标总价与关键分项单价不超最高限价",
     checkPoint: tender.budgetAmount
-      ? `投标总报价绝对不得超过本项目最高限价 ${tender.budgetAmount} 万元，超过则直接作废标处理。`
+      ? `投标总报价绝对不得超过本项目最高限价 ${yuanToWan(tender.budgetAmount)} 万元，超过则直接作废标处理。`
       : "投标总报价必须在招标文件规定的预算控制范围内，严禁超过设定的最高投标限价。",
     responseRequirement: "核验税率适用性（如增值税6%或13%），确认报价包含货物、运费、安装、培训、税费等全口径费用。",
     evidenceRequired: "最高限价核算对照表、含税总价与不含税总价计算式。",
@@ -235,7 +236,7 @@ export function runTenderComplianceScan(
     autoCheckResult: tender.budgetAmount
       ? {
           status: "PASSED",
-          reason: `本项目明确最高预算为 ${tender.budgetAmount} 万元，请确保最终总报价在此上限内。`,
+          reason: `本项目明确最高预算为 ${yuanToWan(tender.budgetAmount)} 万元，请确保最终总报价在此上限内。`,
         }
       : {
           status: "PENDING",

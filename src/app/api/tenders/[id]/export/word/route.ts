@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getEntitlement } from "@/lib/quota";
 import { prisma } from "@/lib/prisma";
-import { tenderTypeLabel, formatDate } from "@/lib/constants";
+import { tenderTypeLabel, formatDate, yuanToWan } from "@/lib/constants";
 import { parseTenderSections } from "@/lib/tender-sections";
 
 export const runtime = "nodejs";
@@ -133,7 +133,7 @@ export async function GET(
           <td>${tender.purchaser || '未明确'}</td>
           <td class="meta-label">预算 / 中标金额</td>
           <td style="color: #dc2626; font-weight: bold;">
-            ${tender.awardAmount ? `中标价：${Number(tender.awardAmount)} 万元` : tender.budgetAmount ? `预算价：${Number(tender.budgetAmount)} 万元` : '按官方正文为准'}
+            ${tender.awardAmount ? `中标价：${yuanToWan(tender.awardAmount)} 万元` : tender.budgetAmount ? `预算价：${yuanToWan(tender.budgetAmount)} 万元` : '按官方正文为准'}
           </td>
         </tr>
         <tr>
