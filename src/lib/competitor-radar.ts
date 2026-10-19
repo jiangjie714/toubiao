@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { yuanToWan } from "@/lib/constants";
 
 export type CompetitorTag = "CORE" | "REGIONAL" | "LOW_PRICE" | "PARTNER";
 
@@ -195,7 +196,7 @@ export async function getCompetitorRadarOverview(
 
     for (const t of tenders) {
       totalWins++;
-      const amt = t.awardAmount ? Number(t.awardAmount) : 0;
+      const amt = yuanToWan(t.awardAmount) ?? 0;
       totalAmount += amt;
 
       const pDate = t.publishDate ? new Date(t.publishDate) : null;
@@ -351,8 +352,8 @@ export async function getCompetitorActivityFeed(
     // 匹配具体是哪一家关注的竞对
     const matchedComp = compNames.find((name) => rawSupplier.includes(name)) || rawSupplier;
     const purchaser = t.purchaser || "未知采购单位";
-    const award = t.awardAmount ? Number(t.awardAmount) : null;
-    const budget = t.budgetAmount ? Number(t.budgetAmount) : null;
+    const award = yuanToWan(t.awardAmount);
+    const budget = yuanToWan(t.budgetAmount);
 
     let discountRate: number | null = null;
     if (budget && award && budget > 0 && award > 0 && award <= budget * 1.5) {
@@ -463,7 +464,7 @@ export async function getHeadToHeadAnalysis(
     const p = t.purchaser.trim();
     const curr = myPurchasers.get(p) || { wins: 0, amount: 0, latest: t.title };
     curr.wins++;
-    curr.amount += t.awardAmount ? Number(t.awardAmount) : 0;
+    curr.amount += yuanToWan(t.awardAmount) ?? 0;
     myPurchasers.set(p, curr);
   }
 
@@ -473,7 +474,7 @@ export async function getHeadToHeadAnalysis(
     const p = t.purchaser.trim();
     const curr = compPurchasers.get(p) || { wins: 0, amount: 0, latest: t.title };
     curr.wins++;
-    curr.amount += t.awardAmount ? Number(t.awardAmount) : 0;
+    curr.amount += yuanToWan(t.awardAmount) ?? 0;
     compPurchasers.set(p, curr);
   }
 
@@ -500,11 +501,11 @@ export async function getHeadToHeadAnalysis(
   sharedPurchasers.sort((a, b) => b.myWins + b.compWins - (a.myWins + a.compWins));
 
   const myTotalAmount = myTenders.reduce(
-    (sum, t) => sum + (t.awardAmount ? Number(t.awardAmount) : 0),
+    (sum, t) => sum + (yuanToWan(t.awardAmount) ?? 0),
     0
   );
   const compTotalAmount = compTenders.reduce(
-    (sum, t) => sum + (t.awardAmount ? Number(t.awardAmount) : 0),
+    (sum, t) => sum + (yuanToWan(t.awardAmount) ?? 0),
     0
   );
 
