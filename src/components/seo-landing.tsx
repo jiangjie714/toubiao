@@ -9,7 +9,7 @@ import {
   SearchIcon,
 } from "@/components/icons";
 import { tenderTypeColor, tenderTypeLabel, formatDate } from "@/lib/constants";
-import { SEO_TYPE_SLUGS, type SeoLandingItem } from "@/lib/seo";
+import { SEO_TYPE_SLUGS, seoDetailPath, type SeoLandingItem } from "@/lib/seo";
 
 type Props = {
   type: string;
@@ -56,7 +56,7 @@ export default function SeoLanding({
       "@type": "ListItem",
       position: i + 1,
       name: it.title,
-      url: toAbsolute(`/tender/${it.id}`),
+      url: toAbsolute(seoDetailPath(it.id)),
     })),
   };
 
@@ -124,7 +124,7 @@ export default function SeoLanding({
               ) : null}
             </div>
             <Link
-              href={`/tender/${it.id}`}
+              href={seoDetailPath(it.id)}
               className="mt-1.5 block text-sm font-semibold leading-snug text-slate-900 transition-colors hover:text-primary line-clamp-2"
             >
               {it.title}

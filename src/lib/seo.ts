@@ -36,3 +36,8 @@ export type SeoLandingItem = {
   publishDate: Date | null;
   sourceName: string | null;
 };
+
+/** 公开的公告详情（脱敏）页 URL：正文仅摘要，联系方式/附件/穿透分析仍付费 */
+export function seoDetailPath(id: number): string {
+  return `/gonggao/detail/${id}`;
+}

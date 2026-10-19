@@ -1,10 +1,14 @@
 import type { MetadataRoute } from "next";
 import { getAppUrl } from "@/lib/mailer";
 import { getCachedProvinces } from "@/lib/dict-cache";
-import { SEO_TYPE_SLUGS } from "@/lib/seo";
+import { prisma } from "@/lib/prisma";
+import { SEO_TYPE_SLUGS, seoDetailPath } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600; // 每小时重建站点地图缓存
+
+/** 单个站点地图最多收录的公告详情条数（按发布时间倒序，保持抓取预算集中在最新标讯） */
+const MAX_DETAIL_URLS = 10000;
 
 /**
  * 仅收录「无需登录即可访问」的公开页面。
@@ -45,5 +49,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("Failed to load provinces for sitemap:", err);
   }
 
-  return [...staticRoutes, ...nationalTypeRoutes, ...provinceTypeRoutes];
+  // 公开公告详情页（脱敏）——SEO 长尾主体，按发布时间倒序取最新 N 条
+  let detailRoutes: MetadataRoute.Sitemap = [];
+  try {
+    const rows = await prisma.tender.findMany({
+      select: { id: true, publishDate: true },
+      orderBy: { publishDate: "desc" },
+      take: MAX_DETAIL_URLS,
+    });
+    detailRoutes = rows.map((r) => ({
+      url: `${baseUrl}${seoDetailPath(r.id)}`,
+      lastModified: r.publishDate ?? now,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
+  } catch (err) {
+    console.error("Failed to load tenders for sitemap:", err);
+  }
+
+  return [...staticRoutes, ...nationalTypeRoutes, ...provinceTypeRoutes, ...detailRoutes];
 }

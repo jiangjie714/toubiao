@@ -118,6 +118,8 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
     },
+    // 站内详情页需登录，对爬虫仅暴露 302 跳转；统一 noindex，避免与公开脱敏页 /gonggao/detail/[id] 重复收录
+    robots: { index: false, follow: true },
     openGraph: {
       title: `${tender.title} - 标讯通`,
       description,
