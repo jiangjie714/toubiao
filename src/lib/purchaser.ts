@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { yuanToWan } from "@/lib/constants";
 
 export interface PurchaserSummary {
   name: string;
@@ -137,10 +138,10 @@ export async function getTopPurchasers(options: {
     const item = aggMap.get(name)!;
     item.count += 1;
     if (t.budgetAmount) {
-      item.totalBudgetWan += Number(t.budgetAmount);
+      item.totalBudgetWan += yuanToWan(t.budgetAmount) ?? 0;
     }
     if (t.awardAmount) {
-      item.totalAwardWan += Number(t.awardAmount);
+      item.totalAwardWan += yuanToWan(t.awardAmount) ?? 0;
     }
     if (t.publishDate > item.latestDate) item.latestDate = t.publishDate;
     if (t.publishDate < item.firstDate) item.firstDate = t.publishDate;
@@ -251,13 +252,13 @@ export async function getPurchaserProfile(
     if (t.type === "NOTICE") noticeTenderCount++;
     if (t.type === "RESULT") noticeResultCount++;
 
-    const bAmt = t.budgetAmount ? Number(t.budgetAmount) : 0;
+    const bAmt = yuanToWan(t.budgetAmount) ?? 0;
     if (bAmt > 0) {
       totalBudgetWan += bAmt;
       budgetEntriesCount++;
     }
 
-    const aAmt = t.awardAmount ? Number(t.awardAmount) : 0;
+    const aAmt = yuanToWan(t.awardAmount) ?? 0;
     if (aAmt > 0) {
       totalAwardWan += aAmt;
     }
@@ -346,8 +347,8 @@ export async function getPurchaserProfile(
     title: t.title,
     type: t.type,
     publishDate: t.publishDate.toISOString().slice(0, 10),
-    budgetAmountWan: t.budgetAmount ? Number(t.budgetAmount) : null,
-    awardAmountWan: t.awardAmount ? Number(t.awardAmount) : null,
+    budgetAmountWan: yuanToWan(t.budgetAmount),
+    awardAmountWan: yuanToWan(t.awardAmount),
     winningSupplier: t.winningSupplier,
     isLocked: false,
   }));
@@ -395,8 +396,8 @@ export async function getPurchaserProfile(
           title: t.title,
           type: t.type,
           publishDate: t.publishDate.toISOString().slice(0, 10),
-          budgetAmountWan: t.budgetAmount ? Number(t.budgetAmount) : null,
-          awardAmountWan: t.awardAmount ? Number(t.awardAmount) : null,
+          budgetAmountWan: yuanToWan(t.budgetAmount),
+          awardAmountWan: yuanToWan(t.awardAmount),
           winningSupplier: t.winningSupplier,
           isLocked: false,
         };
