@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { yuanToWan } from "@/lib/constants";
 
 export interface SupplierSummary {
   name: string;
@@ -115,7 +116,7 @@ export async function getTopSuppliers(options: {
     const item = aggMap.get(name)!;
     item.winCount += 1;
     if (t.awardAmount) {
-      item.totalAwardWan += Number(t.awardAmount);
+      item.totalAwardWan += yuanToWan(t.awardAmount) ?? 0;
     }
     if (t.publishDate > item.latestDate) item.latestDate = t.publishDate;
     if (t.publishDate < item.firstDate) item.firstDate = t.publishDate;
@@ -215,7 +216,7 @@ export async function getSupplierProfile(
   let latest = tenders[0].publishDate;
 
   for (const t of tenders) {
-    const amt = t.awardAmount ? Number(t.awardAmount) : 0;
+    const amt = yuanToWan(t.awardAmount) ?? 0;
     if (amt > 0) {
       totalAwardWan += amt;
       awardEntriesCount++;
@@ -308,7 +309,7 @@ export async function getSupplierProfile(
     id: t.id,
     title: t.title,
     publishDate: t.publishDate.toISOString().slice(0, 10),
-    awardAmountWan: t.awardAmount ? Number(t.awardAmount) : null,
+    awardAmountWan: yuanToWan(t.awardAmount),
     purchaser: t.purchaser,
     provinceName: t.provinceCode ? regionMap.get(t.provinceCode) || "全国" : "全国",
     isLocked: false,
@@ -339,7 +340,7 @@ export async function getSupplierProfile(
           id: t.id,
           title: t.title,
           publishDate: t.publishDate.toISOString().slice(0, 10),
-          awardAmountWan: t.awardAmount ? Number(t.awardAmount) : null,
+          awardAmountWan: yuanToWan(t.awardAmount),
           purchaser: t.purchaser,
           provinceName: t.provinceCode ? regionMap.get(t.provinceCode) || "全国" : "全国",
           isLocked: false,
@@ -500,7 +501,7 @@ export async function compareSuppliers(
     let latestDate = tenders[0]?.publishDate ?? new Date();
 
     for (const t of tenders) {
-      const award = t.awardAmount ? Number(t.awardAmount) : 0;
+      const award = yuanToWan(t.awardAmount) ?? 0;
       totalAward += award;
       if (award > maxAward) maxAward = award;
       if (award > 0 && award < minAward) minAward = award;
