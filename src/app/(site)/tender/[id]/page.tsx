@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getEntitlement, consumeTenderViewQuota } from "@/lib/quota";
 import { getRegionDisplayName } from "@/lib/dict-cache";
-import { tenderTypeLabel, tenderTypeColor, formatDate } from "@/lib/constants";
+import { tenderTypeLabel, tenderTypeColor, formatDate, yuanToWan } from "@/lib/constants";
 import { parseTenderSections, type SectionKind } from "@/lib/tender-sections";
 import { TenderRichContent } from "@/components/tender-rich-content";
 import { TenderContentTabs } from "@/components/tender-content-tabs";
@@ -96,7 +96,7 @@ export async function generateMetadata({
 
   const typeName = tenderTypeLabel(tender.type) || "招标公告";
   const purchaserStr = tender.purchaser ? `采购人：${tender.purchaser}。` : "";
-  const budgetStr = tender.budgetAmount ? `预算金额：${Number(tender.budgetAmount)}万元。` : "";
+  const budgetStr = tender.budgetAmount ? `预算金额：${yuanToWan(tender.budgetAmount)}万元。` : "";
   const dateStr = tender.publishDate.toISOString().slice(0, 10);
   const description = `${tender.title}。${purchaserStr}${budgetStr}发布日期：${dateStr}。标讯通汇聚全国公开招标、中标候选人与更正答疑公告，提供全流程跟踪与商业情报分析。`;
 
@@ -270,7 +270,7 @@ export default async function TenderDetailPage({
             headline: tender.title,
             datePublished: tender.publishDate.toISOString(),
             dateModified: tender.publishDate.toISOString(),
-            description: `${tender.purchaser ? `采购人：${tender.purchaser}。` : ""}${tender.budgetAmount ? `预算金额：${Number(tender.budgetAmount)}万元。` : ""}发布日期：${tender.publishDate.toISOString().slice(0, 10)}。`,
+            description: `${tender.purchaser ? `采购人：${tender.purchaser}。` : ""}${tender.budgetAmount ? `预算金额：${yuanToWan(tender.budgetAmount)}万元。` : ""}发布日期：${tender.publishDate.toISOString().slice(0, 10)}。`,
             author: {
               "@type": "Organization",
               name: tender.purchaser || "招标采购人",
@@ -319,7 +319,7 @@ export default async function TenderDetailPage({
               title: tender.title,
               type: tender.type,
               purchaser: tender.purchaser,
-              budgetAmount: tender.budgetAmount ? Number(tender.budgetAmount) : null,
+              budgetAmount: yuanToWan(tender.budgetAmount),
               publishDate: tender.publishDate.toISOString(),
               expireDate: tender.expireDate ? tender.expireDate.toISOString() : null,
               provinceName: provinceName || undefined,
@@ -331,7 +331,7 @@ export default async function TenderDetailPage({
                 id: tender.id,
                 title: tender.title,
                 type: tender.type,
-                budgetAmount: tender.budgetAmount ? Number(tender.budgetAmount) : null,
+                budgetAmount: yuanToWan(tender.budgetAmount),
               }}
               variant="detail"
             />
@@ -387,7 +387,7 @@ export default async function TenderDetailPage({
           <TenderWinnerCard
             tenderId={tender.id}
             winningSupplier={tender.winningSupplier}
-            awardAmountWan={tender.awardAmount ? Number(tender.awardAmount) : null}
+            awardAmountWan={yuanToWan(tender.awardAmount)}
             purchaser={tender.purchaser}
             initialIsWatched={isWatchedSupplier}
             canViewIntelligence={entitlement?.planCode !== "FREE"}

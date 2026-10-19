@@ -33,3 +33,14 @@ export function formatDate(d: Date | null | undefined): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+/**
+ * 金额单位换算：数据库 budgetAmount/awardAmount 以「元」存储，展示口径统一为「万元」。
+ * 需要以万元展示时必须先经此换算，避免「元」被当作「万元」显示（放大约 10000 倍）。
+ */
+export function yuanToWan(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.round((n / 10000) * 100) / 100;
+}

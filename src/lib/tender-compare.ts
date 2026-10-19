@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { calculateDeadlineCountdown, type DeadlineCountdown } from "@/lib/lifecycle-alert";
 import { analyzeWithHeuristics } from "@/lib/ai/bid-reader";
 import { INDUSTRY_META } from "@/lib/industry";
+import { yuanToWan } from "@/lib/constants";
 
 export interface TenderComparePurchaserInsight {
   name: string;
@@ -99,7 +100,7 @@ async function getPurchaserBriefInsight(
 
   for (const t of tenders) {
     if (t.budgetAmount) {
-      totalBudget += Number(t.budgetAmount);
+      totalBudget += yuanToWan(t.budgetAmount) ?? 0;
       budgetCount++;
     }
     if (t.winningSupplier && t.winningSupplier.trim()) {
@@ -147,7 +148,7 @@ function calculateTenderDecisionScores(
   disqualifiedCount: number
 ): TenderDecisionScores {
   // 1. 预算吸引力 (1-5 星)
-  const budget = tender.budgetAmount ? Number(tender.budgetAmount) : 0;
+  const budget = yuanToWan(tender.budgetAmount) ?? 0;
   let budgetAttractiveness = 2;
   if (budget >= 1000) budgetAttractiveness = 5;
   else if (budget >= 500) budgetAttractiveness = 4;
@@ -310,7 +311,7 @@ export async function getTenderCompareData(
 
     const decisionScores = calculateTenderDecisionScores(
       {
-        budgetAmount: t.budgetAmount ? Number(t.budgetAmount) : null,
+        budgetAmount: yuanToWan(t.budgetAmount),
         expireDate: t.expireDate,
         publishDate: t.publishDate,
       },
@@ -333,7 +334,7 @@ export async function getTenderCompareData(
       cityName: t.cityCode ? cityMap.get(t.cityCode) || null : null,
       publishDate: t.publishDate.toISOString().slice(0, 10),
       expireDate: t.expireDate ? t.expireDate.toISOString().slice(0, 10) : null,
-      budgetAmount: t.budgetAmount ? Number(t.budgetAmount) : null,
+      budgetAmount: yuanToWan(t.budgetAmount),
       projectNo: t.projectNo,
       purchaser: t.purchaser,
       agency: t.agency,
