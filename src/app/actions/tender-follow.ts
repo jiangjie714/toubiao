@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { yuanToWan } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
 import {
   calculateDeadlineCountdown,
@@ -292,7 +293,7 @@ export async function getTrackerBoardAction(options?: {
           title: r.tender.title,
           type: r.tender.type,
           purchaser: r.tender.purchaser,
-          budgetAmount: r.tender.budgetAmount ? Number(r.tender.budgetAmount) : null,
+          budgetAmount: yuanToWan(r.tender.budgetAmount),
           expireDate: r.tender.expireDate,
           publishDate: r.tender.publishDate,
           provinceCode: r.tender.provinceCode,
