@@ -1,5 +1,5 @@
 import { parseTenderSections } from "./tender-sections";
-import { formatDate } from "./constants";
+import { formatDate, yuanToWan } from "./constants";
 
 export interface ProposalSubSection {
   subNumber: string;
@@ -93,7 +93,7 @@ export function generateProposalOutline(tender: TenderDataInput): ProposalOutlin
   const starCount = pointToPointMatrix.filter((i) => i.isStarClause).length;
 
   // 4. 构建国家标准规范 7 大章节标书架构
-  const budgetWan = tender.budgetAmount ? Number(tender.budgetAmount) : null;
+  const budgetWan = yuanToWan(tender.budgetAmount);
   const sections: ProposalOutlineSection[] = [
     {
       sectionNumber: "第一部分",

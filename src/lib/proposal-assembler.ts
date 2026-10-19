@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { yuanToWan } from "@/lib/constants";
 import {
   VOLUME_METAS,
   type AssembledVolumeItem,
@@ -107,7 +108,7 @@ export async function assembleFullProposalPackage(
   const budgetWan = input.customBudgetWan
     ? Number(input.customBudgetWan)
     : tender?.budgetAmount
-    ? Number(tender.budgetAmount)
+    ? yuanToWan(tender.budgetAmount) ?? 350
     : 350;
   const budgetYuan = Math.round(budgetWan * 10000);
   const cnBudget = toChineseCurrency(budgetYuan);

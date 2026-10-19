@@ -1,4 +1,5 @@
 import type { FollowStatus, FollowPriority } from "@/app/actions/tender-follow";
+import { yuanToWan } from "@/lib/constants";
 
 export interface PipelineStageConfig {
   status: FollowStatus;
@@ -145,7 +146,7 @@ export function extractDealAmountWan(deal: { targetAmount: number | null; tender
     return deal.targetAmount > 10000 ? deal.targetAmount / 10000 : deal.targetAmount;
   }
   if (deal.tender.budgetAmount && deal.tender.budgetAmount > 0) {
-    return Number(deal.tender.budgetAmount);
+    return yuanToWan(deal.tender.budgetAmount) ?? 0;
   }
   return 0;
 }

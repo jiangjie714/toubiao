@@ -1,4 +1,4 @@
-import { formatDate } from "./constants";
+import { formatDate, yuanToWan } from "./constants";
 import { INDUSTRY_META } from "./industry";
 
 export interface CompanyCaseItem {
@@ -68,7 +68,7 @@ export function evaluateCaseMatch(
 ): CaseMatchResult {
   const tenderDate = new Date(tender.publishDate);
   const caseSignDate = new Date(c.signDate);
-  const tenderBudgetWan = tender.budgetAmount ? Number(tender.budgetAmount) : null;
+  const tenderBudgetWan = yuanToWan(tender.budgetAmount);
 
   const matchReasons: string[] = [];
   const riskWarnings: string[] = [];
@@ -216,7 +216,7 @@ export function matchCasesForTender(
   userCases: CompanyCaseItem[]
 ): TenderCaseMatchAnalysis {
   const tenderDate = new Date(tender.publishDate);
-  const budgetWan = tender.budgetAmount ? Number(tender.budgetAmount) : null;
+  const budgetWan = yuanToWan(tender.budgetAmount);
 
   const scoredCases: CaseMatchResult[] = userCases.map((c) =>
     evaluateCaseMatch(tender, c)
