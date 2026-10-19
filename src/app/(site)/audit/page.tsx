@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { yuanToWan } from "@/lib/constants";
 import { getEntitlement, isEnterpriseUser } from "@/lib/quota";
 import { getAuditHistoryAction } from "@/app/actions/audit";
 import BidAuditView from "@/components/bid-audit-view";
@@ -72,7 +73,7 @@ export default async function AuditPage() {
     id: f.id,
     title: f.tender.title,
     purchaser: f.tender.purchaser,
-    budgetAmount: f.tender.budgetAmount ? Number(f.tender.budgetAmount) : null,
+    budgetAmount: yuanToWan(f.tender.budgetAmount),
   }));
 
   return (
