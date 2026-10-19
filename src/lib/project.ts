@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCachedProvinces } from "@/lib/dict-cache";
-import { tenderTypeLabel, tenderTypeColor } from "@/lib/constants";
+import { tenderTypeLabel, tenderTypeColor, yuanToWan } from "@/lib/constants";
 
 export type ProjectStage = "INTENTION" | "BIDDING" | "CLARIFYING" | "AWARDED" | "TERMINATED";
 
@@ -260,11 +260,11 @@ export async function getProjectList(options: {
 
     for (const n of notices) {
       if (n.budgetAmount) {
-        const b = Number(n.budgetAmount);
+        const b = yuanToWan(n.budgetAmount) ?? 0;
         if (maxBudgetWan === null || b > maxBudgetWan) maxBudgetWan = b;
       }
       if (n.awardAmount) {
-        const a = Number(n.awardAmount);
+        const a = yuanToWan(n.awardAmount) ?? 0;
         if (maxAwardWan === null || a > maxAwardWan) maxAwardWan = a;
       }
       if (!purchaserName && n.purchaser) purchaserName = n.purchaser;
@@ -420,11 +420,11 @@ export async function getProjectDetail(
     if (!agency && n.agency) agency = n.agency;
     if (!winningSupplier && n.winningSupplier) winningSupplier = n.winningSupplier;
     if (n.budgetAmount) {
-      const b = Number(n.budgetAmount);
+      const b = yuanToWan(n.budgetAmount) ?? 0;
       if (budgetAmountWan === null || b > budgetAmountWan) budgetAmountWan = b;
     }
     if (n.awardAmount) {
-      const a = Number(n.awardAmount);
+      const a = yuanToWan(n.awardAmount) ?? 0;
       if (awardAmountWan === null || a > awardAmountWan) awardAmountWan = a;
     }
   }
@@ -508,8 +508,8 @@ export async function getProjectDetail(
       summary = n.content.slice(0, 120).replace(/\s+/g, " ") + "...";
     }
 
-    const nodeBudget = n.budgetAmount ? Number(n.budgetAmount) : null;
-    const nodeAward = n.awardAmount ? Number(n.awardAmount) : null;
+    const nodeBudget = yuanToWan(n.budgetAmount);
+    const nodeAward = yuanToWan(n.awardAmount);
 
     if (!isPremium && idx >= 2) {
       // 免费用户第 3 节点起脱敏
