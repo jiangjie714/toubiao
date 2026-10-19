@@ -4,6 +4,7 @@
  */
 
 import { prisma } from "./prisma";
+import { yuanToWan } from "./constants";
 import type { Prisma } from "@prisma/client";
 
 export interface DiscountRangeBucket {
@@ -127,8 +128,8 @@ export async function getHistoricalBenchmarkData(
   let totalAwardWan = 0;
 
   for (const t of tenders) {
-    const budget = t.budgetAmount ? Number(t.budgetAmount) : null;
-    const award = t.awardAmount ? Number(t.awardAmount) : null;
+    const budget = yuanToWan(t.budgetAmount);
+    const award = yuanToWan(t.awardAmount);
 
     if (award !== null && award > 0) {
       totalAwardWan += award;
@@ -223,7 +224,7 @@ export async function getHistoricalBenchmarkData(
     if (!t.purchaser || !t.winningSupplier) continue;
     const pName = t.purchaser.trim();
     const sName = t.winningSupplier.trim();
-    const amountVal = t.awardAmount ? Number(t.awardAmount) : (t.budgetAmount ? Number(t.budgetAmount) : 0);
+    const amountVal = yuanToWan(t.awardAmount) ?? yuanToWan(t.budgetAmount) ?? 0;
     const amount = Number(amountVal) || 0;
 
     let pEntry = purchaserMap.get(pName);
