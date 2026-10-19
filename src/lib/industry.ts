@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { yuanToWan } from "@/lib/constants";
 
 export interface IndustrySummary {
   code: string;
@@ -181,8 +182,8 @@ export async function getIndustryList(): Promise<IndustrySummary[]> {
 
     const item = aggMap.get(code)!;
     item.tenderCount += 1;
-    if (t.budgetAmount) item.totalBudgetWan += Number(t.budgetAmount);
-    if (t.awardAmount) item.totalAwardWan += Number(t.awardAmount);
+    if (t.budgetAmount) item.totalBudgetWan += yuanToWan(t.budgetAmount) ?? 0;
+    if (t.awardAmount) item.totalAwardWan += yuanToWan(t.awardAmount) ?? 0;
     if (t.purchaser) item.purchasers.add(t.purchaser.trim());
     if (t.winningSupplier) item.suppliers.add(t.winningSupplier.trim());
     if (t.publishDate > item.latestDate) item.latestDate = t.publishDate;
@@ -197,7 +198,7 @@ export async function getIndustryList(): Promise<IndustrySummary[]> {
     const award = data?.totalAwardWan ?? 0;
 
     // 热度评分公式：综合公告量与预算规模 (最高 99 分)
-    const score = Math.min(99, Math.max(50, Math.round(count * 0.5 + budget * 0.0005 + 40)));
+    const score = Math.min(99, Math.max(50, Math.round(count * 0.5 + budget * 5 + 40)));
 
     list.push({
       code,
@@ -278,8 +279,8 @@ export async function getIndustryDossier(
   const provinceAgg = new Map<string, { count: number; budgetWan: number }>();
 
   for (const t of tenders) {
-    const budget = t.budgetAmount ? Number(t.budgetAmount) : 0;
-    const award = t.awardAmount ? Number(t.awardAmount) : 0;
+    const budget = yuanToWan(t.budgetAmount) ?? 0;
+    const award = yuanToWan(t.awardAmount) ?? 0;
     totalBudget += budget;
     totalAward += award;
 
@@ -348,8 +349,8 @@ export async function getIndustryDossier(
 
   // 重点重大商机（按预算倒序，预算 >= 100 万元）
   const featured = tenders
-    .filter((t) => t.budgetAmount && Number(t.budgetAmount) >= 100)
-    .sort((a, b) => Number(b.budgetAmount) - Number(a.budgetAmount))
+    .filter((t) => (yuanToWan(t.budgetAmount) ?? 0) >= 100)
+    .sort((a, b) => (yuanToWan(b.budgetAmount) ?? 0) - (yuanToWan(a.budgetAmount) ?? 0))
     .slice(0, 8);
 
   // 脱敏处理
@@ -360,8 +361,8 @@ export async function getIndustryDossier(
     title: t.title,
     type: t.type,
     publishDate: t.publishDate.toISOString().slice(0, 10),
-    budgetAmountWan: t.budgetAmount ? Number(t.budgetAmount) : null,
-    awardAmountWan: t.awardAmount ? Number(t.awardAmount) : null,
+    budgetAmountWan: yuanToWan(t.budgetAmount),
+    awardAmountWan: yuanToWan(t.awardAmount),
     purchaser: t.purchaser,
     winningSupplier: t.winningSupplier,
     isLocked: false,
@@ -409,8 +410,8 @@ export async function getIndustryDossier(
           title: t.title,
           type: t.type,
           publishDate: t.publishDate.toISOString().slice(0, 10),
-          budgetAmountWan: t.budgetAmount ? Number(t.budgetAmount) : null,
-          awardAmountWan: t.awardAmount ? Number(t.awardAmount) : null,
+          budgetAmountWan: yuanToWan(t.budgetAmount),
+          awardAmountWan: yuanToWan(t.awardAmount),
           purchaser: t.purchaser,
           winningSupplier: t.winningSupplier,
           isLocked: false,
@@ -448,8 +449,8 @@ export async function getIndustryDossier(
     title: t.title,
     type: t.type,
     publishDate: t.publishDate.toISOString().slice(0, 10),
-    budgetAmountWan: t.budgetAmount ? Number(t.budgetAmount) : null,
-    awardAmountWan: t.awardAmount ? Number(t.awardAmount) : null,
+    budgetAmountWan: yuanToWan(t.budgetAmount),
+    awardAmountWan: yuanToWan(t.awardAmount),
     purchaser: t.purchaser,
     winningSupplier: t.winningSupplier,
     isLocked: false,

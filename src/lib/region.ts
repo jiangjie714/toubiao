@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { yuanToWan } from "@/lib/constants";
 import { INDUSTRY_META } from "@/lib/industry";
 
 export interface RegionSummary {
@@ -193,10 +194,10 @@ export async function getRegionList(): Promise<RegionSummary[]> {
     }
 
     if (t.budgetAmount) {
-      current.totalBudgetWan += Number(t.budgetAmount);
+      current.totalBudgetWan += yuanToWan(t.budgetAmount) ?? 0;
     }
     if (t.awardAmount) {
-      current.totalAwardWan += Number(t.awardAmount);
+      current.totalAwardWan += yuanToWan(t.awardAmount) ?? 0;
     }
 
     if (t.purchaser) {
@@ -218,7 +219,7 @@ export async function getRegionList(): Promise<RegionSummary[]> {
     const award = data?.totalAwardWan ?? 0;
 
     // 热度分估算
-    const hotScore = Math.min(99, Math.max(50, Math.round(count * 0.8 + budget * 0.0003 + 50)));
+    const hotScore = Math.min(99, Math.max(50, Math.round(count * 0.8 + budget * 3 + 50)));
 
     return {
       code: p.code,
@@ -321,8 +322,8 @@ export async function getRegionDossier(
   const industryAgg = new Map<string, { count: number; budgetWan: number }>();
 
   for (const t of tenders) {
-    const budget = t.budgetAmount ? Number(t.budgetAmount) : 0;
-    const award = t.awardAmount ? Number(t.awardAmount) : 0;
+    const budget = yuanToWan(t.budgetAmount) ?? 0;
+    const award = yuanToWan(t.awardAmount) ?? 0;
     totalBudget += budget;
     totalAward += award;
 
@@ -415,8 +416,8 @@ export async function getRegionDossier(
 
   // 重点大额商机 (>=100万)
   const featured = tenders
-    .filter((t) => t.budgetAmount && Number(t.budgetAmount) >= 100)
-    .sort((a, b) => Number(b.budgetAmount) - Number(a.budgetAmount))
+    .filter((t) => (yuanToWan(t.budgetAmount) ?? 0) >= 100)
+    .sort((a, b) => (yuanToWan(b.budgetAmount) ?? 0) - (yuanToWan(a.budgetAmount) ?? 0))
     .slice(0, 8);
 
   // 实时近期标讯 (前 10 条)
@@ -430,8 +431,8 @@ export async function getRegionDossier(
     title: t.title,
     type: t.type,
     publishDate: t.publishDate.toISOString().slice(0, 10),
-    budgetAmountWan: t.budgetAmount ? Number(t.budgetAmount) : null,
-    awardAmountWan: t.awardAmount ? Number(t.awardAmount) : null,
+    budgetAmountWan: yuanToWan(t.budgetAmount),
+    awardAmountWan: yuanToWan(t.awardAmount),
     purchaser: t.purchaser,
     winningSupplier: t.winningSupplier,
     isLocked: false,
@@ -479,8 +480,8 @@ export async function getRegionDossier(
           title: t.title,
           type: t.type,
           publishDate: t.publishDate.toISOString().slice(0, 10),
-          budgetAmountWan: t.budgetAmount ? Number(t.budgetAmount) : null,
-          awardAmountWan: t.awardAmount ? Number(t.awardAmount) : null,
+          budgetAmountWan: yuanToWan(t.budgetAmount),
+          awardAmountWan: yuanToWan(t.awardAmount),
           purchaser: t.purchaser,
           winningSupplier: t.winningSupplier,
           isLocked: false,
@@ -505,8 +506,8 @@ export async function getRegionDossier(
     title: t.title,
     type: t.type,
     publishDate: t.publishDate.toISOString().slice(0, 10),
-    budgetAmountWan: t.budgetAmount ? Number(t.budgetAmount) : null,
-    awardAmountWan: t.awardAmount ? Number(t.awardAmount) : null,
+    budgetAmountWan: yuanToWan(t.budgetAmount),
+    awardAmountWan: yuanToWan(t.awardAmount),
     purchaser: t.purchaser,
     winningSupplier: t.winningSupplier,
     isLocked: false,

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { tenderTypeLabel } from "@/lib/constants";
+import { tenderTypeLabel, yuanToWan } from "@/lib/constants";
 import type { Prisma } from "@prisma/client";
 
 export interface DailyTrendPoint {
@@ -115,8 +115,8 @@ export async function getMarketOverview(
   const budgetProjects: TopProjectItem[] = [];
 
   for (const item of tenders) {
-    const bAmt = item.budgetAmount ? Number(item.budgetAmount) : 0;
-    const aAmt = item.awardAmount ? Number(item.awardAmount) : 0;
+    const bAmt = yuanToWan(item.budgetAmount) ?? 0;
+    const aAmt = yuanToWan(item.awardAmount) ?? 0;
     totalBudgetWan += bAmt;
 
     // Purchaser
@@ -325,8 +325,8 @@ export async function getWeeklyBriefData(userId?: number): Promise<WeeklyBriefDa
   const recentAwards: WeeklyBriefData["recentAwards"] = [];
 
   for (const t of recentTenders) {
-    const bAmt = t.budgetAmount ? Number(t.budgetAmount) : 0;
-    const aAmt = t.awardAmount ? Number(t.awardAmount) : 0;
+    const bAmt = yuanToWan(t.budgetAmount) ?? 0;
+    const aAmt = yuanToWan(t.awardAmount) ?? 0;
     newBudgetWan += bAmt;
 
     if (bAmt > 0) {
