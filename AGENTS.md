@@ -26,6 +26,7 @@ npm run db:push      # Prisma 建库/更新 + 生成客户端
 npm run db:seed      # 初始化：省市区划、admin 账号、示例公告、数据源
 npm run crawl        # 手动抓取（可跟 skillCode：npm run crawl -- ccgp）
 npm run crawl:worker # 定时抓取 worker（node-cron，默认每 2 小时）
+npm run crawl:doctor # 无数据库巡检全部 skill（可跟 --only=ccgp --detail --json）
 ```
 
 环境变量在 `.env`：`DATABASE_URL`、`AUTH_SECRET`（登录签名密钥）、`ADMIN_USERNAME/PASSWORD`（仅 seed 用）、`CRAWL_CRON`、`CRAWL_MAX_PAGES`。默认管理员 admin / admin123。

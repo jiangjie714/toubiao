@@ -12,6 +12,7 @@
     "crawl": "tsx crawler/cli.ts",
     "crawl:worker": "tsx crawler/worker.ts",
     "crawl:dry": "tsx crawler/cli.ts --dry-run --file --max-pages=1",
+    "crawl:doctor": "tsx crawler/doctor.ts",
     "migrate:sqlite": "tsx scripts/migrate-sqlite-to-postgres.ts",
     "push:daily": "tsx scripts/push-daily.ts",
     "push:worker": "tsx scripts/push-worker.ts",

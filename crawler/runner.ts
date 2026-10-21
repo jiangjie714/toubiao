@@ -658,6 +658,9 @@ export async function runAllSources(options: RunOptions = {}) {
 
 export { listSkills } from "./config-loader";
 
+/** 供 crawler/doctor.ts 做无数据库健康巡检（不涉及持久化与区划匹配） */
+export { fetchListPage, parseListItems, fetchDetail };
+
 export async function runSourceWithLogging(
   skillCode: string,
   options: RunOptions = {},
