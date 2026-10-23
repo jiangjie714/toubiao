@@ -3,6 +3,23 @@ export function parseDate(input: string | null | undefined): Date | null {
   if (!input) return null;
   const text = input.trim();
 
+  // 13 位毫秒 / 10 位秒级时间戳（政采云、湖南等 JSON 接口的 publishDate/pubDate）
+  if (/^\d{13}$/.test(text)) {
+    const d = new Date(Number(text));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (/^\d{10}$/.test(text)) {
+    const d = new Date(Number(text) * 1000);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // 20261023
+  const compact = text.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (compact) {
+    const date = new Date(+compact[1], +compact[2] - 1, +compact[3]);
+    return isNaN(date.getTime()) ? null : date;
+  }
+
   // 2026-09-03 / 2026.09.03 / 2026/09/03 / 2026年9月3日（可带时间）
   const m = text.match(
     /(\d{4})[年./\-](\d{1,2})[月./\-](\d{1,2})日?(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/,
