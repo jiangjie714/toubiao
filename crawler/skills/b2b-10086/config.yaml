@@ -2,6 +2,8 @@ source:
   name: 中国移动采购与招标网
   baseUrl: https://b2b.10086.cn
 settings:
+  # 中国移动采购网为 SPA（#app），列表由接口渲染
+  enabled: false
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2

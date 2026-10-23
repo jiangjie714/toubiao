@@ -2,6 +2,8 @@ source:
   name: 中国电信阳光采购网
   baseUrl: https://caigou.chinatelecom.com.cn
 settings:
+  # 站点为 SPA，列表接口未逆向，当前 0 条
+  enabled: false
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2

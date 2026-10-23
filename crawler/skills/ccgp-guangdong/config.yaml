@@ -19,12 +19,16 @@ lists:
       itemsPath: "data.rows"
       fields:
         title: "title"
-        url: "https://gdgpo.czt.gd.gov.cn/gpcms/rest/web/v2/info/getInfoById?id={id}"
+        # sourceUrl 用人类可读的详情页，而非 JSON 接口
+        url: "https://gdgpo.czt.gd.gov.cn/maincms-web/articleDetail?type=notice&id={id}"
         date: "noticeTime"
+        # 详情接口 getInfoById 只返回元数据（无正文），列表行的 description
+        # 是正文摘要（实测截断在 500 字），比抓 JSON 当正文更可用
+        hint: "description"
         purchaser: "purchaser"
         agency: "agency"
         province:
           const: "44"
         city: "regionName"
-    detail:
-      contentSelector: ".tb-fidelity-root, .content, body"
+    # 无 detail：content 取列表 description 摘要
+

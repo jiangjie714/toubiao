@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { listSkills, readSkillConfigFile } from "./config-loader";
 import { extractPurchaser } from "./extraction";
-import { fetchDetail, fetchListPage, parseListItems } from "./runner";
+import { fetchDetail, fetchListPage, parseListItems, resolveDetailUrl } from "./runner";
 import { sleep } from "./fetcher";
 import type { SkillConfig } from "./types";
 
@@ -103,7 +103,7 @@ async function inspectList(
         let purchaserHits = 0;
         for (const sample of samples) {
           try {
-            const fetched = await fetchDetail(sample.url, list.detail, settings);
+            const fetched = await fetchDetail(resolveDetailUrl(list.detail, sample), list.detail, settings);
             detail.contentLength = Math.max(detail.contentLength, fetched.content.length);
             detail.attachments += fetched.attachments.length;
             if (fetched.content.length > 0) detail.ok = true;
@@ -226,6 +226,13 @@ async function main() {
         skipped.length > 0 ? `；已停用 ${skipped.length} 个` : ""
       }。`,
     );
+    if (skipped.length > 0) {
+      console.log(
+        `已停用（配置 settings.enabled=false）：${[
+          ...new Set(skipped.map((r) => r.skillCode)),
+        ].join(", ")}　详见 docs/数据源巡检报告.md`,
+      );
+    }
     if (broken.length > 0) {
       console.log(`需修复 ${broken.length} 个：${broken.map((r) => `${r.skillCode}/${r.listType}`).join("、")}`);
     }

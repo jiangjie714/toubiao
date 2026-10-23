@@ -2,6 +2,8 @@ source:
   name: 陕西省政府采购网
   baseUrl: http://www.ccgp-shaanxi.gov.cn
 settings:
+  # 现配置抓到的是首页新闻轮播；真实列表接口 notice/selectInfoMoreChannel.do 需 RSA 签名头
+  enabled: false
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2

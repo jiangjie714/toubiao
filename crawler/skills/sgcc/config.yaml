@@ -2,6 +2,8 @@ source:
   name: 国家电网新一代电子商务平台
   baseUrl: https://ecp.sgcc.com.cn
 settings:
+  # 电子商务平台为 SPA + hash 路由，静态抓取拿不到列表
+  enabled: false
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2

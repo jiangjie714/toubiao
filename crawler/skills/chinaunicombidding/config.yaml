@@ -2,6 +2,8 @@ source:
   name: 中国联通采购与招标网
   baseUrl: http://www.chinaunicombidding.cn
 settings:
+  # 站方风控返回 HTTP 412，需 cookie/校验头
+  enabled: false
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2

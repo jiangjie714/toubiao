@@ -2,6 +2,8 @@ source:
   name: 福建省政府采购网
   baseUrl: http://zfcg.czt.fujian.gov.cn
 settings:
+  # www.ccgp-fujian.gov.cn 已 301 到 zfcg.czt.fujian.gov.cn，其接口要求 RSA 签名头（403 nsssjss）
+  enabled: false
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2

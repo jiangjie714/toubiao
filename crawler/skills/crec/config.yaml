@@ -2,6 +2,8 @@ source:
   name: 中国中铁采购电子商务平台
   baseUrl: https://www.crecgec.com
 settings:
+  # 列表可达，但详情是 eproport.crecgec.com 的 SPA，需 projectId 调接口，正文 0 字
+  enabled: false
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2
