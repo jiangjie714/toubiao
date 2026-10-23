@@ -36,6 +36,10 @@ export type ListConfig = {
   };
   startPage?: number;
   maxPages?: number;
+  urlReplace?: {
+    pattern: string;
+    replacement: string;
+  };
   parse: {
     itemSelector?: string;
     itemsPath?: string;

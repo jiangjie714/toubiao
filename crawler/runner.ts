@@ -192,7 +192,12 @@ function parseListItems(
   pageUrl: string,
 ): ParsedItem[] {
   const fields = list.parse.fields;
-  const resolve = (href: string) => new URL(href, pageUrl || baseUrl).toString();
+  const resolve = (href: string) => {
+    const normalized = list.urlReplace
+      ? href.split(list.urlReplace.pattern).join(list.urlReplace.replacement)
+      : href;
+    return new URL(normalized, pageUrl || baseUrl).toString();
+  };
   const items: ParsedItem[] = [];
 
   const pushItem = (

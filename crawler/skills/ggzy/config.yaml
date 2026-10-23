@@ -1,30 +1,174 @@
+# 全国公共资源交易平台（ggzy.gov.cn）
+# 2026-10 站点改版后由静态频道页改为 Vue + JSON 接口，结构说明见 SKILL.md
 source:
   name: 全国公共资源交易平台
-  baseUrl: http://www.ggzy.gov.cn
+  baseUrl: https://www.ggzy.gov.cn
+
 settings:
-  requestDelayMs: 1500
-  timeoutMs: 20000
+  requestDelayMs: 2000
+  timeoutMs: 25000
   retries: 2
-  maxPages: 1
+  maxPages: 2
   scheduleCron: 0 */2 * * *
+
 lists:
+  # 工程建设 · 招标/资审公告
   - type: NOTICE
-    mode: html
-    firstPageUrl: http://www.ggzy.gov.cn/information/html/a/trade.html
-    url: http://www.ggzy.gov.cn/information/html/a/trade.html
+    mode: json
+    request:
+      method: POST
+      url: https://www.ggzy.gov.cn/information/pubTradingInfo/getTradList
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+        Referer: https://www.ggzy.gov.cn/deal/dealList.html?HEADER_DEAL_TYPE=01
+      form:
+        SOURCE_TYPE: "1"
+        DEAL_TIME: "03"
+        DEAL_CLASSIFY: "01"
+        DEAL_STAGE: "0101"
+        PAGENUMBER: "{page}"
+    startPage: 1
+    maxPages: 2
     parse:
-      itemSelector: ul.publicont > li
+      itemsPath: "data.records"
       fields:
-        title:
-          selector: a
-          attr: text
-        url:
-          selector: a
-          attr: href
-        date:
-          selector: span.time
-          attr: text
-          regex: '\d{4}-\d{2}-\d{2}(?:\s+\d{1,2}:\d{1,2}(?::\d{1,2})?)?'
+        title: "title"
+        url: "https://www.ggzy.gov.cn{url}"
+        date: "publishTime"
+        province: "provinceText"
+        city: "cityText"
+    # 接口返回的是壳页 /information/deal/html/a/…，正文在 /b/… 页面
+    urlReplace:
+      pattern: "/information/deal/html/a/"
+      replacement: "/information/deal/html/b/"
     detail:
-      contentSelector: div.detail-content
-      removeSelector: script, style
+      contentSelector: "#mycontent, .detail"
+      removeSelector: "script, style"
+
+  # 工程建设 · 交易结果公示
+  - type: RESULT
+    mode: json
+    request:
+      method: POST
+      url: https://www.ggzy.gov.cn/information/pubTradingInfo/getTradList
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+        Referer: https://www.ggzy.gov.cn/deal/dealList.html?HEADER_DEAL_TYPE=01
+      form:
+        SOURCE_TYPE: "1"
+        DEAL_TIME: "03"
+        DEAL_CLASSIFY: "01"
+        DEAL_STAGE: "0104"
+        PAGENUMBER: "{page}"
+    startPage: 1
+    maxPages: 2
+    parse:
+      itemsPath: "data.records"
+      fields:
+        title: "title"
+        url: "https://www.ggzy.gov.cn{url}"
+        date: "publishTime"
+        province: "provinceText"
+        city: "cityText"
+    urlReplace:
+      pattern: "/information/deal/html/a/"
+      replacement: "/information/deal/html/b/"
+    detail:
+      contentSelector: "#mycontent, .detail"
+      removeSelector: "script, style"
+
+  # 政府采购 · 采购/资审公告
+  - type: NOTICE
+    mode: json
+    request:
+      method: POST
+      url: https://www.ggzy.gov.cn/information/pubTradingInfo/getTradList
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+        Referer: https://www.ggzy.gov.cn/deal/dealList.html?HEADER_DEAL_TYPE=02
+      form:
+        SOURCE_TYPE: "1"
+        DEAL_TIME: "03"
+        DEAL_CLASSIFY: "02"
+        DEAL_STAGE: "0201"
+        PAGENUMBER: "{page}"
+    startPage: 1
+    maxPages: 2
+    parse:
+      itemsPath: "data.records"
+      fields:
+        title: "title"
+        url: "https://www.ggzy.gov.cn{url}"
+        date: "publishTime"
+        province: "provinceText"
+        city: "cityText"
+    urlReplace:
+      pattern: "/information/deal/html/a/"
+      replacement: "/information/deal/html/b/"
+    detail:
+      contentSelector: "#mycontent, .detail"
+      removeSelector: "script, style"
+
+  # 政府采购 · 中标公告
+  - type: RESULT
+    mode: json
+    request:
+      method: POST
+      url: https://www.ggzy.gov.cn/information/pubTradingInfo/getTradList
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+        Referer: https://www.ggzy.gov.cn/deal/dealList.html?HEADER_DEAL_TYPE=02
+      form:
+        SOURCE_TYPE: "1"
+        DEAL_TIME: "03"
+        DEAL_CLASSIFY: "02"
+        DEAL_STAGE: "0202"
+        PAGENUMBER: "{page}"
+    startPage: 1
+    maxPages: 2
+    parse:
+      itemsPath: "data.records"
+      fields:
+        title: "title"
+        url: "https://www.ggzy.gov.cn{url}"
+        date: "publishTime"
+        province: "provinceText"
+        city: "cityText"
+    urlReplace:
+      pattern: "/information/deal/html/a/"
+      replacement: "/information/deal/html/b/"
+    detail:
+      contentSelector: "#mycontent, .detail"
+      removeSelector: "script, style"
+
+  # 政府采购 · 更正事项
+  - type: CHANGE
+    mode: json
+    request:
+      method: POST
+      url: https://www.ggzy.gov.cn/information/pubTradingInfo/getTradList
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+        Referer: https://www.ggzy.gov.cn/deal/dealList.html?HEADER_DEAL_TYPE=02
+      form:
+        SOURCE_TYPE: "1"
+        DEAL_TIME: "03"
+        DEAL_CLASSIFY: "02"
+        DEAL_STAGE: "0204"
+        PAGENUMBER: "{page}"
+    startPage: 1
+    maxPages: 2
+    parse:
+      itemsPath: "data.records"
+      fields:
+        title: "title"
+        url: "https://www.ggzy.gov.cn{url}"
+        date: "publishTime"
+        province: "provinceText"
+        city: "cityText"
+    urlReplace:
+      pattern: "/information/deal/html/a/"
+      replacement: "/information/deal/html/b/"
+    detail:
+      contentSelector: "#mycontent, .detail"
+      removeSelector: "script, style"

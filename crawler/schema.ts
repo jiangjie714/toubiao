@@ -76,6 +76,14 @@ const listConfigSchema = z
       .optional(),
     startPage: z.number().int().min(1).optional(),
     maxPages: z.number().int().min(1).max(100).optional(),
+    /** 详情地址归一化：列表接口返回的是壳页路径时，用字面量替换拼出正文页 */
+    urlReplace: z
+      .object({
+        pattern: z.string().min(1).max(200),
+        replacement: z.string().max(200),
+      })
+      .strict()
+      .optional(),
     parse: z
       .object({
         itemSelector: z.string().min(1).max(200).optional(),
