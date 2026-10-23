@@ -120,6 +120,91 @@ export function extractBuiltinFields(
   return { fields, confidence };
 }
 
+/** 机构名后缀：用于从正文中判定「采购人/招标人」取值是否像机构名 */
+const ORG_SUFFIXES = [
+  "有限责任公司",
+  "股份有限公司",
+  "有限公司",
+  "公司",
+  "集团",
+  "研究院",
+  "研究所",
+  "设计院",
+  "采购中心",
+  "交易中心",
+  "服务中心",
+  "医院",
+  "学院",
+  "大学",
+  "事务所",
+  "合作社",
+  "管理局",
+  "管理处",
+  "委员会",
+  "办公室",
+  "人民政府",
+  "政府",
+  "中心",
+  "公司",
+  "集团",
+  "局",
+  "厅",
+  "署",
+  "院",
+  "所",
+  "站",
+  "馆",
+  "校",
+  "厂",
+  "部",
+  "队",
+];
+
+const PURCHASER_LABEL =
+  "(?:采\\s*购\\s*人|采\\s*购\\s*单\\s*位|招\\s*标\\s*人|招\\s*标\\s*单\\s*位|采购需求单位|建\\s*设\\s*单\\s*位|项目业主|业\\s*主\\s*单\\s*位)";
+
+/**
+ * 从公告正文提取采购人/招标人。
+ *
+ * 列表接口通常不返回采购人（如 ggzy 全国平台），只能在正文兜底：
+ * 以「采购人：」「招标人名称：」为锚点，用机构后缀裁剪掉紧跟的地址/电话等噪音。
+ */
+export function extractPurchaser(text: string | null | undefined): string | undefined {
+  if (!text) return undefined;
+  const normalized = text.replace(/\u00a0/g, " ").replace(/\s+/g, " ");
+  const regex = new RegExp(
+    `${PURCHASER_LABEL}(?:信息)?[\\s\\S]{0,16}?(?:名\\s*称)?[：:]\\s*([^\\s，,。；;：:]{4,40})`,
+    "u",
+  );
+  const global = new RegExp(regex.source, "gu");
+  for (const match of normalized.matchAll(global)) {
+    const value = trimToOrgSuffix(match[1]);
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function trimToOrgSuffix(raw: string): string | undefined {
+  const value = raw.replace(/^[（(]|[)）]$/g, "").trim();
+  if (value.length < 4) return undefined;
+
+  // 取最后一个机构后缀位置，既裁掉紧跟的地址/电话，又保留「XX有限公司昆明分公司」这类全称
+  let end = 0;
+  for (let i = 4; i <= value.length; i += 1) {
+    const slice = value.slice(0, i);
+    if (ORG_SUFFIXES.some((suffix) => slice.endsWith(suffix))) end = i;
+  }
+  if (end === 0) return undefined;
+
+  let result = value.slice(0, end);
+  // 括号未闭合说明机构名被截断（如「XX医院（XX临床医学院」），回退到左括号前
+  const open = result.lastIndexOf("（");
+  if (open > 0 && !result.slice(open).includes("）")) result = result.slice(0, open);
+  if (result.length < 4) return undefined;
+  if (/(?:电话|传真|邮箱|邮编|地址|联系|详见|如下|另行|应当|须|请|：|:)/.test(result)) return undefined;
+  return result;
+}
+
 export function parseDecimalAmount(input: string | undefined): number | undefined {
   if (!input) return undefined;
   const text = input.replace(/,/g, "").replace(/，/g, "");

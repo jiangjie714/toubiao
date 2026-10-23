@@ -1,3 +1,10 @@
+# 湖北省政府采购网——结构说明见同目录 SKILL.md
+#
+# 首页是多标签聚合页，每个 tab 一个独立列表容器：
+#   #area-1-x 省级公告 / #area-2-x 市州公告 / #area-3-x、#area-4-x 其他
+# 标签位：1 资格预审、2 招标(采购)、4 中标(成交)、5 更正、6 终止…
+# 旧配置用 `.news-list li:has(a)` 会同时命中「通知公告/政策法规」等导航栏（154 条噪音），
+# 因此必须按 tab 容器精确取。
 source:
   name: 湖北省政府采购网
   baseUrl: http://www.ccgp-hubei.gov.cn
@@ -7,17 +14,19 @@ settings:
   retries: 2
   maxPages: 1
   scheduleCron: 0 */2 * * *
+
 lists:
   - type: NOTICE
     mode: html
     firstPageUrl: http://www.ccgp-hubei.gov.cn/
     url: http://www.ccgp-hubei.gov.cn/
     parse:
-      itemSelector: ".news-list li:has(a)"
+      itemSelector: "#area-1-2 li:has(a)"
       fields:
         title:
           selector: a
           attr: text
+          regex: '\]\s*(.+)$'
         url:
           selector: a
           attr: href
@@ -25,8 +34,101 @@ lists:
           selector: span
           attr: text
           regex: '\d{4}-\d{2}-\d{2}'
-        province:
-          const: "42"
+        province: { const: "42" }
     detail:
-      contentSelector: .art_con, .content, body
+      contentSelector: .art_con
+      removeSelector: script, style
+
+  - type: RESULT
+    mode: html
+    firstPageUrl: http://www.ccgp-hubei.gov.cn/
+    url: http://www.ccgp-hubei.gov.cn/
+    parse:
+      itemSelector: "#area-1-4 li:has(a)"
+      fields:
+        title:
+          selector: a
+          attr: text
+          regex: '\]\s*(.+)$'
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: span
+          attr: text
+          regex: '\d{4}-\d{2}-\d{2}'
+        province: { const: "42" }
+    detail:
+      contentSelector: .art_con
+      removeSelector: script, style
+
+  - type: CHANGE
+    mode: html
+    firstPageUrl: http://www.ccgp-hubei.gov.cn/
+    url: http://www.ccgp-hubei.gov.cn/
+    parse:
+      itemSelector: "#area-1-5 li:has(a)"
+      fields:
+        title:
+          selector: a
+          attr: text
+          regex: '\]\s*(.+)$'
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: span
+          attr: text
+          regex: '\d{4}-\d{2}-\d{2}'
+        province: { const: "42" }
+    detail:
+      contentSelector: .art_con
+      removeSelector: script, style
+
+  # 市州公告：招标(采购)
+  - type: NOTICE
+    mode: html
+    firstPageUrl: http://www.ccgp-hubei.gov.cn/
+    url: http://www.ccgp-hubei.gov.cn/
+    parse:
+      itemSelector: "#area-2-2 li:has(a)"
+      fields:
+        title:
+          selector: a
+          attr: text
+          regex: '\]\s*(.+)$'
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: span
+          attr: text
+          regex: '\d{4}-\d{2}-\d{2}'
+        province: { const: "42" }
+    detail:
+      contentSelector: .art_con
+      removeSelector: script, style
+
+  # 市州公告：中标(成交)
+  - type: RESULT
+    mode: html
+    firstPageUrl: http://www.ccgp-hubei.gov.cn/
+    url: http://www.ccgp-hubei.gov.cn/
+    parse:
+      itemSelector: "#area-2-4 li:has(a)"
+      fields:
+        title:
+          selector: a
+          attr: text
+          regex: '\]\s*(.+)$'
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: span
+          attr: text
+          regex: '\d{4}-\d{2}-\d{2}'
+        province: { const: "42" }
+    detail:
+      contentSelector: .art_con
       removeSelector: script, style

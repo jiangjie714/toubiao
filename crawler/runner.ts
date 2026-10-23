@@ -10,6 +10,7 @@ import { handleFailureAndDegrade, attemptAutoHealing } from "@/lib/crawler/circu
 import {
   extractBuiltinFields,
   extractConfiguredFields,
+  extractPurchaser,
   normalizeExtraFields,
   type AttachmentMeta,
   type ExtraFieldTarget,
@@ -548,6 +549,8 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
             ...configured.confidence,
           };
           const { fields } = normalizeExtraFields(rawFields);
+  // 列表接口常无采购人（如 ggzy），用正文兜底；列表值优先
+  const purchaser = item.purchaser ?? extractPurchaser(detail.content) ?? null;
 
           if (options.dryRun) {
             dryItems.push({
@@ -573,7 +576,7 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
                 expireDate: extractExpireDate(detail.content),
                 provinceCode: region.provinceCode,
                 cityCode: region.cityCode,
-                purchaser: item.purchaser,
+                purchaser,
                 agency: item.agency,
                 sourceName: config.source.name,
                 sourceUrl: item.url,

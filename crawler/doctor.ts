@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { listSkills, readSkillConfigFile } from "./config-loader";
+import { extractPurchaser } from "./extraction";
 import { fetchDetail, fetchListPage, parseListItems } from "./runner";
 import { sleep } from "./fetcher";
 import type { SkillConfig } from "./types";
@@ -13,7 +14,13 @@ type ListReport = {
   httpOk: boolean;
   items: number;
   fill: { date: number; province: number; purchaser: number };
-  detail: { ok: boolean; contentLength: number; attachments: number } | null;
+  detail: {
+    ok: boolean;
+    contentLength: number;
+    attachments: number;
+    purchaserRate: number;
+    samples: number;
+  } | null;
   latencyMs: number;
   error: string | null;
   skipped: boolean;
@@ -84,23 +91,29 @@ async function inspectList(
     }
 
     if (args.detail && list.detail && items.length > 0) {
-      const sample = items.find((item) => item.url);
-      if (sample) {
-        try {
-          const fetched = await fetchDetail(sample.url, list.detail, settings);
-          report.detail = {
-            ok: fetched.content.length > 0,
-            contentLength: fetched.content.length,
-            attachments: fetched.attachments.length,
-          };
-        } catch (error) {
-          report.detail = {
-            ok: false,
-            contentLength: 0,
-            attachments: 0,
-          };
-          report.error = `详情页失败：${error instanceof Error ? error.message : String(error)}`;
+      const samples = items.filter((item) => item.url).slice(0, 3);
+      if (samples.length > 0) {
+        const detail = {
+          ok: false,
+          contentLength: 0,
+          attachments: 0,
+          purchaserRate: 0,
+          samples: samples.length,
+        };
+        let purchaserHits = 0;
+        for (const sample of samples) {
+          try {
+            const fetched = await fetchDetail(sample.url, list.detail, settings);
+            detail.contentLength = Math.max(detail.contentLength, fetched.content.length);
+            detail.attachments += fetched.attachments.length;
+            if (fetched.content.length > 0) detail.ok = true;
+            if (extractPurchaser(fetched.content)) purchaserHits += 1;
+          } catch (error) {
+            report.error = `详情页失败：${error instanceof Error ? error.message : String(error)}`;
+          }
         }
+        detail.purchaserRate = purchaserHits / samples.length;
+        report.detail = detail;
       }
     }
 
@@ -171,12 +184,15 @@ async function main() {
     console.log(JSON.stringify(reports, null, 2));
   } else {
     console.log(
-      `${pad("技能", 22)}${pad("类型", 10)}${pad("条目", 6)}${pad("日期", 6)}${pad("地区", 6)}${pad("采购人", 8)}${pad("正文", 8)}${pad("耗时", 8)}状态`,
+      `${pad("技能", 22)}${pad("类型", 10)}${pad("条目", 6)}${pad("日期", 6)}${pad("地区", 6)}${pad("采购人", 8)}${pad("正文", 8)}${args.detail ? pad("正文采购人", 12) : ""}${pad("耗时", 8)}状态`,
     );
-    console.log("-".repeat(92));
+    console.log("-".repeat(args.detail ? 104 : 92));
     for (const report of reports) {
       const detailCell = report.detail
         ? `${report.detail.ok ? report.detail.contentLength : 0}字`
+        : "-";
+      const detailPurchaserCell = report.detail
+        ? `${Math.round(report.detail.purchaserRate * 100)}%/${report.detail.samples}`
         : "-";
       const status = report.skipped
         ? "SKIP（配置停用）"
@@ -192,10 +208,13 @@ async function main() {
         )}${pad(pct(report.fill.province, report.items), 6)}${pad(
           pct(report.fill.purchaser, report.items),
           8,
-        )}${pad(detailCell, 8)}${pad(`${report.latencyMs}ms`, 8)}${status}`,
+        )}${pad(detailCell, 8)}${args.detail ? pad(detailPurchaserCell, 12) : ""}${pad(
+          `${report.latencyMs}ms`,
+          8,
+        )}${status}`,
       );
     }
-    console.log("-".repeat(92));
+    console.log("-".repeat(args.detail ? 104 : 92));
 
     const skipped = reports.filter((r) => r.skipped);
     const active = reports.filter((r) => !r.skipped);
