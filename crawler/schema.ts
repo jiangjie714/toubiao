@@ -126,6 +126,8 @@ export const SkillConfigSchema = z
           .regex(/^[\d*/,-\s]+$/, "cron 表达式仅支持标准数字、*、/、,、- 和空格")
           .optional(),
         proxyPolicy: z.enum(["off", "pool"]).optional(),
+        /** 站点长期不可用时置 false：同步到 CrawlSource.enabled，worker 不再调度 */
+        enabled: z.boolean().optional(),
       })
       .strict(),
     lists: z.array(listConfigSchema).min(1).max(50),

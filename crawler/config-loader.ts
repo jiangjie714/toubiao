@@ -62,9 +62,10 @@ export async function syncSkillConfigs(): Promise<{ synced: number; versions: nu
         retries: config.settings.retries ?? 2,
         maxPages: config.settings.maxPages ?? 1,
         proxyPolicy: config.settings.proxyPolicy ?? "off",
+        enabled: config.settings.enabled !== false,
         nextRunAt: new Date(),
       },
-      update: { name: config.source.name },
+      update: { name: config.source.name, enabled: config.settings.enabled !== false },
     });
 
     const latest = await prisma.skillRevision.findFirst({

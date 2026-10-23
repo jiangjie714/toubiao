@@ -2,6 +2,8 @@ source:
   name: 华润守正电子招标平台
   baseUrl: https://szb.crc.com.cn
 settings:
+  # 域名 szb.crc.com.cn 已无 DNS 解析（2026-10 实测），待确认新域名后再启用
+  enabled: false
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2

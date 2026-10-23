@@ -2,6 +2,8 @@ source:
   name: 四川省政府采购网
   baseUrl: http://www.ccgp-sichuan.gov.cn
 settings:
+  # 站方网关持续返回 502（2026-10 实测），恢复后删除本行
+  enabled: false
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2

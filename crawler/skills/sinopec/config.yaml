@@ -2,6 +2,8 @@ source:
   name: 中国石化物资招标投标网
   baseUrl: https://bidding.sinopec.com
 settings:
+  # 443 连接超时（本机网络不可达，2026-10 实测），需换出口/代理后再评估
+  enabled: false
   requestDelayMs: 1500
   timeoutMs: 20000
   retries: 2

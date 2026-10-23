@@ -72,6 +72,7 @@ export type SkillConfig = {
     userAgent?: string;
     scheduleCron?: string;
     proxyPolicy?: string;
+    enabled?: boolean;
   };
   lists: ListConfig[];
 };

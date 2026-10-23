@@ -16,6 +16,7 @@ type ListReport = {
   detail: { ok: boolean; contentLength: number; attachments: number } | null;
   latencyMs: number;
   error: string | null;
+  skipped: boolean;
 };
 
 type Args = {
@@ -65,6 +66,7 @@ async function inspectList(
     detail: null,
     latencyMs: 0,
     error: null,
+    skipped: false,
   };
 
   const startedAt = Date.now();
@@ -134,6 +136,25 @@ async function main() {
         detail: null,
         latencyMs: 0,
         error: `配置无效：${error instanceof Error ? error.message : String(error)}`,
+        skipped: false,
+      });
+      continue;
+    }
+
+    if (config.settings.enabled === false) {
+      reports.push({
+        skillCode,
+        sourceName: config.source.name,
+        listType: "-",
+        pageUrl: "",
+        ok: true,
+        httpOk: false,
+        items: 0,
+        fill: { date: 0, province: 0, purchaser: 0 },
+        detail: null,
+        latencyMs: 0,
+        error: null,
+        skipped: true,
       });
       continue;
     }
@@ -157,7 +178,13 @@ async function main() {
       const detailCell = report.detail
         ? `${report.detail.ok ? report.detail.contentLength : 0}字`
         : "-";
-      const status = report.ok ? "OK" : report.error ? `FAIL ${report.error.slice(0, 28)}` : "EMPTY";
+      const status = report.skipped
+        ? "SKIP（配置停用）"
+        : report.ok
+          ? "OK"
+          : report.error
+            ? `FAIL ${report.error.slice(0, 28)}`
+            : "EMPTY";
       console.log(
         `${pad(report.skillCode, 22)}${pad(report.listType, 10)}${pad(String(report.items), 6)}${pad(
           pct(report.fill.date, report.items),
@@ -170,16 +197,22 @@ async function main() {
     }
     console.log("-".repeat(92));
 
-    const okCount = reports.filter((r) => r.ok).length;
-    const totalItems = reports.reduce((acc, r) => acc + r.items, 0);
-    const broken = reports.filter((r) => !r.ok);
-    console.log(`巡检 ${reports.length} 个列表，可用 ${okCount} 个，合计解析 ${totalItems} 条公告。`);
+    const skipped = reports.filter((r) => r.skipped);
+    const active = reports.filter((r) => !r.skipped);
+    const okCount = active.filter((r) => r.ok).length;
+    const totalItems = active.reduce((acc, r) => acc + r.items, 0);
+    const broken = active.filter((r) => !r.ok);
+    console.log(
+      `巡检 ${active.length} 个列表，可用 ${okCount} 个，合计解析 ${totalItems} 条公告${
+        skipped.length > 0 ? `；已停用 ${skipped.length} 个` : ""
+      }。`,
+    );
     if (broken.length > 0) {
       console.log(`需修复 ${broken.length} 个：${broken.map((r) => `${r.skillCode}/${r.listType}`).join("、")}`);
     }
   }
 
-  if (reports.some((r) => !r.ok)) process.exitCode = 1;
+  if (reports.some((r) => !r.ok && !r.skipped)) process.exitCode = 1;
 }
 
 main().catch((error) => {
