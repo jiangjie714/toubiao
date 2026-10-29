@@ -1,0 +1,224 @@
+source:
+  name: 贵州省公共资源交易平台
+  baseUrl: https://ggzy.guizhou.gov.cn
+
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 1
+  scheduleCron: "0 */2 * * *"
+  headers:
+    Referer: https://ggzy.guizhou.gov.cn/xxfw/zfcg/
+
+# 统一走 /tradeInfo/es/list JSON 接口（站点前端 fes.GCJStradeInfo 同款），
+# announcement 为精确匹配过滤；采购需求公示/招标计划是发标前的早期信号 → INTENTION。
+lists:
+  # ── 政府采购频道 channelId=5904543 ──
+  - type: NOTICE
+    mode: json
+    request:
+      method: POST
+      url: https://ggzy.guizhou.gov.cn/tradeInfo/es/list
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      body: '{"channelId":"5904543","pageNum":{page},"pageSize":20,"announcement":"采购公告"}'
+    parse:
+      itemsPath: list
+      fields:
+        title: docTitle
+        url: apiUrl
+        date: docRelTime
+        province:
+          const: "52"
+        hint: docSourceName
+      extraFields:
+        projectNo: tenderProjectCode
+    detail:
+      contentSelector: .view_con
+      removeSelector: script, style
+
+  - type: INTENTION
+    mode: json
+    request:
+      method: POST
+      url: https://ggzy.guizhou.gov.cn/tradeInfo/es/list
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      body: '{"channelId":"5904543","pageNum":{page},"pageSize":20,"announcement":"采购需求公示"}'
+    parse:
+      itemsPath: list
+      fields:
+        title: docTitle
+        url: apiUrl
+        date: docRelTime
+        province:
+          const: "52"
+        hint: docSourceName
+      extraFields:
+        projectNo: tenderProjectCode
+    detail:
+      contentSelector: .view_con
+      removeSelector: script, style
+
+  - type: RESULT
+    mode: json
+    request:
+      method: POST
+      url: https://ggzy.guizhou.gov.cn/tradeInfo/es/list
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      body: '{"channelId":"5904543","pageNum":{page},"pageSize":20,"announcement":"交易结果公示"}'
+    parse:
+      itemsPath: list
+      fields:
+        title: docTitle
+        url: apiUrl
+        date: docRelTime
+        province:
+          const: "52"
+        hint: docSourceName
+      extraFields:
+        projectNo: tenderProjectCode
+    detail:
+      contentSelector: .view_con
+      removeSelector: script, style
+
+  - type: CHANGE
+    mode: json
+    request:
+      method: POST
+      url: https://ggzy.guizhou.gov.cn/tradeInfo/es/list
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      body: '{"channelId":"5904543","pageNum":{page},"pageSize":20,"announcement":"变更公告（澄清与答疑）"}'
+    parse:
+      itemsPath: list
+      fields:
+        title: docTitle
+        url: apiUrl
+        date: docRelTime
+        province:
+          const: "52"
+        hint: docSourceName
+      extraFields:
+        projectNo: tenderProjectCode
+    detail:
+      contentSelector: .view_con
+      removeSelector: script, style
+
+  # ── 工程建设频道 channelId=5904475 ──
+  - type: NOTICE
+    mode: json
+    request:
+      method: POST
+      url: https://ggzy.guizhou.gov.cn/tradeInfo/es/list
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      body: '{"channelId":"5904475","pageNum":{page},"pageSize":20,"announcement":"交易公告"}'
+    parse:
+      itemsPath: list
+      fields:
+        title: docTitle
+        url: apiUrl
+        date: docRelTime
+        province:
+          const: "52"
+        hint: docSourceName
+      extraFields:
+        projectNo: tenderProjectCode
+    detail:
+      contentSelector: .view_con
+      removeSelector: script, style
+
+  - type: INTENTION
+    mode: json
+    request:
+      method: POST
+      url: https://ggzy.guizhou.gov.cn/tradeInfo/es/list
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      body: '{"channelId":"5904475","pageNum":{page},"pageSize":20,"announcement":"招标计划"}'
+    parse:
+      itemsPath: list
+      fields:
+        title: docTitle
+        url: apiUrl
+        date: docRelTime
+        province:
+          const: "52"
+        hint: docSourceName
+      extraFields:
+        projectNo: tenderProjectCode
+    detail:
+      contentSelector: .view_con
+      removeSelector: script, style
+
+  - type: RESULT
+    mode: json
+    request:
+      method: POST
+      url: https://ggzy.guizhou.gov.cn/tradeInfo/es/list
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      body: '{"channelId":"5904475","pageNum":{page},"pageSize":20,"announcement":"中标候选人公示"}'
+    parse:
+      itemsPath: list
+      fields:
+        title: docTitle
+        url: apiUrl
+        date: docRelTime
+        province:
+          const: "52"
+        hint: docSourceName
+      extraFields:
+        projectNo: tenderProjectCode
+    detail:
+      contentSelector: .view_con
+      removeSelector: script, style
+
+  - type: RESULT
+    mode: json
+    request:
+      method: POST
+      url: https://ggzy.guizhou.gov.cn/tradeInfo/es/list
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      body: '{"channelId":"5904475","pageNum":{page},"pageSize":20,"announcement":"交易结果公示"}'
+    parse:
+      itemsPath: list
+      fields:
+        title: docTitle
+        url: apiUrl
+        date: docRelTime
+        province:
+          const: "52"
+        hint: docSourceName
+      extraFields:
+        projectNo: tenderProjectCode
+    detail:
+      contentSelector: .view_con
+      removeSelector: script, style
+
+  - type: CHANGE
+    mode: json
+    request:
+      method: POST
+      url: https://ggzy.guizhou.gov.cn/tradeInfo/es/list
+      headers:
+        Content-Type: application/json;charset=UTF-8
+      body: '{"channelId":"5904475","pageNum":{page},"pageSize":20,"announcement":"变更公告（澄清与答疑）"}'
+    parse:
+      itemsPath: list
+      fields:
+        title: docTitle
+        url: apiUrl
+        date: docRelTime
+        province:
+          const: "52"
+        hint: docSourceName
+      extraFields:
+        projectNo: tenderProjectCode
+    detail:
+      contentSelector: .view_con
+      removeSelector: script, style
