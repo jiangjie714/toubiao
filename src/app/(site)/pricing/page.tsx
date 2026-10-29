@@ -36,6 +36,13 @@ function priceLabel(monthly: number | null, yearly: number | null) {
   return `¥${monthly.toFixed(2)} / 月 · ¥${yearly.toFixed(2)} / 年`;
 }
 
+/** 年付相对月付×12 的折扣力度（%），无月付档位则返回 null */
+function yearlySavingPct(monthly: number | null, yearly: number | null) {
+  if (!monthly || !yearly) return null;
+  const saving = 1 - yearly / (monthly * 12);
+  return saving > 0 ? Math.round(saving * 100) : null;
+}
+
 export default async function PricingPage({
   searchParams,
 }: {
@@ -100,23 +107,39 @@ export default async function PricingPage({
         </section>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-5">
         {plans.map((plan) => {
           const features = plan.features as PlanFeaturesDisplay;
+          const isEnterprise = plan.code.startsWith("ENTERPRISE_");
+          const saving = yearlySavingPct(
+            plan.priceMonthly === null ? null : Number(plan.priceMonthly),
+            plan.priceYearly === null ? null : Number(plan.priceYearly),
+          );
           return (
             <article
               key={plan.id}
               className={`flex flex-col rounded-xl border bg-surface p-5 ${
-                plan.code === entitlement.planCode ? "border-primary shadow-sm" : "border-slate-200"
+                plan.code === entitlement.planCode
+                  ? "border-primary shadow-sm"
+                  : plan.code === "ENTERPRISE_PRO"
+                    ? "border-amber-300 shadow-sm"
+                    : "border-slate-200"
               }`}
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-900">{plan.name}</h2>
-                {plan.code === entitlement.planCode && (
-                  <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-primary">
-                    当前
-                  </span>
-                )}
+                <span className="flex items-center gap-1.5">
+                  {plan.code === "ENTERPRISE_PRO" && (
+                    <span className="rounded-md bg-gradient-to-r from-amber-500 to-amber-600 px-2 py-0.5 text-xs font-bold text-white shadow-xs">
+                      推荐
+                    </span>
+                  )}
+                  {plan.code === entitlement.planCode && (
+                    <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-primary">
+                      当前
+                    </span>
+                  )}
+                </span>
               </div>
               <p className="mt-3 text-lg font-bold text-primary tnum">
                 {priceLabel(
@@ -147,25 +170,15 @@ export default async function PricingPage({
 
               {plan.code !== "FREE" && (
                 <div className="mt-5 space-y-2">
-                  {plan.priceMonthly !== null && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <form action={createOnlineOrderAction}>
-                        <input type="hidden" name="planCode" value={plan.code} />
-                        <input type="hidden" name="billingCycle" value="monthly" />
-                        <input type="hidden" name="channel" value="wechat" />
-                        <button className="w-full cursor-pointer rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-strong">
-                          微信月付
-                        </button>
-                      </form>
-                      <form action={createOnlineOrderAction}>
-                        <input type="hidden" name="planCode" value={plan.code} />
-                        <input type="hidden" name="billingCycle" value="monthly" />
-                        <input type="hidden" name="channel" value="alipay" />
-                        <button className="w-full cursor-pointer rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-primary transition-colors duration-200 hover:bg-blue-50">
-                          支付宝月付
-                        </button>
-                      </form>
-                    </div>
+                  {/* 企业档主路径：对公转账 + 合同 + 专票 */}
+                  {isEnterprise && plan.priceYearly !== null && (
+                    <form action={createBankOrderAction}>
+                      <input type="hidden" name="planCode" value={plan.code} />
+                      <input type="hidden" name="billingCycle" value="yearly" />
+                      <button className="w-full cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-strong">
+                        对公转账订购
+                      </button>
+                    </form>
                   )}
                   {plan.priceYearly !== null && (
                     <div className="grid grid-cols-2 gap-2">
@@ -173,7 +186,13 @@ export default async function PricingPage({
                         <input type="hidden" name="planCode" value={plan.code} />
                         <input type="hidden" name="billingCycle" value="yearly" />
                         <input type="hidden" name="channel" value="wechat" />
-                        <button className="w-full cursor-pointer rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-strong">
+                        <button
+                          className={`w-full cursor-pointer rounded-lg px-3 py-2 text-sm font-semibold transition-colors duration-200 ${
+                            isEnterprise
+                              ? "border border-blue-200 text-primary hover:bg-blue-50"
+                              : "bg-primary text-white hover:bg-primary-strong"
+                          }`}
+                        >
                           微信年付
                         </button>
                       </form>
@@ -187,13 +206,44 @@ export default async function PricingPage({
                       </form>
                     </div>
                   )}
-                  <form action={createBankOrderAction}>
-                    <input type="hidden" name="planCode" value={plan.code} />
-                    <input type="hidden" name="billingCycle" value={plan.priceYearly !== null ? "yearly" : "monthly"} />
-                    <button className="w-full cursor-pointer rounded-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900">
-                      对公转账订购
-                    </button>
-                  </form>
+                  {saving !== null && (
+                    <p className="text-center text-xs font-medium text-emerald-600">
+                      年付立省 {saving}%，权益全年有效
+                    </p>
+                  )}
+                  {plan.priceMonthly !== null && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <form action={createOnlineOrderAction}>
+                        <input type="hidden" name="planCode" value={plan.code} />
+                        <input type="hidden" name="billingCycle" value="monthly" />
+                        <input type="hidden" name="channel" value="wechat" />
+                        <button className="w-full cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900">
+                          微信月付
+                        </button>
+                      </form>
+                      <form action={createOnlineOrderAction}>
+                        <input type="hidden" name="planCode" value={plan.code} />
+                        <input type="hidden" name="billingCycle" value="monthly" />
+                        <input type="hidden" name="channel" value="alipay" />
+                        <button className="w-full cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900">
+                          支付宝月付
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                  {!isEnterprise && (
+                    <form action={createBankOrderAction}>
+                      <input type="hidden" name="planCode" value={plan.code} />
+                      <input
+                        type="hidden"
+                        name="billingCycle"
+                        value={plan.priceYearly !== null ? "yearly" : "monthly"}
+                      />
+                      <button className="w-full cursor-pointer rounded-lg px-4 py-2 text-xs font-medium text-slate-600 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900">
+                        对公转账订购
+                      </button>
+                    </form>
+                  )}
                 </div>
               )}
             </article>

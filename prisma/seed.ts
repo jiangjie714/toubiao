@@ -109,6 +109,22 @@ const PLANS = [
       apiAccess: false,
     },
   },
+  {
+    code: "ENTERPRISE_PRO",
+    name: "企业专业版",
+    priceMonthly: null,
+    priceYearly: 16800,
+    sortOrder: 5,
+    features: {
+      searchQuota: 10000,
+      fullText: true,
+      contacts: true,
+      attachments: true,
+      pushGroups: 30,
+      exportDaily: 10000,
+      apiAccess: false,
+    },
+  },
 ];
 
 async function seedPlans() {
