@@ -1,179 +1,189 @@
 # 标讯通 —— 招投标信息服务平台
 
-类千里马的招投标信息聚合站：登录后按**地区 + 类型**筛选公告，支持**关键字全文搜索**；
-数据由 Skills 化爬虫从公开渠道自动抓取，管理后台可管用户、管公告、管数据源。
+类千里马的招投标信息聚合 + 商业化 SaaS 平台：游客可浏览 SEO 公开页，登录后按**地区 + 类型**
+筛选公告、关键字检索、订阅关键词推送；企业订阅解锁供应商全景、竞对雷达、历史大数据、
+标书装配、销售 CRM 等模块；数据由 Skills 化爬虫集群从公开渠道自动抓取，自带队列调度、
+健康分告警与熔断自愈。
 
-> 📈 商业化升级规划（竞品分析 / 采集技能 v2 / 配置中心 / 会员支付 / 路线图）见
-> [docs/商业化计划书.md](docs/商业化计划书.md)
-> 🔧 配套技术架构详细方案（数据模型 / 技能体系 / 调度队列 / 丰富化管道）见
-> [docs/技术架构方案.md](docs/技术架构方案.md)
+技术栈：Next.js 16 (App Router) + React 19 + Tailwind CSS v4 + TypeScript，
+Prisma 6 + PostgreSQL 16，Docker Compose 生产部署。
 
-## 功能
+> 📈 商业化方向与 M0–M2 需求基线（竞品分析 / 采集技能 v2 / 配置中心 / 会员支付 / 路线图）
+> 见 [docs/商业化计划书.md](docs/商业化计划书.md)，配套技术详设见
+> [docs/技术架构方案.md](docs/技术架构方案.md)（两份为 2026-09 设计基线，M0/M1 已实施完毕）。
+> 🚀 上线前合法运营检查项见 [docs/生产部署配置清单.md](docs/生产部署配置清单.md)；
+> 战略取舍（深耕 / 冻结清单）见 [docs/商业化深耕与冻结决策.md](docs/商业化深耕与冻结决策.md)。
 
-**前台**（登录后可用）
+## 功能全景
 
-- `/` 首页：关键字搜索、四类信息入口、省级快捷导航、最新公告
-- `/list` 信息检索：关键字 + 省/市级联地区 + 类型（招标公告 / 中标公告 / 变更更正 / 询价竞谈）+ 发布日期区间 + 分页，筛选条件全部在 URL 参数中，可直接分享
-- `/tender/[id]` 公告详情：摘要字段 + 正文 + 原文链接
+**游客（免登录 SEO 区）**
 
-**管理后台**（`/admin`，仅 ADMIN 角色）
+- `/gonggao` 公开公告大厅：类型×省份维度落地页矩阵、公告脱敏详情页，配合 `sitemap.ts`/`robots.ts` 做搜索引擎收录
 
-- 仪表盘：总量 / 今日新增 / 分类统计 / 数据源异常 / 最近抓取
-- 信息管理：公告的手动补录、编辑、删除、搜索
-- 用户管理：账号管理、密码重置、启用/停用与邮箱激活状态
-- 订单管理：线下对公转账订单确认与开通、微信与支付宝线上订单状态监控
-- 支付事件：微信支付与支付宝异步回调事件明细、签名与幂等校验、失败排查
-- 导出审计：记录用户在何时基于何种条件导出了多少条数据、客户端 IP 与 User Agent，供风控与客户对账
-- 推送监控：关键词推送监控、订阅规则与历史投递记录
-- 数据源：启用/停用、状态监控、一键手动抓取
-- 抓取日志：每次抓取的结果与失败原因
+**登录用户（免费/个人）**
+
+- `/` 一站检索首页、`/list` 信息检索（关键字 + 省/市级联地区 + 四类公告 + 日期区间 + 预算区间 + 行业，条件全在 URL 参数可分享）
+- `/tender/[id]` 公告详情（正文分区解析、字段溯源、查看配额扣减）、`/tenders/compare` 多标横向对比
+- `/calendar` 招投标日历、`/watches` 关键词订阅推送、`/purchasers` 买方大厅、`/regions` 区域大盘、`/industries` 行业情报包、`/brief` 决策周报
+- `/pricing` 套餐价格 → `/pay/[orderNo]` 收银台（扫码/对公转账）→ `/contract/[orderNo]` 电子合同 → `/invoices` 发票中心
+
+**企业付费模块**（订阅门禁 + 配额）
+
+- 商机侧：`/suppliers` 供应商全景与 PK、`/competitors` 竞对攻防雷达、`/history` 历史大数据与价格下浮罗盘、`/intentions` 采购意向雷达、`/qualifications` 资质库匹配、`/cases` 业绩案例资产库
+- 投标侧：`/projects` 项目生命周期穿透、`/proposals` 标书装配工场、`/audit` 清标查重质检、`/reviews` 失标归因复盘、`/deposits` 保证金罗盘、`/compliance` 等保合规中心
+- 协作侧：`/pipeline` 销售 CRM 漏斗、`/tracker` 协同看板、`/team` 团队席位、`/webhooks` 预警路由、`/exports` 批量导出、`/analytics` 行业大盘、`/developer` 开放 API
+
+**管理后台**（`/admin`，RBAC 分角色）
+
+- 仪表盘、公告管理、项目主数据（多源仲裁）、数据纠错核准、用户全景画像、组织与席位
+- 角色权限（RBAC）与动态菜单、订单管理、订阅与流失分析、发票审核、支付事件监控、Jeepay 支付配置
+- 导出审计、推送监控、数据源监控（告警/队列任务/配置版本回滚）、抓取日志
 
 ## 快速开始
 
-要求 Node.js ≥ 20。
+要求 Node.js ≥ 20、Docker（跑 PostgreSQL）。
 
 ```bash
 npm install
 
-# 1. 建库 + 生成 Prisma 客户端
-npx prisma db push
+# 方式一：一键起本地环境（Docker PostgreSQL + next dev）
+npm run service:start          # 停止：npm run service:stop
 
-# 2. 初始化数据（全国省市区划、管理员账号、示例公告、默认数据源）
-npm run db:seed
-
-# 3. 启动
-npm run dev            # 开发模式，http://localhost:3000
-# 或
-npm run build && npm start
+# 方式二：手动
+docker compose up -d postgres  # 启动数据库
+npm run db:push                # 建表 + 生成 Prisma 客户端
+npm run db:seed                # 省市区划、管理员、示例公告、数据源
+npm run dev                    # http://localhost:3000
 ```
 
-默认管理员：`admin / admin123`（在 `.env` 中修改，登录后请尽快在后台重置密码）。
+默认管理员：`admin / admin123`（seed 默认值，仅本地开发；生产在 `.env` 的
+`ADMIN_USERNAME/ADMIN_PASSWORD` 中指定，登录后立即改密）。
 
-环境变量（`.env`）：
+环境变量以根目录 `.env` 为唯一来源，模板见 [.env.example](.env.example)（分组注释齐全），
+常用分组：
 
-| 变量 | 说明 |
-|---|---|
-| `DATABASE_URL` | PostgreSQL 连接串，本地默认 `postgresql://toubiao:toubiao@127.0.0.1:5432/toubiao?schema=public` |
-| `AUTH_SECRET` | 登录会话签名密钥，生产必须换成随机长字符串 |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 初始管理员账号（仅 seed 使用） |
-| `APP_URL` | 邮件中的站点链接，生产必须使用 HTTPS 域名 |
-| `CRAWL_CRON` | 定时抓取的 cron 表达式，默认 `0 */2 * * *`（每 2 小时） |
-| `CRAWL_MAX_PAGES` | 每个列表频道每次抓取的页数，默认 2 |
-| `PUSH_CRON` | 每日邮件推送 cron，默认 `0 8 * * *` |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | SMTP 服务地址、端口与是否使用隐式 TLS |
-| `SMTP_USER` / `SMTP_PASSWORD` | SMTP 认证信息；无需认证的邮件服务可留空 |
-| `SMTP_FROM` | 发件人地址，必须符合邮件服务商的域名/发件人策略 |
-| `ALIPAY_APP_ID` / `ALIPAY_PRIVATE_KEY` | 支付宝应用 ID 与商户私钥，用于生成扫码预支付订单 |
-| `ALIPAY_PUBLIC_KEY` / `ALIPAY_PUBLIC_CERT` | 支付宝异步通知验签公钥或证书 |
-| `WECHAT_PAY_MERCHANT_CERT_SERIAL` | 微信支付商户证书序列号，用于 APIv3 请求签名 |
-| `WECHAT_PAY_MERCHANT_PRIVATE_KEY` | 微信支付商户私钥，用于 APIv3 请求签名 |
-| `WECHAT_PAY_PLATFORM_CERT_SERIAL` | 微信支付平台证书序列号，用于回调证书校验 |
-| `WECHAT_PAY_PLATFORM_PUBLIC_KEY` / `WECHAT_PAY_PLATFORM_CERT` | 微信支付平台公钥或证书，用于回调验签 |
-| `WECHAT_PAY_API_V3_KEY` | 微信支付 APIv3 密钥，32 位，用于回调报文解密 |
-| `ALIPAY_NOTIFY_URL` / `WECHAT_PAY_NOTIFY_URL` | 提供给支付平台的 HTTPS 回调地址 |
+| 分组 | 变量 | 说明 |
+|---|---|---|
+| 数据库 | `DATABASE_URL`、`POSTGRES_PASSWORD` | PostgreSQL 连接串与容器密码（本地默认 `toubiao:toubiao@127.0.0.1:5432`） |
+| 会话 | `APP_URL`、`AUTH_SECRET`、`SECURE_COOKIE` | 站点地址（生产必须 https）、签名密钥、强制 Secure Cookie |
+| 检索 | `SEARCH_MODE` | `like`（默认，PG contains）/ `fulltext`（PG tsvector） |
+| 支付 | `JEEPAY_*`、`WECHAT_PAY_*`、`ALIPAY_*` | Jeepay 聚合为主通道；微信/支付宝直连可选 |
+| 收款主体 | `COMPANY_*` | 对公账户、税号等，用于订单/合同/发票页 |
+| 邮件 | `SMTP_*` | 留空只打日志不真实发信 |
+| 触达 | `WECOM_*`、`WECHAT_MP_*`、`ALERT_WECOM_WEBHOOK` | 企业微信 OAuth/机器人、公众号模板消息、爬虫告警 |
+| AI | `AI_*` / `OPENAI_*` | 标书解读/生成等智能功能，未配置自动降级 |
+| 定时 | `PUSH_CRON`、`CRAWL_CRON`、`CRAWL_POLL_MS` | 推送与抓取调度（默认推送每日 08:00、抓取每 2 小时、队列 tick 30s） |
 
-## 数据抓取（Skills 架构）
+## 数据抓取（Skills v2 架构）
 
 每个数据源网站打包为一个 **skill**：`crawler/skills/<代号>/` 目录内含站点档案
 `SKILL.md`（页面结构、字段口径、反爬注意事项、诊断修复流程）和结构化抓取规则
-`config.yaml`（列表地址、翻页、选择器/字段映射、详情正文提取）。**加新站 = 复制
-`_template` 目录改两份文件，不改任何核心代码。**
+`config.yaml`（列表地址、翻页、选择器/字段映射、详情正文提取与字段抽取、
+`settings.enabled` 启停开关）。**加新站 = 复制 `_template` 目录改两份文件，不改任何核心代码。**
 
 ```
 crawler/
-├── cli.ts        # 手动抓取：npm run crawl [skillCode...]
-├── worker.ts     # 定时抓取：npm run crawl:worker（node-cron，按 CRAWL_CRON）
-├── runner.ts     # 通用执行器：读 config.yaml → 抓列表翻页 → 解析 → 抓详情 → 去重入库 → 写日志
-├── fetcher.ts    # 带超时/重试/GBK 兼容的抓取库
-├── regions.ts    # 省市区划文本识别（自动归类公告地区）
-├── dates.ts      # 中文日期解析
-└── skills/
-    ├── _template/      # 新增数据源从这里复制
-    ├── ccgp/           # 中国政府采购网（中央单位公告）
-    └── ccgp-dfgg/      # 中国政府采购网（地方单位公告）
+├── cli.ts                       # 手动抓取：npm run crawl [skillCode...]
+├── worker.ts                    # 常驻采集 worker：调度到期源入队 + 消费队列（默认 30s tick）
+├── runner.ts                    # 通用执行器：normal / resume 断点续采 / timerange 补采
+├── config-loader.ts             # config.yaml zod 校验 + SkillRevision 版本化（后台可回滚）
+├── queue.ts / scheduler.ts      # CrawlTask 队列（指数退避重试）与 cron 调度
+├── persist.ts                   # 落库：字段置信度竞争更新 + 来源溯源，HTML 快照存 data/storage
+├── enrichment/project-cluster.ts# 公告级联聚类为项目主数据，自动推进生命周期阶段
+├── extraction.ts                # 项目编号/预算/中标额/开标时间等 10 字段内置正则抽取
+├── fidelity.ts                  # 保真 HTML 净化与附件发现
+├── health.ts / alerts.ts        # 健康分算法与企微/钉钉/飞书 webhook 告警、熔断
+├── doctor.ts                    # 无数据库离线巡检
+├── fetcher.ts / regions.ts / dates.ts   # 抓取库（超时/重试/GBK）、省市区识别、中文日期解析
+└── skills/                      # 23 个数据源 + _template
 ```
 
-当前内置源：**中国政府采购网**（中央 + 地方两组频道，覆盖招标 / 中标（成交）/
-更正 / 询价 / 竞争性谈判 / 竞争性磋商七类频道）。全国公共资源交易平台
-（deal.ggzy.gov.cn）2026-09 实测整站不可达（502），待其恢复后可按模板添加。
+当前内置源覆盖中国政府采购网（中央 + 地方 + 15 省市）、全国公共资源交易平台、
+运营商与央企采购站等 23 个 skill；部分源因站点改版（SPA/签名墙）已按配置停用，
+健康现状与修复优先级见 [docs/数据源巡检报告.md](docs/数据源巡检报告.md)。
 
 试跑与排障：
 
 ```bash
-npm run crawl -- ccgp              # 只抓指定源
-CRAWL_MAX_PAGES=1 npm run crawl    # 控制抓取深度
+npm run crawl -- ccgp        # 只抓指定源
+npm run crawl:dry            # 干跑（不落库，单页），改 config 后先试跑
+npm run crawl:doctor         # 无数据库巡检全部 skill（--only=ccgp --detail --json）
 ```
 
-数据源失效（站点改版/反爬）时：后台「数据源」页会标红，进入对应 skill 的
-`SKILL.md` 按「诊断与修复」章节更新 `config.yaml` 即可，无需改代码。
-
-抓取策略：同源请求间隔 ≥ 1.2s、Chrome UA、失败重试 2 次；按 `sourceUrl` 唯一去重，
-重复公告只更新不重复入库。
+抓取策略：同源请求间隔 ≥ 1.2s、Chrome UA、失败指数退避重试；按 `sourceUrl` 唯一去重，
+重复公告按字段置信度竞争更新；连续失败触发熔断降频探活，后台「数据源」页可手动恢复。
 
 ## 数据库
 
-Prisma + PostgreSQL。迁移与种子数据：
+Prisma + PostgreSQL 16（Docker，数据持久化在 `postgres-data` 卷）：
 
 ```bash
-docker compose up -d postgres
-npx prisma migrate deploy
-npm run db:seed
+npm run db:push              # 开发态同步 schema
+npx prisma migrate deploy    # 生产按 prisma/migrations 迁移（勿在生产 db push）
+npm run db:seed              # 初始化数据（仅首次）
+npm run migrate:sqlite       # 旧 SQLite 库一次性搬运脚本（已完成，留档）
 ```
 
-升级搜索：当前使用 PostgreSQL `contains` 匹配；数据到百万级可迁移 Meilisearch 或
-PostgreSQL 全文索引，`src/lib/query.ts` 的 `buildWhere` 是唯一需要替换的查询构造点。
+共 50 个 model，覆盖核心标讯/项目主数据、爬虫运维（数据源/队列/告警/配置版本）、
+订阅支付（套餐/订单/配额台账/发票）、CRM 投标管理、RBAC 与推送等域。
+`src/lib/query.ts` 的 `buildWhere()` 是唯一筛选条件构造点：`SEARCH_MODE=like` 用
+PG `contains`，`fulltext` 走 `src/lib/fulltext.ts` 的 PG tsvector 全文检索。
 
-## 部署
-
-推荐使用 Docker Compose 启动完整生产拓扑：
+## 部署（生产）
 
 ```bash
-cp .env.example .env   # 按生产环境修改
-docker compose up -d app worker push-worker
+cp .env.example .env          # 逐项填写【必填】：APP_URL / AUTH_SECRET / POSTGRES_PASSWORD
+docker compose config         # 预检（缺必填项 fail-fast）
+docker compose up -d --build
 ```
 
-服务说明：
+服务拓扑（同一镜像）：
 
-- `app`：Next.js 站点与 API，默认 3000 端口
-- `worker`：定时抓取与附件任务
-- `push-worker`：每日关键词邮件推送，默认北京时间 08:00
-- `postgres`：数据库，数据持久化在 `postgres-data` 卷
+- `app`：Next.js 站点与 API，端口只绑 `127.0.0.1:3000`，由 Caddy/Nginx 前置终止 TLS
+- `crawler-worker`：采集调度 + 队列消费 worker
+- `push-worker`：关键词推送 worker（`PUSH_CRON`，默认北京时间 08:00）
+- `postgres`：数据库
 
-生产环境注意：修改 `AUTH_SECRET`、`APP_URL`、`SMTP_*`，用 Nginx 反代 HTTPS。
-`SMTP_HOST` 未配置时，邮件只输出 `[mailer:dev]` 日志，不会真实发送；上线前必须配置
-SMTP 并用真实邮箱验证注册邮件和每日推送。
+`RUN_DB_PUSH` / `RUN_DB_SEED` 控制容器启动时的库同步与种子（生产默认关闭，防破坏性同步）。
+域名/HTTPS/备案/SMTP/支付回调等合法运营检查项见
+[docs/生产部署配置清单.md](docs/生产部署配置清单.md)。
 
 ### 支付回调
 
-支付宝与微信支付回调必须使用公网 HTTPS 域名，并保持反向代理 **不修改原始请求体**：
+- Jeepay（主通道）：`POST /api/payment/jeepay/notify`
+- 微信直连（可选）：`POST /api/payment/wechat/notify`
+- 支付宝直连（可选）：`POST /api/payment/alipay/notify`
 
-- 支付宝：`POST /api/payment/alipay/notify`
-- 微信支付：`POST /api/payment/wechat/notify`
+回调必须使用公网 HTTPS 域名，反向代理不得修改原始请求体。回调处理内置验签、订单号、
+渠道、金额与状态校验，并通过 `PaymentEvent` 表保证幂等；对公转账走 4 位附言对账码 +
+后台人工核验开通。验签或金额不匹配不会开通订阅。
 
-支付宝通知使用支付宝公钥 RSA2 验签；微信支付通知使用平台证书/公钥验签，并用 APIv3
-密钥解密报文。回调处理内置订单号、渠道、金额与状态校验，并通过 `PaymentEvent`
-表保证同一通知幂等。验签或金额不匹配时不会开通订阅。
+### 推送与告警
 
-用户在套餐页选择微信或支付宝后，系统创建待支付订单，调用对应渠道预下单接口并把
-返回的 `code_url` / `qr_code` 渲染为本地二维码。支付页每 5 秒刷新订单状态，收到成功
-回调后自动显示开通成功。商户私钥只透传给 `app` 服务，不传给抓取和推送 worker。
-
-### 运营审计与风控对账
-
-- **导出审计**（`/admin/audits/exports`）：每次用户成功导出 Excel 时，系统记录 `ExportAudit` 审计记录（导出用户、检索条件、匹配条数、导出条数、客户端 IP 与 User Agent），用于防爬监控与企业客户对账。
-- **支付事件监控**（`/admin/payment-events`）：记录微信支付与支付宝的全部异步回调事件、处理状态、关联订单与异常错误信息，支持异常事件排查与人工对账。
+- `push:worker`：每日关键词命中推送，渠道含邮件（SMTP）、企业微信/钉钉/飞书 webhook 机器人，未配置的渠道自动跳过
+- 爬虫侧健康告警（连续失败/零解析/健康分低于阈值）推送到 `ALERT_WECOM_WEBHOOK`
 
 ## 目录结构
 
 ```
 src/
 ├── app/
-│   ├── (site)/        # 前台：首页 /list /tender/[id]
-│   ├── admin/         # 后台：仪表盘、信息、用户、数据源、日志
-│   ├── api/crawl/run/ # 手动触发抓取（ADMIN）
-│   ├── login/         # 登录页
-│   └── actions/       # 登录/登出 server actions
-├── components/        # 筛选栏等
-├── lib/               # prisma 单例、会话、常量、查询构造
-└── middleware.ts      # 会话守卫（未登录跳 /login，/admin 要求 ADMIN）
+│   ├── (public)/gonggao/   # 游客 SEO 公开页矩阵
+│   ├── (site)/             # 登录后主站：检索、详情、20+ 企业模块、收银台/合同/发票
+│   ├── admin/              # 管理后台：16 个模块 + RBAC 角色菜单
+│   ├── actions/            # Server Actions（全部写操作）
+│   ├── api/                # 支付回调 / 企微 OAuth / 手动抓取 / 导出下载 / 开放 API v1
+│   ├── login|register|verify-email|terms|privacy
+│   └── sitemap.ts|robots.ts
+├── components/             # 业务视图组件（看板/雷达/装配器等）+ icons.tsx
+├── lib/
+│   ├── auth.ts|rbac.ts|quota.ts|commerce.ts|payments.ts|jeepay.ts   # 会话/权限/配额/支付
+│   ├── crawler/|pipeline/|ai/                                       # 爬虫后台、增值管道、AI 能力
+│   └── query.ts|tender-sections.ts|constants.ts                     # 检索构造/正文分区/口径
+└── middleware.ts           # 会话守卫（公开前缀放行；/admin 要求 ADMIN）
+crawler/                    # 采集器 v2（见上）+ skills/<源>/
+prisma/                     # schema.prisma（50 model）、migrations、seed.ts
+scripts/                    # push-daily / push-worker / migrate-sqlite-to-postgres
+docs/                       # 商业化计划书、技术架构方案、生产部署清单、巡检报告等
+docker-compose.yml|Dockerfile|start.sh|stop.sh
 ```

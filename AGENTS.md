@@ -10,53 +10,64 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # 标讯通 —— 招投标信息服务平台
 
-类千里马的招投标公告聚合站：登录后按地区 + 类型筛选公告、关键字全文搜索；数据由 Skills 化爬虫从公开渠道抓取。Next.js 16 (App Router, Turbopack) + React 19 + Tailwind CSS v4 + TypeScript，数据库 Prisma 6 + SQLite。无 git 仓库。
+类千里马的招投标信息聚合 + 商业化 SaaS 平台：游客可浏览 SEO 公开页，登录后按地区 + 类型筛选公告、关键字检索；企业付费模块覆盖销售 CRM、标书装配、竞对雷达、历史大数据、合规中心等；订阅支付支持 Jeepay 聚合（微信/支付宝/收银台）+ 支付宝/微信直连 + 对公转账人工核验。Next.js 16 (App Router) + React 19 + Tailwind CSS v4 + TypeScript，Prisma 6 + PostgreSQL 16，Docker Compose 四服务部署（app / push-worker / crawler-worker / postgres）。
 
-> 商业化升级的方向、路线图与模型/字段级设计决策见 `docs/商业化计划书.md`（第五章采集技能 v2、5.4 配置中心、第九章 M0–M2 排期为后续开发的需求基线）。
-> 数据采集平台的技术架构详细设计（Prisma v2 模型、技能 Schema、配置中心、调度队列、丰富化管道、PG 迁移）见 `docs/技术架构方案.md`——**实施 M0 前必读**。
+> 商业化方向与 M0–M2 需求基线见 `docs/商业化计划书.md`，采集平台技术详设见 `docs/技术架构方案.md`（两份为 2026-09 设计基线，M0/M1 已实施完毕，以本文档为准）。
+> 上线前合法运营检查项见 `docs/生产部署配置清单.md`；当前经营诊断见 `docs/CEO诊断与90天行动清单.md`；战略取舍（深耕/冻结清单）见 `docs/商业化深耕与冻结决策.md`；数据源健康与修复进展见 `docs/数据源巡检报告.md`。
 
 ## 常用命令
 
 ```bash
-npm run dev          # 开发（http://localhost:3000）
-npm run build        # 生产构建（Turbopack，含 tsc 检查）
-npm run lint         # ESLint（当前应保持零警告）
-npx tsc --noEmit     # 单独类型检查
-npm run db:push      # Prisma 建库/更新 + 生成客户端
-npm run db:seed      # 初始化：省市区划、admin 账号、示例公告、数据源
-npm run crawl        # 手动抓取（可跟 skillCode：npm run crawl -- ccgp）
-npm run crawl:worker # 定时抓取 worker（node-cron，默认每 2 小时）
-npm run crawl:doctor # 无数据库巡检全部 skill（可跟 --only=ccgp --detail --json）
+npm run dev                # 开发（Turbopack，http://localhost:3000）
+npm run build              # 生产构建（--webpack，含类型检查）
+npm run lint               # ESLint（当前应保持零警告）
+npx tsc --noEmit           # 单独类型检查
+npm run service:start      # 本地一键：Docker PostgreSQL + next dev（service:stop 停止）
+npm run db:push            # 开发态建库/更新 schema + 生成客户端
+npm run db:seed            # 初始化：省市区划、admin 账号、示例公告、数据源
+npx prisma migrate deploy  # 生产按 prisma/migrations 迁移（开发态用 db:push，勿混用）
+npm run crawl              # 手动抓取（可跟 skillCode：npm run crawl -- ccgp）
+npm run crawl:dry          # 干跑试抓（--dry-run --file --max-pages=1，不落库）
+npm run crawl:doctor       # 无数据库巡检全部 skill（可跟 --only=ccgp --detail --json）
+npm run crawl:worker       # 常驻采集 worker（调度到期源入队 + 每 30s 消费 CrawlTask 队列）
+npm run push:daily         # 手动执行一轮关键词推送（--dry-run 可试跑）
+npm run push:worker        # 常驻推送 worker（PUSH_CRON，默认每日 08:00）
 ```
 
-环境变量在 `.env`：`DATABASE_URL`、`AUTH_SECRET`（登录签名密钥）、`ADMIN_USERNAME/PASSWORD`（仅 seed 用）、`CRAWL_CRON`、`CRAWL_MAX_PAGES`。默认管理员 admin / admin123。
+生产部署：`cp .env.example .env` 填好后 `docker compose up -d --build`（同一镜像跑 postgres + app + push-worker + crawler-worker；`.env` 为唯一配置源，APP_URL / AUTH_SECRET / POSTGRES_PASSWORD 缺失即 fail-fast）。步骤与合规检查见 `docs/生产部署配置清单.md`。
+
+环境变量模板在 `.env.example`（分组注释齐全），核心分组：`DATABASE_URL`/`POSTGRES_*`（数据库）、`APP_URL`/`AUTH_SECRET`/`SECURE_COOKIE`（会话）、`ADMIN_USERNAME/PASSWORD`（仅 seed 用）、`JEEPAY_*` 主通道 + `WECHAT_PAY_*`/`ALIPAY_*` 直连可选（支付）、`COMPANY_*`（对公收款与发票主体）、`SMTP_*`（留空只打日志不发信）、`WECOM_*`/`WECHAT_MP_*`（企微/公众号触达）、`AI_*`/`OPENAI_*`（智能功能，未配置自动降级）、`ALERT_WECOM_WEBHOOK`（爬虫告警）、`SEARCH_MODE`（like 默认 / fulltext）、`PUSH_CRON`/`CRAWL_CRON`/`CRAWL_POLL_MS`/`CRAWL_ONCE`。默认管理员 admin / admin123（seed 默认值，仅本地开发）。
 
 ## 目录与架构边界
 
-- `src/app/(site)/` 前台（首页 / `/list` 检索 / `/tender/[id]` 详情），`src/app/login/` 登录页，二者共用会话
-- `src/app/admin/` 管理后台（仪表盘、公告、用户、数据源、日志），仅 ADMIN 角色
-- `src/app/actions/auth.ts` 与 `src/app/admin/actions.ts`：全部写操作走 Server Actions，不走 REST
-- `src/app/api/crawl/run/` 唯一 API 路由（后台手动触发抓取，POST）
-- `src/middleware.ts` 路由守卫：未登录 302 → `/login`，`/admin` 要求 ADMIN；但 **middleware 不查库**，页面层（各 layout 的 `getSession()`）负责校验用户仍存在且启用
-- `crawler/` 与 `src/` 平级、共用数据库：`runner.ts` 通用执行器、`fetcher.ts`（超时/重试/GBK 解码）、`regions.ts`（省市区文本识别）、`dates.ts`（中文日期解析）、`worker.ts`（cron）、`cli.ts`（手动）
-- `crawler/skills/<代号>/` 每个数据源一个 skill：`config.yaml`（抓取规则）+ `SKILL.md`（站点档案与修复流程）。**加数据源 = 复制 `_template` 改两份文件，不改核心代码**。现有：`ccgp`（政采网中央）、`ccgp-dfgg`（政采网地方）
-- 数据库 5 张表：User / Region / Tender / CrawlSource / CrawlLog，见 `prisma/schema.prisma`；`Tender.sourceUrl` 唯一约束是爬虫去重的关键，手动数据该字段为 null
+- `src/app/(public)/` 游客公开区：`/gonggao` SEO 落地页矩阵（类型×省份列表与详情脱敏页），配合根级 `sitemap.ts`/`robots.ts` 收录；根级还有 `/login`、`/register`、`/verify-email`、`/terms`、`/privacy`
+- `src/app/(site)/` 登录后主站：`/` 一站检索、`/list` 检索、`/tender/[id]` 详情、`/tenders/compare` 横向对比、`/calendar` 日历、`/watches` 关键词订阅、`/purchasers` 买方大厅、`/regions` 区域大盘、`/industries` 行业情报、`/brief` 决策周报、`/pricing`→`/pay/[orderNo]` 收银台→`/contract` 电子合同→`/invoices` 发票；企业付费模块：`/suppliers` 供应商全景、`/competitors` 竞对雷达、`/history` 历史大数据、`/compliance` 合规中心、`/cases` 业绩案例、`/projects` 项目穿透、`/intentions` 采购意向、`/qualifications` 资质匹配、`/proposals` 标书装配、`/audit` 清标质检、`/reviews` 失标归因、`/deposits` 保证金、`/pipeline` 销售 CRM、`/tracker` 协同看板、`/team` 团队席位、`/webhooks` 预警路由、`/exports` 导出中心、`/analytics` 行业大盘、`/developer` 开放 API
+- `src/app/admin/` 管理后台：仪表盘、tenders 公告、projects 项目主数据（多源仲裁）、feedbacks 数据纠错、users 用户画像、organizations 组织席位、roles/menus RBAC、orders 订单、subscriptions 订阅、invoices 发票、payment-events 支付事件、settings/jeepay 支付配置、audits/exports 导出审计、pushes 推送监控、sources 数据源（含 alerts/tasks/revisions 子页）、logs 抓取日志
+- 写操作一律走 Server Actions（`src/app/actions/`、`src/app/admin/actions.ts`、各模块 `actions.ts`），不走 REST；API 路由仅限：支付回调 `api/payment/{jeepay,alipay,wechat}/notify`、企微 OAuth `api/auth/wecom/callback`、手动抓取 `api/crawl/{run,test}`、导出与附件下载（`api/export/tenders`、`api/tenders/[id]/export/{word,proposal-doc}`、`api/proposals/[id]/export/docx`、`api/compliance/export/docx`、`api/attachments/[id]/download`）、开放 API `api/v1/*`（tenders/projects/purchasers/suppliers/analytics，ApiKey 鉴权）
+- `src/middleware.ts` 路由守卫：公开前缀（`/login` `/register` `/verify-email` `/terms` `/privacy` `/gonggao` `/tender` `/api/payment` `/api/v1` 等）放行，未登录 302 → `/login`，`/admin` 与 `/api/crawl` 要求 ADMIN；但 **middleware 不查库**，页面层（各 layout 的 `getSession()`）负责校验用户仍存在且启用
+- `crawler/` 与 `src/` 平级、共用数据库，采集 v2 架构：`runner.ts`（normal/resume 断点续采/timerange 补采三模式）、`config-loader.ts`（zod 校验 + SkillRevision 版本化）、`queue.ts`（CrawlTask 队列，指数退避）、`scheduler.ts`（按 cron 扫描到期源入队）、`worker.ts`（常驻 tick）、`persist.ts`（字段置信度竞争更新 + fieldSources 溯源）、`enrichment/project-cluster.ts`（公告四层匹配级联聚类为 Project 主数据并推进生命周期 stage）、`extraction.ts`（10 字段内置正则 + 置信度）、`fidelity.ts`（保真 HTML 净化 + 附件发现）、`health.ts`/`alerts.ts`/`doctor.ts`（健康分/webhook 告警/离线巡检）
+- `src/lib/crawler/` 是后台管理侧（revisions 配置版本、circuit-breaker 熔断、alerts-manager、prober 拨测、task-manager）；`src/lib/pipeline/` 是入库后增值管道（contact-extractor 联系人、industry-tagger 行业打标、winner-extractor 中标清洗）；`src/lib/ai/` 是 AI 能力（标书解读、匹配度、商机雷达、标书生成）
+- `crawler/skills/<代号>/` 每个数据源一个 skill：`config.yaml`（抓取规则）+ `SKILL.md`（站点档案与修复流程）。**加数据源 = 复制 `_template` 改两份文件，不改核心代码**。现有 23 个 skill（ccgp 中央/地方、省市政采、ggzy、运营商与央企），失活源按 `settings.enabled: false` 停用而非删目录
+- 数据库 50 个 model（见 `prisma/schema.prisma`），生产走 `prisma/migrations/`（M0 基线 → M3 RBAC）；`Tender.sourceUrl` 唯一约束是爬虫去重的关键，手动数据该字段为 null
+- **RBAC**：`src/lib/rbac.ts`，平台角色 SUPER_ADMIN / OPS_ADMIN / FINANCE_ADMIN / CRAWLER_ADMIN，租户角色 TENANT_OWNER / TENANT_MANAGER / TENANT_MEMBER，细粒度权限点 + 动态菜单，`ensureRbacInitialized()` 播种；老 ADMIN 用户视为 SUPER_ADMIN 通配
+- **配额**：`src/lib/quota.ts` 定义 PlanFeatures（搜索/全文/联系方式/附件/推送组/导出/AI 等），权益优先级 ADMIN > 有效订阅 > 团队席位继承企业主；用量记 `QuotaLedger`（userId+kind+date 唯一，原子扣减）
+- **支付**：`src/lib/jeepay.ts`（聚合下单/查单/MD5 签名）→ `payments.ts`（回调处理：PaymentEvent 按 provider+eventId 幂等 + 金额校验）→ `commerce.ts`（事务内订单置 PAID 并 upsert 订阅，到期日顺延）；对公转账用 4 位附言对账码 + 人工审核
 
 ## 关键实现与约定
 
 - **详情内容分类**：`src/lib/tender-sections.ts` 把公告正文解析为分类区块（项目信息/资格与要求/时间安排/联系方式/公告说明），每节含 `blocks`（paragraph/table/link，表格用 cheerio 解析 HTML）；`src/components/tender-rich-content.tsx` 负责渲染。爬虫抓的正文常无换行，解析器会按序号标题模式先 normalize 再切分
 - **UI 设计系统**：扁平明亮科技风，主题令牌在 `src/app/globals.css` 的 `@theme`（`primary`/`accent`/`highlight`/`canvas` 等，Tailwind v4 类名如 `bg-primary` 可直接用）；图标一律用 `src/components/icons.tsx` 的 SVG 组件，禁止 emoji 图标；正文对比度下限 slate-500（4.5:1），数字/日期加 `tnum`（tabular-nums）；动效需尊重 `prefers-reduced-motion`（globals.css 已有全局降级）
-- **认证**：bcryptjs 哈希 + jose JWT 写 httpOnly Cookie `tb_session`，会话逻辑集中在 `src/lib/auth.ts`
-- **检索查询**：`src/lib/query.ts` 的 `buildWhere()` 是唯一的筛选条件构造点（SQLite LIKE），后续换全文检索引擎只改这里
+- **认证**：bcryptjs 哈希 + jose JWT 写 httpOnly Cookie `tb_session`，会话逻辑集中在 `src/lib/auth.ts`（APP_URL 为 https 时自动加 Secure）；注册走邮箱验证码，另有企业微信 OAuth（移动端免密）
+- **检索查询**：`src/lib/query.ts` 的 `buildWhere()` 是唯一的筛选条件构造点；`SEARCH_MODE=like`（默认）用 PG `contains`，`fulltext` 走 `src/lib/fulltext.ts` 的 PG tsvector（`search_vector @@ to_tsquery`）
+- **金额口径**：数据库 `budgetAmount`/`awardAmount` 以「元」存储（Decimal 14,2），展示统一「万元」，必须经 `src/lib/constants.ts` 的 `yuanToWan()` 换算——历史上多次出现「元当万元」放大 1 万倍的事故，新模块展示金额前先确认单位
 - 地区数据来自 `china-division` 包（prisma/seed.ts），省级 code 如 `11`、市级 `1101`，占位城市名（市辖区/县等）已被过滤
 
 ## 已知坑（改代码前必读）
 
-- **Turbopack root**：上级目录存在 package-lock.json，`next.config.ts` 里已显式设置 `turbopack.root`，删掉会导致模块解析错乱（误以 `Claude/` 为根）
-- **跨目录导入**：`src/` 内引用爬虫代码用别名 `@/../crawler/runner`（`@` 映射 `./src`），不要用相对路径（层级易错且 Turbopack 对超出 root 的相对路径解析不稳定）
-- **Prisma 锁定 v6**：npm 装最新会拿到 v8 RC（生成器行为不同、且与 @prisma/client 版本错配），保持 `prisma@^6` + `@prisma/client@^6`
+- **Turbopack root**：上级目录存在 package-lock.json，`next.config.ts` 里已显式设置 `turbopack.root`，删掉会导致模块解析错乱（误以 `Claude/` 为根）；dev 走 Turbopack，build 显式 `--webpack`
+- **跨目录导入**：`src/` 内引用爬虫代码用别名 `@/../crawler/runner`（`@` 映射 `./src`），不要用相对路径（层级易错且打包器对超出 root 的相对路径解析不稳定）
+- **Prisma 锁定 v6**：npm 装最新会拿到 v8 RC（生成器行为不同、且与 @prisma/client 版本错配），保持 `prisma@^6` + `@prisma/client@^6`；schema 改动开发态 `db:push`，生产变更走新 migration，勿用 db push 破坏性同步（生产 `RUN_DB_PUSH` 默认 false）
 - **本机 Node**：PATH 里的 `~/bin/node` shim 已损坏（报 `_load_nvm` 错误），用 `~/.nvm/versions/node/v24.15.0/bin` 或先 `export PATH="$HOME/.nvm/versions/node/v24.15.0/bin:$PATH"`
-- SQLite 并发写有限，worker 抓取与站点同时运行属正常场景（短写锁），不必加队列
 - 爬虫礼貌抓取：同源请求间隔 ≥1.2s、Chrome UA；ccgp 的 search 接口有 IP 频控（「频繁访问」页），skill 只抓静态频道页，勿改用搜索接口
 
 
