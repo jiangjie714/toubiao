@@ -710,11 +710,10 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
               confidence,
             });
           } else {
-            const region = item.province
-              ? regionMatcher.match(
-                  `${item.province}${item.city ?? ""} ${item.title} ${item.hint ?? ""} ${detail.content.slice(0, 300)}`,
-                )
-              : regionMatcher.match(`${item.title} ${item.hint ?? ""} ${detail.content.slice(0, 300)}`);
+            // 采购人名称常带行政区（如「新疆生产建设兵团…」），放在标题之后作为兜底文本，
+            // 不改变「列表地区优先、标题/正文就近匹配」的既有判定顺序。
+            const regionText = `${item.province ?? ""}${item.city ?? ""} ${item.title} ${item.hint ?? ""} ${item.purchaser ?? ""} ${detail.content.slice(0, 300)}`;
+            const region = regionMatcher.match(regionText);
 
             const created = await persistTender(
               {
