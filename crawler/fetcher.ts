@@ -1,5 +1,17 @@
+import crypto from "node:crypto";
+import { fetch as undiciFetch, Agent } from "undici";
+
 const DEFAULT_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
+/**
+ * 共享连接 Agent：部分政企老站（如 ggzy.jiangxi.gov.cn）的 TLS 握手要求允许
+ * 旧式安全重协商（unsafe legacy renegotiation），Node 默认策略会直接握手失败；
+ * 该选项只是「允许」，对现代站点无副作用。
+ */
+const CRAWLER_AGENT = new Agent({
+  connect: { secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT },
+});
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -91,7 +103,7 @@ export async function fetchText(url: string, opts: FetchOptions = {}): Promise<s
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(url, {
+      const res = await undiciFetch(url, {
         method,
         signal: controller.signal,
         redirect: "follow",
@@ -101,6 +113,7 @@ export async function fetchText(url: string, opts: FetchOptions = {}): Promise<s
           ...requestHeaders,
         },
         body: requestBody,
+        dispatcher: CRAWLER_AGENT,
       });
       if (!res.ok) {
         throw new FetchError(`HTTP ${res.status}`, res.status);

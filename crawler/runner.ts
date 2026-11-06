@@ -123,10 +123,13 @@ function getByPath(obj: unknown, dotPath: string): unknown {
   return current;
 }
 
+/** {page} 占位渲染，支持乘法与加减偏移（如 {page*20-20}），适配 pn/rn 偏移量式分页接口 */
 function renderPageUrl(template: string, page: number): string {
-  return template.replace(/\{page([+-]\d+)?\}/g, (_, offset) =>
-    String(page + (offset ? Number.parseInt(offset, 10) : 0)),
-  );
+  return template.replace(/\{page(?:\*(\d+))?(?:([+-])(\d+))?\}/g, (_, mult, sign, offset) => {
+    const value = page * (mult ? Number.parseInt(mult, 10) : 1);
+    const delta = offset ? Number.parseInt(offset, 10) : 0;
+    return String(sign === "-" ? value - delta : value + delta);
+  });
 }
 
 async function fetchListPage(
