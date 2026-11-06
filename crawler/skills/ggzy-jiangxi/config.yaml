@@ -1,0 +1,63 @@
+source:
+  name: 江西省公共资源交易平台
+  baseUrl: https://ggzy.jiangxi.gov.cn
+
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 20000
+  retries: 2
+  maxPages: 2
+  scheduleCron: "0 */2 * * *"
+  headers:
+    Referer: https://ggzy.jiangxi.gov.cn/jyxx/trade.html
+
+# 统一走 ES 全文检索接口 getFullTextDataNew（站点 /js/trade.js 同款参数结构）。
+# pn 为行偏移量：body 模板 "pn":{page*20-20}（runner 支持乘法/偏移渲染，无引号保证 JSON 数字）。
+# time 传 null 返回全量按 webdate 倒序，断点续采按新旧提前停翻。
+# 注意：该站 TLS 需允许旧式安全重协商，fetcher 已用 undici Agent 全局兼容。
+lists:
+  # ── jygg 交易/招标公告（trade.js catetype=jygg 的 categorynum 全集）──
+  - type: NOTICE
+    mode: json
+    request:
+      method: POST
+      url: https://ggzy.jiangxi.gov.cn/XZinterface/rest/esinteligentsearch/getFullTextDataNew
+      headers:
+        Content-Type: application/json
+        Referer: https://ggzy.jiangxi.gov.cn/jyxx/trade.html
+      body: '{"token":"","pn":{page*20-20},"rn":20,"wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"","sort":"{\"webdate\":\"0\",\"id\":\"0\"}","ssort":"","cl":500,"terminal":"","condition":[{"fieldName":"categorynum","equal":null,"notEqual":null,"notEqualList":null,"equalList":["002001001","002002002","002003001","002004001","002005001","002006001","002007001","002008001","002009001","002010001","002011001","002013001","002015001","002016001","002017001","002021001","002019001","002018001","002020001","002022002","002023002","002024002","002025002","002026002"]}],"time":null,"highlights":"","statistics":null,"unionCondition":null,"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true}'
+    parse:
+      itemsPath: result.records
+      fields:
+        title: titlenew
+        url: "https://ggzy.jiangxi.gov.cn{linkurl}"
+        date: webdate
+        province:
+          const: "36"
+        hint: categoryname
+    detail:
+      contentSelector: .text
+      removeSelector: script, style
+
+  # ── cjgs 成交/结果公示（trade.js catetype=cjgs 的 categorynum 全集）──
+  - type: RESULT
+    mode: json
+    request:
+      method: POST
+      url: https://ggzy.jiangxi.gov.cn/XZinterface/rest/esinteligentsearch/getFullTextDataNew
+      headers:
+        Content-Type: application/json
+        Referer: https://ggzy.jiangxi.gov.cn/jyxx/trade.html
+      body: '{"token":"","pn":{page*20-20},"rn":20,"wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"","sort":"{\"webdate\":\"0\",\"id\":\"0\"}","ssort":"","cl":500,"terminal":"","condition":[{"fieldName":"categorynum","equal":null,"notEqual":null,"notEqualList":null,"equalList":["002001004","002002005","002003005","002004004","002005004","002006004","002007002","002008002","002009002","002010002","002011002","002013002","002015002","002016005","002017002","002021002","002019005","002018005","002020005","002022006","002023006","002024006","002025006","002026006"]}],"time":null,"highlights":"","statistics":null,"unionCondition":null,"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true}'
+    parse:
+      itemsPath: result.records
+      fields:
+        title: titlenew
+        url: "https://ggzy.jiangxi.gov.cn{linkurl}"
+        date: webdate
+        province:
+          const: "36"
+        hint: categoryname
+    detail:
+      contentSelector: .text
+      removeSelector: script, style
