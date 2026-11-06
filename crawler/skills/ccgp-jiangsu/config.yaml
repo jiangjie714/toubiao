@@ -28,5 +28,8 @@ lists:
         province:
           const: "32"
     detail:
-      contentSelector: div.article_content, .content, body
+      # 详情壳页 details.html?gglb=…&ggid=… 的正文是空模板，由 JS 回填；
+      # 数据源为 relevantCgggGetById.jsp（GET 可用，返回 JSON 的 data.content 富文本）
+      urlTemplate: "http://www.ccgp-jiangsu.gov.cn/pss/jsp/relevantCgggGetById.jsp?ggid={query:ggid}&gglb={query:gglb}"
+      contentSelector: body
       removeSelector: script, style
