@@ -123,6 +123,32 @@ function getByPath(obj: unknown, dotPath: string): unknown {
   return current;
 }
 
+/**
+ * 同 getByPath，但路径中间遇到 JSON 字符串时自动再解析一层。
+ * 适配「响应体里塞了一段 JSON 字符串」的接口（如重庆 `{code, content:"{...}"}` 的 `content.result.records`）。
+ */
+function getByPathAuto(obj: unknown, dotPath: string): unknown {
+  let current: unknown = obj;
+  for (const segment of dotPath.split(".")) {
+    if (typeof current === "string") {
+      const text = current.trim();
+      if (
+        (text.startsWith("{") && text.endsWith("}")) ||
+        (text.startsWith("[") && text.endsWith("]"))
+      ) {
+        try {
+          current = JSON.parse(text);
+        } catch {
+          return undefined;
+        }
+      }
+    }
+    if (current == null || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
 /** {page} 占位渲染，支持乘法与加减偏移（如 {page*20-20}），适配 pn/rn 偏移量式分页接口 */
 function renderPageUrl(template: string, page: number): string {
   return template.replace(/\{page(?:\*(\d+))?(?:([+-])(\d+))?\}/g, (_, mult, sign, offset) => {
@@ -237,7 +263,7 @@ function parseListItems(
         dataObj = null;
       }
     }
-    const array = getByPath(dataObj, list.parse.itemsPath ?? "data");
+    const array = getByPathAuto(dataObj, list.parse.itemsPath ?? "data");
     if (!Array.isArray(array)) return [];
     for (const raw of array) {
       if (raw == null || typeof raw !== "object") continue;
@@ -277,9 +303,21 @@ function resolveDetailUrl(
   const template = detail?.urlTemplate;
   if (!template) return item.url;
   const date = item.date ?? new Date();
-  const params = new URL(item.url, "http://placeholder.invalid").searchParams;
+  const parsedUrl = new URL(item.url, "http://placeholder.invalid");
+  const params = parsedUrl.searchParams;
+  // 列表页常常只给 /xxhz/<分类>/.../<id>.html 这类壳页路径，ID 是最后一段文件名
+  const lastSegment = parsedUrl.pathname.split("/").filter(Boolean).pop() ?? "";
+  const stem = lastSegment.replace(/\.[a-z0-9]{1,5}$/i, "");
+  const idFromPath = /[0-9]/.test(stem) && stem.length >= 6 ? stem : "";
+  const uuidMatch = item.url.match(
+    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
+  );
   const slugMatch = item.url.match(/[\/=]([a-zA-Z0-9_-]{8,})\b/);
-  const autoId = params.get("id") || params.get("articleId") || (slugMatch ? slugMatch[1] : "");
+  const autoId =
+    params.get("id") ||
+    params.get("articleId") ||
+    idFromPath ||
+    (uuidMatch ? uuidMatch[0] : slugMatch ? slugMatch[1] : "");
 
   return template
     .replace(/\{id\}/g, autoId)
@@ -287,6 +325,109 @@ function resolveDetailUrl(
     .replace(/\{YYYY\}/g, String(date.getFullYear()))
     .replace(/\{MM\}/g, String(date.getMonth() + 1).padStart(2, "0"))
     .replace(/\{DD\}/g, String(date.getDate()).padStart(2, "0"));
+}
+
+const NUXT_WRAPPER_TAGS = new Set([
+  "ShallowReactive",
+  "Reactive",
+  "ShallowRef",
+  "Ref",
+  "EmptyRef",
+  "Object",
+]);
+const NUXT_SPECIAL_TAGS = new Set(["Set", "Map", "BigInt", "RegExp", "URL", "null"]);
+
+/**
+ * 解析 Nuxt 3 SSR payload（devalue 序列化的引用数组，形如 [["ShallowReactive",1],{...}]）。
+ * 只做「按下标还原」，标签做惰性展开，遇到循环引用返回 undefined 而不是死循环。
+ */
+function resolveNuxtRef(
+  payload: unknown[],
+  ref: unknown,
+  cache: Map<number, unknown>,
+  stack: Set<number>,
+): unknown {
+  if (typeof ref !== "number" || !Number.isInteger(ref)) return ref;
+  if (ref < 0 || ref >= payload.length) return undefined;
+  if (cache.has(ref)) return cache.get(ref);
+  if (stack.has(ref)) return undefined;
+
+  const value = payload[ref];
+  if (value === null || typeof value !== "object") {
+    cache.set(ref, value);
+    return value;
+  }
+
+  stack.add(ref);
+  let resolved: unknown;
+  if (Array.isArray(value)) {
+    const tag = typeof value[0] === "string" ? value[0] : null;
+    if (tag && NUXT_WRAPPER_TAGS.has(tag)) {
+      resolved = resolveNuxtRef(payload, value[1], cache, stack);
+    } else if (tag === "Date") {
+      const ms = Number(resolveNuxtRef(payload, value[1], cache, stack));
+      resolved = Number.isFinite(ms) ? new Date(ms) : null;
+    } else if (tag && NUXT_SPECIAL_TAGS.has(tag)) {
+      resolved = {
+        __nuxtTag: tag,
+        args: value.slice(1).map((entry) => resolveNuxtRef(payload, entry, cache, stack)),
+      };
+    } else {
+      resolved = value.map((entry) => resolveNuxtRef(payload, entry, cache, stack));
+    }
+  } else {
+    const obj: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      obj[key] = resolveNuxtRef(payload, entry, cache, stack);
+    }
+    resolved = obj;
+  }
+  stack.delete(ref);
+  cache.set(ref, resolved);
+  return resolved;
+}
+
+function findNuxtRichContent(node: unknown, seen: Set<object>): string | null {
+  if (node === null || typeof node !== "object") return null;
+  if (seen.has(node)) return null;
+  seen.add(node);
+
+  if (Array.isArray(node)) {
+    for (const entry of node) {
+      const found = findNuxtRichContent(entry, seen);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  const obj = node as Record<string, unknown>;
+  const candidate = obj.infoContent;
+  if (typeof candidate === "string" && candidate.length > 100 && candidate.includes("<")) {
+    return candidate;
+  }
+  for (const entry of Object.values(obj)) {
+    const found = findNuxtRichContent(entry, seen);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** 从 Nuxt SSR 页面里取出正文富文本（如重庆公共资源交易详情的 currentRecord.infoContent） */
+function extractNuxtRichContent(html: string): string | null {
+  if (!html.includes("__NUXT_DATA__")) return null;
+  const match = html.match(
+    /<script[^>]*id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i,
+  );
+  if (!match) return null;
+  let payload: unknown;
+  try {
+    payload = JSON.parse(match[1]);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(payload) || payload.length < 2) return null;
+  const root = resolveNuxtRef(payload, 1, new Map(), new Set());
+  return findNuxtRichContent(root, new Set());
 }
 
 async function fetchDetail(
@@ -359,6 +500,10 @@ async function fetchDetail(
     } catch {
       // 保持 rawText
     }
+  } else {
+    // Nuxt SSR 页面：正文在 __NUXT_DATA__ payload 里，不在 DOM 中（如重庆公共资源交易）
+    const nuxtContent = extractNuxtRichContent(rawText);
+    if (nuxtContent) htmlToParse = nuxtContent;
   }
 
   const fidelity = extractFidelityHtml(htmlToParse, {

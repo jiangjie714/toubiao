@@ -1,0 +1,284 @@
+source:
+  name: 重庆市公共资源交易平台
+  baseUrl: https://www.cqggzy.com
+
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 25000
+  retries: 2
+  maxPages: 3
+  scheduleCron: "30 */2 * * *"
+  headers:
+    Content-Type: application/json;charset=UTF-8
+    Accept: application/json, text/plain, */*
+    Origin: https://www.cqggzy.com
+    Referer: https://www.cqggzy.com/trade/014001
+
+# 列表走站点前端同款 ES 检索接口。响应是 `{code, content:"<JSON 字符串>", msg}`，
+# content 需二次 JSON.parse，因此 itemsPath 用 `content.result.records`
+# （runner 的 getByPathAuto 会在路径中间遇到 JSON 字符串时自动再解析一层）。
+# pn 是行偏移量而非页码：`{page*12-12}` 由 runner 的 renderPageUrl 渲染成数字。
+# 详情壳页 /xxhz/.../<id>.html 直接 GET 会 404，改用 `/trade/014001/<id>`（分类前缀任意
+# 均可，接口按 id 取数），正文字段 infoContent 在 Nuxt SSR payload 的 __NUXT_DATA__ 里。
+lists:
+  # ── 工程建设（014001） ──
+  - type: NOTICE
+    mode: json
+    request:
+      method: POST
+      url: https://www.cqggzy.com/api/v2/search-engine-page
+      body: '{"token":"","pn":{page*12-12},"rn":12,"sdt":"","edt":"","wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"001","sort":"{\"istop\":\"0\",\"ordernum\":\"0\",\"webdate\":\"0\",\"newid\":\"0\"}","ssort":"","cl":10000,"terminal":"","highlights":"","statistics":null,"unionCondition":[],"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true,"condition":[{"fieldName":"categorynum","equal":"014001001","notEqual":null,"equalList":null,"notEqualList":["014001018","004002005","014001015","014005014","014008011","014008"],"isLike":true,"likeType":2,"noWd":true}],"time":[]}'
+    parse:
+      itemsPath: content.result.records
+      fields:
+        title: title
+        url: linkurl
+        date: infodate
+        province:
+          const: "50"
+        city:
+          selector: infoc
+          regex: '^(.+?(?:区|县|市))$'
+        purchaser: companyname
+        hint: categorytype
+      extraFields:
+        projectNo: projectno
+    detail:
+      contentSelector: body
+      removeSelector: style, script
+      urlTemplate: https://www.cqggzy.com/trade/014001/{id}
+
+  - type: CHANGE
+    mode: json
+    request:
+      method: POST
+      url: https://www.cqggzy.com/api/v2/search-engine-page
+      body: '{"token":"","pn":{page*12-12},"rn":12,"sdt":"","edt":"","wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"001","sort":"{\"istop\":\"0\",\"ordernum\":\"0\",\"webdate\":\"0\",\"newid\":\"0\"}","ssort":"","cl":10000,"terminal":"","highlights":"","statistics":null,"unionCondition":[],"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true,"condition":[{"fieldName":"categorynum","equal":"014001002","notEqual":null,"equalList":null,"notEqualList":null,"isLike":true,"likeType":2,"noWd":true}],"time":[]}'
+    parse:
+      itemsPath: content.result.records
+      fields:
+        title: title
+        url: linkurl
+        date: infodate
+        province:
+          const: "50"
+        city:
+          selector: infoc
+          regex: '^(.+?(?:区|县|市))$'
+        purchaser: companyname
+        hint: categorytype
+      extraFields:
+        projectNo: projectno
+    detail:
+      contentSelector: body
+      removeSelector: style, script
+      urlTemplate: https://www.cqggzy.com/trade/014001/{id}
+
+  - type: INTENTION
+    mode: json
+    request:
+      method: POST
+      url: https://www.cqggzy.com/api/v2/search-engine-page
+      body: '{"token":"","pn":{page*12-12},"rn":12,"sdt":"","edt":"","wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"001","sort":"{\"istop\":\"0\",\"ordernum\":\"0\",\"webdate\":\"0\",\"newid\":\"0\"}","ssort":"","cl":10000,"terminal":"","highlights":"","statistics":null,"unionCondition":[],"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true,"condition":[{"fieldName":"categorynum","equal":"014001019","notEqual":null,"equalList":null,"notEqualList":null,"isLike":true,"likeType":2,"noWd":true}],"time":[]}'
+    parse:
+      itemsPath: content.result.records
+      fields:
+        title: title
+        url: linkurl
+        date: infodate
+        province:
+          const: "50"
+        city:
+          selector: infoc
+          regex: '^(.+?(?:区|县|市))$'
+        purchaser: companyname
+        hint: categorytype
+      extraFields:
+        projectNo: projectno
+    detail:
+      contentSelector: body
+      removeSelector: style, script
+      urlTemplate: https://www.cqggzy.com/trade/014001/{id}
+
+  - type: RESULT
+    mode: json
+    request:
+      method: POST
+      url: https://www.cqggzy.com/api/v2/search-engine-page
+      body: '{"token":"","pn":{page*12-12},"rn":12,"sdt":"","edt":"","wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"001","sort":"{\"istop\":\"0\",\"ordernum\":\"0\",\"webdate\":\"0\",\"newid\":\"0\"}","ssort":"","cl":10000,"terminal":"","highlights":"","statistics":null,"unionCondition":[],"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true,"condition":[{"fieldName":"categorynum","equal":"014001003","notEqual":null,"equalList":null,"notEqualList":null,"isLike":true,"likeType":2,"noWd":true}],"time":[]}'
+    parse:
+      itemsPath: content.result.records
+      fields:
+        title: title
+        url: linkurl
+        date: infodate
+        province:
+          const: "50"
+        city:
+          selector: infoc
+          regex: '^(.+?(?:区|县|市))$'
+        purchaser: companyname
+        hint: categorytype
+      extraFields:
+        projectNo: projectno
+    detail:
+      contentSelector: body
+      removeSelector: style, script
+      urlTemplate: https://www.cqggzy.com/trade/014001/{id}
+
+  - type: RESULT
+    mode: json
+    request:
+      method: POST
+      url: https://www.cqggzy.com/api/v2/search-engine-page
+      body: '{"token":"","pn":{page*12-12},"rn":12,"sdt":"","edt":"","wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"001","sort":"{\"istop\":\"0\",\"ordernum\":\"0\",\"webdate\":\"0\",\"newid\":\"0\"}","ssort":"","cl":10000,"terminal":"","highlights":"","statistics":null,"unionCondition":[],"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true,"condition":[{"fieldName":"categorynum","equal":"014001004","notEqual":null,"equalList":null,"notEqualList":null,"isLike":true,"likeType":2,"noWd":true}],"time":[]}'
+    parse:
+      itemsPath: content.result.records
+      fields:
+        title: title
+        url: linkurl
+        date: infodate
+        province:
+          const: "50"
+        city:
+          selector: infoc
+          regex: '^(.+?(?:区|县|市))$'
+        purchaser: companyname
+        hint: categorytype
+      extraFields:
+        projectNo: projectno
+    detail:
+      contentSelector: body
+      removeSelector: style, script
+      urlTemplate: https://www.cqggzy.com/trade/014001/{id}
+
+  - type: CHANGE
+    mode: json
+    request:
+      method: POST
+      url: https://www.cqggzy.com/api/v2/search-engine-page
+      body: '{"token":"","pn":{page*12-12},"rn":12,"sdt":"","edt":"","wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"001","sort":"{\"istop\":\"0\",\"ordernum\":\"0\",\"webdate\":\"0\",\"newid\":\"0\"}","ssort":"","cl":10000,"terminal":"","highlights":"","statistics":null,"unionCondition":[],"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true,"condition":[{"fieldName":"categorynum","equal":"014001021","notEqual":null,"equalList":null,"notEqualList":null,"isLike":true,"likeType":2,"noWd":true}],"time":[]}'
+    parse:
+      itemsPath: content.result.records
+      fields:
+        title: title
+        url: linkurl
+        date: infodate
+        province:
+          const: "50"
+        city:
+          selector: infoc
+          regex: '^(.+?(?:区|县|市))$'
+        purchaser: companyname
+        hint: categorytype
+      extraFields:
+        projectNo: projectno
+    detail:
+      contentSelector: body
+      removeSelector: style, script
+      urlTemplate: https://www.cqggzy.com/trade/014001/{id}
+
+  # ── 政府采购（014005） ──
+  - type: NOTICE
+    mode: json
+    request:
+      method: POST
+      url: https://www.cqggzy.com/api/v2/search-engine-page
+      body: '{"token":"","pn":{page*12-12},"rn":12,"sdt":"","edt":"","wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"001","sort":"{\"istop\":\"0\",\"ordernum\":\"0\",\"webdate\":\"0\",\"newid\":\"0\"}","ssort":"","cl":10000,"terminal":"","highlights":"","statistics":null,"unionCondition":[],"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true,"condition":[{"fieldName":"categorynum","equal":"014005001","notEqual":null,"equalList":null,"notEqualList":null,"isLike":true,"likeType":2,"noWd":true}],"time":[]}'
+    parse:
+      itemsPath: content.result.records
+      fields:
+        title: title
+        url: linkurl
+        date: infodate
+        province:
+          const: "50"
+        city:
+          selector: infoc
+          regex: '^(.+?(?:区|县|市))$'
+        purchaser: companyname
+        hint: categorytype
+      extraFields:
+        projectNo: projectno
+    detail:
+      contentSelector: body
+      removeSelector: style, script
+      urlTemplate: https://www.cqggzy.com/trade/014001/{id}
+
+  - type: CHANGE
+    mode: json
+    request:
+      method: POST
+      url: https://www.cqggzy.com/api/v2/search-engine-page
+      body: '{"token":"","pn":{page*12-12},"rn":12,"sdt":"","edt":"","wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"001","sort":"{\"istop\":\"0\",\"ordernum\":\"0\",\"webdate\":\"0\",\"newid\":\"0\"}","ssort":"","cl":10000,"terminal":"","highlights":"","statistics":null,"unionCondition":[],"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true,"condition":[{"fieldName":"categorynum","equal":"014005002","notEqual":null,"equalList":null,"notEqualList":null,"isLike":true,"likeType":2,"noWd":true}],"time":[]}'
+    parse:
+      itemsPath: content.result.records
+      fields:
+        title: title
+        url: linkurl
+        date: infodate
+        province:
+          const: "50"
+        city:
+          selector: infoc
+          regex: '^(.+?(?:区|县|市))$'
+        purchaser: companyname
+        hint: categorytype
+      extraFields:
+        projectNo: projectno
+    detail:
+      contentSelector: body
+      removeSelector: style, script
+      urlTemplate: https://www.cqggzy.com/trade/014001/{id}
+
+  - type: RESULT
+    mode: json
+    request:
+      method: POST
+      url: https://www.cqggzy.com/api/v2/search-engine-page
+      body: '{"token":"","pn":{page*12-12},"rn":12,"sdt":"","edt":"","wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"001","sort":"{\"istop\":\"0\",\"ordernum\":\"0\",\"webdate\":\"0\",\"newid\":\"0\"}","ssort":"","cl":10000,"terminal":"","highlights":"","statistics":null,"unionCondition":[],"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true,"condition":[{"fieldName":"categorynum","equal":"014005004","notEqual":null,"equalList":null,"notEqualList":null,"isLike":true,"likeType":2,"noWd":true}],"time":[]}'
+    parse:
+      itemsPath: content.result.records
+      fields:
+        title: title
+        url: linkurl
+        date: infodate
+        province:
+          const: "50"
+        city:
+          selector: infoc
+          regex: '^(.+?(?:区|县|市))$'
+        purchaser: companyname
+        hint: categorytype
+      extraFields:
+        projectNo: projectno
+    detail:
+      contentSelector: body
+      removeSelector: style, script
+      urlTemplate: https://www.cqggzy.com/trade/014001/{id}
+
+  - type: INTENTION
+    mode: json
+    request:
+      method: POST
+      url: https://www.cqggzy.com/api/v2/search-engine-page
+      body: '{"token":"","pn":{page*12-12},"rn":12,"sdt":"","edt":"","wd":"","inc_wd":"","exc_wd":"","fields":"","cnum":"001","sort":"{\"istop\":\"0\",\"ordernum\":\"0\",\"webdate\":\"0\",\"newid\":\"0\"}","ssort":"","cl":10000,"terminal":"","highlights":"","statistics":null,"unionCondition":[],"accuracy":"","noParticiple":"1","searchRange":null,"noWd":true,"condition":[{"fieldName":"categorynum","equal":"014005008","notEqual":null,"equalList":null,"notEqualList":null,"isLike":true,"likeType":2,"noWd":true}],"time":[]}'
+    parse:
+      itemsPath: content.result.records
+      fields:
+        title: title
+        url: linkurl
+        date: infodate
+        province:
+          const: "50"
+        city:
+          selector: infoc
+          regex: '^(.+?(?:区|县|市))$'
+        purchaser: companyname
+        hint: categorytype
+      extraFields:
+        projectNo: projectno
+    detail:
+      contentSelector: body
+      removeSelector: style, script
+      urlTemplate: https://www.cqggzy.com/trade/014001/{id}
