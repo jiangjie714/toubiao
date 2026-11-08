@@ -1,0 +1,111 @@
+source:
+  name: 湖南省公共资源交易服务平台
+  baseUrl: https://www.hnsggzy.com
+
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 25000
+  retries: 2
+  maxPages: 3
+  scheduleCron: "40 */2 * * *"
+  headers:
+    Accept: application/json, text/plain, */*
+    Referer: https://www.hnsggzy.com/
+
+# 湖南站是 Vue SPA，前端所有数据都走 /tradeApi 下的 JSON 接口（无需签名/验证码）。
+# 列表接口用 `current`/`size` 分页（页码从 1 开始），详情接口用 `sectionId`/`id` 取正文，
+# 正文都是富文本 HTML 字符串，因此 detail 用 jsonPath 定位 + contentSelector: body 兜底。
+lists:
+  # ── 工程建设：listByFile 是「全部公告」混合流，靠 noticeType 字段区分类型 ──
+  - type: NOTICE
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=CONSTRUCTION"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      # 混合流：按 noticeType 逐条映射，避免更正/澄清公告被错标成招标公告
+      typeMap:
+        field: noticeType
+        default: NOTICE
+        map:
+          ZHAOBIAO_NOTICE: NOTICE
+          CHONGXIN_ZHAOBIAO_NOTICE: NOTICE
+          GENGZHENG_NOTICE: CHANGE
+          CHENGQING_NOTICE: CHANGE
+          ZHONGZHI_NOTICE: CHANGE
+          ZANTING_NOTICE: CHANGE
+          REVIEW_NOTICE: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.noticeList.0.noticeContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/getBySectionId?sectionId={query:bidSectionId}"
+
+  # ── 工程建设：招标计划（计划表独立接口，正文在 getConstructionTenderPlanById） ──
+  - type: INTENTION
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/ListConstructionTenderPlan?current={page}&size=13&descs=noticeSendDate"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: noticeTitle
+        url: "https://www.hnsggzy.com/resources/bidPlanDetail?id={id}"
+        date: noticeSendDate
+        province:
+          const: "43"
+        city: regionName
+        purchaser: tendererName
+    detail:
+      contentSelector: body
+      jsonPath: data.noticeContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionTender/getConstructionTenderPlanById?id={query:id}"
+
+  # ── 政府采购：selectAll 必须带 tenderMode，否则 noticeSendTime 全为 null（无法断点续采）──
+  - type: NOTICE
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/projectInformation/selectAll?current={page}&size=13&descs=noticeSendTime&tenderMode=%E5%85%AC%E5%BC%80%E6%8B%9B%E6%A0%87"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: noticeName
+        url: "https://www.hnsggzy.com/resources/projectDetail/governmentPurchase?bidSectionId={bidSectionId}&regionCode={regionCode}"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: regionName
+      typeMap:
+        field: noticeType
+        default: NOTICE
+        map:
+          ZHAOBIAO_NOTICE: NOTICE
+          GENGZHENG_NOTICE: CHANGE
+          CHENGQING_NOTICE: CHANGE
+          ZHONGZHI_NOTICE: CHANGE
+          CLOSURE_NOTICE: CHANGE
+          INVALID_TRANSACTION_NOTICE: CHANGE
+          ABORTIVE_NOTICE: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.governmentProcureAnnouncementInformation.0.noticeContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/projectInformation/getAnnouncementBySectionId?sectionId={query:bidSectionId}"

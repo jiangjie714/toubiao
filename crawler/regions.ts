@@ -39,18 +39,25 @@ export async function loadRegionMatcher() {
     list.sort((a, b) => Math.max(...b.keys.map(k => k.length)) - Math.max(...a.keys.map(k => k.length)));
   }
 
-  function match(text: string): RegionMatch {
+  function match(text: string, provinceCode?: string | null): RegionMatch {
     const scope = text.replace(/\s+/g, "").slice(0, 600);
-    // 取在文本中最早出现的省份（同位置取更长键），避免遍历顺序导致误判
+    // 列表已声明省份（省级站点固定编码）时直接锁定该省，避免正文里出现外地地名而误判，
+    // 同时保证省字段 100% 填充；城市仍按文本就近匹配后兜底全篇扫描。
     let best: { prov: Keyed; key: string; pos: number } | null = null;
-    for (const prov of provinces) {
-      for (const k of prov.keys) {
-        const i = scope.indexOf(k);
-        if (i < 0) continue;
-        if (!best || i < best.pos || (i === best.pos && k.length > best.key.length)) {
-          best = { prov, key: k, pos: i };
+    if (provinceCode) {
+      const hinted = provinces.find((p) => p.code === provinceCode);
+      if (hinted) best = { prov: hinted, key: "", pos: 0 };
+    }
+    if (!best) {
+      for (const prov of provinces) {
+        for (const k of prov.keys) {
+          const i = scope.indexOf(k);
+          if (i < 0) continue;
+          if (!best || i < best.pos || (i === best.pos && k.length > best.key.length)) {
+            best = { prov, key: k, pos: i };
+          }
+          break;
         }
-        break;
       }
     }
     if (!best) return { provinceCode: null, cityCode: null };

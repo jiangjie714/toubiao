@@ -206,7 +206,28 @@ async function fetchListPage(
     }
   }
 
-  const url = isFirstPage && list.firstPageUrl ? list.firstPageUrl : renderPageUrl(list.url ?? "", page);
+  const url =
+    isFirstPage && list.firstPageUrl ? list.firstPageUrl : renderPageUrl(list.url ?? "", page);
+
+  // HTML 频道也常见 POST 分页（如安徽各频道 action="/jsgc/list" method="post"）
+  if (list.request?.method === "POST") {
+    const request = list.request;
+    const form = request.form
+      ? Object.fromEntries(
+          Object.entries(request.form).map(([key, value]) => [key, renderPageUrl(value, page)]),
+        )
+      : undefined;
+    return fetchText(renderPageUrl(request.url || url, page), {
+      method: "POST",
+      headers: { ...settings.headers, ...request.headers },
+      form,
+      body: request.body ? renderPageUrl(request.body, page) : undefined,
+      timeoutMs: settings.timeoutMs,
+      retries: settings.retries,
+      userAgent: settings.userAgent,
+    });
+  }
+
   return fetchText(url, {
     headers: settings.headers,
     timeoutMs: settings.timeoutMs,
@@ -241,9 +262,14 @@ function parseListItems(
       const value = extract(spec);
       if (value) extraFields[key as ExtraFieldTarget] = value;
     }
+    const typeMap = list.parse.typeMap;
+    const mappedType = typeMap
+      ? typeMap.map[extract(typeMap.field).trim()] ?? typeMap.default ?? list.type
+      : undefined;
     items.push({
       title,
       url: resolve(href.trim()),
+      type: mappedType,
       date: parseDate(extract(fields.date)),
       province: extract(fields.province) || null,
       city: extract(fields.city) || null,
@@ -430,13 +456,48 @@ function extractNuxtRichContent(html: string): string | null {
   return findNuxtRichContent(root, new Set());
 }
 
+/** 详情接口模板渲染：把 {url} / {id} / {query:NAME} 换成列表条目地址里的实际值 */
+function renderDetailTemplate(template: string, itemUrl: string): string {
+  const parsed = new URL(itemUrl, "http://placeholder.invalid");
+  const lastSegment = parsed.pathname.split("/").filter(Boolean).pop() ?? "";
+  const stem = lastSegment.replace(/\.[a-z0-9]{1,5}$/i, "");
+  return template
+    .replace(/\{url\}/g, itemUrl)
+    .replace(/\{query:([A-Za-z0-9_]+)\}/g, (_, name: string) => parsed.searchParams.get(name) ?? "")
+    .replace(/\{id\}/g, parsed.searchParams.get("id") ?? stem);
+}
+
 async function fetchDetail(
   itemUrl: string,
   detail: NonNullable<ListConfig["detail"]>,
   settings: SkillConfig["settings"],
 ): Promise<FetchedDetail> {
-  const rawText = await fetchText(itemUrl, {
-    headers: settings.headers,
+  const detailRequest = detail.request;
+  const requestUrl = detailRequest
+    ? new URL(renderDetailTemplate(detailRequest.url ?? itemUrl, itemUrl), itemUrl).toString()
+    : itemUrl;
+  const form = detailRequest?.form
+    ? Object.fromEntries(
+        Object.entries(detailRequest.form).map(([key, value]) => [
+          key,
+          renderDetailTemplate(value, itemUrl),
+        ]),
+      )
+    : undefined;
+  const extraHeaders = detailRequest?.headers
+    ? Object.fromEntries(
+        Object.entries(detailRequest.headers).map(([key, value]) => [
+          key,
+          renderDetailTemplate(value, itemUrl),
+        ]),
+      )
+    : undefined;
+
+  const rawText = await fetchText(requestUrl, {
+    method: detailRequest?.method,
+    headers: { ...settings.headers, ...extraHeaders },
+    form,
+    body: detailRequest?.body ? renderDetailTemplate(detailRequest.body, itemUrl) : undefined,
     timeoutMs: settings.timeoutMs,
     retries: settings.retries,
     userAgent: settings.userAgent,
@@ -444,7 +505,23 @@ async function fetchDetail(
 
   let htmlToParse = rawText;
   const trimmed = rawText.trim();
-  if (
+  if (detail.jsonPath) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      parsed = undefined;
+    }
+    const value = parsed === undefined ? undefined : getByPathAuto(parsed, detail.jsonPath);
+    if (typeof value === "string" && value.trim()) {
+      htmlToParse = value.trim();
+    } else if (value != null) {
+      const formatted = formatJsonTenderContent(JSON.stringify(value));
+      htmlToParse = formatted.isJson && Object.keys(formatted.fields).length > 0
+        ? formatted.htmlText
+        : String(value);
+    }
+  } else if (
     (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
     (trimmed.startsWith("[") && trimmed.endsWith("]"))
   ) {
@@ -713,12 +790,16 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
             // 采购人名称常带行政区（如「新疆生产建设兵团…」），放在标题之后作为兜底文本，
             // 不改变「列表地区优先、标题/正文就近匹配」的既有判定顺序。
             const regionText = `${item.province ?? ""}${item.city ?? ""} ${item.title} ${item.hint ?? ""} ${item.purchaser ?? ""} ${detail.content.slice(0, 300)}`;
-            const region = regionMatcher.match(regionText);
+            // 列表声明的是省级行政区编码（如 "46"）时用它锁定省份，文本只用于定城市
+            const region = regionMatcher.match(
+              regionText,
+              item.province && /^\d{2}$/.test(item.province) ? item.province : null,
+            );
 
             const created = await persistTender(
               {
                 title: item.title,
-                type: list.type,
+                type: item.type ?? list.type,
                 publishDate: item.date ?? new Date(),
                 expireDate: extractExpireDate(detail.content),
                 provinceCode: region.provinceCode,

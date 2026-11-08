@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TENDER_TYPES } from "./types";
 
 export const EXTRA_FIELD_TARGETS = [
   "projectNo",
@@ -59,7 +60,7 @@ const fieldSetSchema = z
 
 const listConfigSchema = z
   .object({
-    type: z.enum(["NOTICE", "RESULT", "CHANGE", "INQUIRY", "INTENTION"]),
+    type: z.enum(TENDER_TYPES),
     mode: z.enum(["html", "json"]),
     url: z.string().min(1).optional(),
     firstPageUrl: z.string().min(1).optional(),
@@ -90,16 +91,41 @@ const listConfigSchema = z
         itemsPath: z.string().min(1).max(200).optional(),
         fields: fieldSetSchema,
         extraFields: z.partialRecord(z.enum(EXTRA_FIELD_TARGETS), fieldSpecSchema).optional(),
+        /** 混合列表按条目字段值映射公告类型（如湖南 listByFile 返回 ZHAOBIAO/GENGZHENG） */
+        typeMap: z
+          .object({
+            field: z.string().min(1).max(200),
+            map: z.record(z.string(), z.enum(TENDER_TYPES)),
+            default: z.enum(TENDER_TYPES).optional(),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
     detail: z
       .object({
-        contentSelector: z.string().min(1).max(200),
+        contentSelector: z.string().min(1).max(200).optional(),
+        /** JSON 详情接口：正文 HTML 在响应里的点分路径（如 data.noticeList.0.noticeContent） */
+        jsonPath: z.string().min(1).max(200).optional(),
         removeSelector: z.string().min(1).max(500).optional(),
         urlTemplate: z.string().min(1).max(500).optional(),
+        /** 详情接口与列表地址不同的站点（如安徽 POST /jsgc/newDetailSub 异步取正文） */
+        request: z
+          .object({
+            method: z.enum(["GET", "POST"]),
+            url: z.string().min(1).max(500).optional(),
+            headers: z.record(z.string(), z.string()).optional(),
+            form: z.record(z.string(), z.string()).optional(),
+            body: z.string().optional(),
+          })
+          .strict()
+          .optional(),
         extraction: z.partialRecord(z.enum(EXTRA_FIELD_TARGETS), extractionSpecSchema).optional(),
       })
       .strict()
+      .refine((value) => Boolean(value.contentSelector || value.jsonPath), {
+        message: "contentSelector 和 jsonPath 至少配置一个",
+      })
       .nullable()
       .optional(),
   })

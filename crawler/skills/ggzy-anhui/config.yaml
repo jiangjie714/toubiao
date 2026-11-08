@@ -1,0 +1,244 @@
+source:
+  name: 安徽省公共资源交易平台
+  baseUrl: https://ggzy.ah.gov.cn
+
+settings:
+  requestDelayMs: 1500
+  timeoutMs: 25000
+  # 站方 newDetailSub / list 接口对本机出口 IP 有约 40%~60% 概率直接返回 502
+  # （同一时刻走代理/换出口则 100% 200），属站方负载均衡坏节点而非配置错误，
+  # 故把重试放宽到 7 次（共 8 次尝试，指数退避），单条成功率 ≈ 99.9%。
+  retries: 7
+  maxPages: 3
+  scheduleCron: "20 */2 * * *"
+  headers:
+    Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+    Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+    Referer: https://ggzy.ah.gov.cn/jsgc/list
+
+# 列表是服务端渲染 HTML，POST 分页（字段 currentPage，不是 page）。
+# 详情页 /jsgc/newDetail 只是壳，正文由页面底部 start() 再 POST /jsgc/newDetailSub
+# 异步取回（参数 type/bulletinNature/guid/statusGuid），因此 detail.request 配成 POST，
+# 用 {query:guid} 等占位从列表条目地址回填参数。
+lists:
+  # ── 工程建设（jscg） ──
+  - type: NOTICE
+    mode: html
+    url: https://ggzy.ah.gov.cn/jsgc/list
+    request:
+      method: POST
+      url: https://ggzy.ah.gov.cn/jsgc/list
+      form:
+        currentPage: "{page}"
+        tenderProjectType: "1"
+        bulletinNature: "1"
+        jyptId: ""
+        region: ""
+    parse:
+      itemSelector: .list-item
+      fields:
+        title:
+          selector: .title
+          attr: title
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: .date
+          regex: '(\d{4}-\d{2}-\d{2})'
+        province:
+          const: "34"
+        city:
+          selector: .area
+          regex: '^【([^-]+)-'
+    detail:
+      contentSelector: .article-text-box
+      removeSelector: script, style
+      request:
+        method: POST
+        url: https://ggzy.ah.gov.cn/jsgc/newDetailSub
+        headers:
+          X-Requested-With: XMLHttpRequest
+          Referer: "{url}"
+        form:
+          type: tender
+          bulletinNature: "{query:bulletinNature}"
+          guid: "{query:guid}"
+          statusGuid: ""
+
+  - type: RESULT
+    mode: html
+    url: https://ggzy.ah.gov.cn/jsgc/list
+    request:
+      method: POST
+      url: https://ggzy.ah.gov.cn/jsgc/list
+      form:
+        currentPage: "{page}"
+        tenderProjectType: "1"
+        bulletinNature: "2"
+        jyptId: ""
+        region: ""
+    parse:
+      itemSelector: .list-item
+      fields:
+        title:
+          selector: .title
+          attr: title
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: .date
+          regex: '(\d{4}-\d{2}-\d{2})'
+        province:
+          const: "34"
+        city:
+          selector: .area
+          regex: '^【([^-]+)-'
+    detail:
+      contentSelector: .article-text-box
+      removeSelector: script, style
+      request:
+        method: POST
+        url: https://ggzy.ah.gov.cn/jsgc/newDetailSub
+        headers:
+          X-Requested-With: XMLHttpRequest
+          Referer: "{url}"
+        form:
+          type: pbjg
+          bulletinNature: "{query:bulletinNature}"
+          guid: "{query:guid}"
+          statusGuid: ""
+
+  - type: RESULT
+    mode: html
+    url: https://ggzy.ah.gov.cn/jsgc/list
+    request:
+      method: POST
+      url: https://ggzy.ah.gov.cn/jsgc/list
+      form:
+        currentPage: "{page}"
+        tenderProjectType: "1"
+        bulletinNature: "3"
+        jyptId: ""
+        region: ""
+    parse:
+      itemSelector: .list-item
+      fields:
+        title:
+          selector: .title
+          attr: title
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: .date
+          regex: '(\d{4}-\d{2}-\d{2})'
+        province:
+          const: "34"
+        city:
+          selector: .area
+          regex: '^【([^-]+)-'
+    detail:
+      contentSelector: .article-text-box
+      removeSelector: script, style
+      request:
+        method: POST
+        url: https://ggzy.ah.gov.cn/jsgc/newDetailSub
+        headers:
+          X-Requested-With: XMLHttpRequest
+          Referer: "{url}"
+        form:
+          type: zbjg
+          bulletinNature: "{query:bulletinNature}"
+          guid: "{query:guid}"
+          statusGuid: ""
+
+  # ── 政府采购（zfcg） ──
+  - type: NOTICE
+    mode: html
+    url: https://ggzy.ah.gov.cn/zfcg/list
+    request:
+      method: POST
+      url: https://ggzy.ah.gov.cn/zfcg/list
+      form:
+        currentPage: "{page}"
+        time: ""
+        bulletinNature: "1"
+        jyptId: ""
+        region: ""
+    parse:
+      itemSelector: .list-item
+      fields:
+        title:
+          selector: .title
+          attr: title
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: .date
+          regex: '(\d{4}-\d{2}-\d{2})'
+        province:
+          const: "34"
+        city:
+          selector: .area
+          regex: '^【([^-]+)-'
+    detail:
+      contentSelector: .article-text-box
+      removeSelector: script, style
+      request:
+        method: POST
+        url: https://ggzy.ah.gov.cn/zfcg/newDetailSub
+        headers:
+          X-Requested-With: XMLHttpRequest
+          Referer: "{url}"
+        form:
+          type: bulletin
+          bulletinNature: "{query:bulletinNature}"
+          guid: "{query:guid}"
+          statusGuid: ""
+
+  - type: RESULT
+    mode: html
+    url: https://ggzy.ah.gov.cn/zfcg/list
+    request:
+      method: POST
+      url: https://ggzy.ah.gov.cn/zfcg/list
+      form:
+        currentPage: "{page}"
+        time: ""
+        bulletinNature: "3"
+        jyptId: ""
+        region: ""
+    parse:
+      itemSelector: .list-item
+      fields:
+        title:
+          selector: .title
+          attr: title
+        url:
+          selector: a
+          attr: href
+        date:
+          selector: .date
+          regex: '(\d{4}-\d{2}-\d{2})'
+        province:
+          const: "34"
+        city:
+          selector: .area
+          regex: '^【([^-]+)-'
+    detail:
+      contentSelector: .article-text-box
+      removeSelector: script, style
+      request:
+        method: POST
+        url: https://ggzy.ah.gov.cn/zfcg/newDetailSub
+        headers:
+          X-Requested-With: XMLHttpRequest
+          Referer: "{url}"
+        form:
+          type: zbjg
+          bulletinNature: "{query:bulletinNature}"
+          guid: "{query:guid}"
+          statusGuid: ""

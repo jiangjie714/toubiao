@@ -123,7 +123,9 @@ export async function fetchText(url: string, opts: FetchOptions = {}): Promise<s
     } catch (err) {
       lastErr = err;
       if (attempt < retries) {
-        await sleep(1000 * (attempt + 1));
+        // 指数退避 + 抖动：站方网关抖动（502）常成簇出现，固定 1s/2s/3s 间隔容易整簇失败；
+        // 上限 8s，避免重试本身把单条目拖到分钟级。
+        await sleep(Math.min(1000 * 2 ** attempt, 8000) + Math.floor(Math.random() * 400));
       }
     } finally {
       clearTimeout(timer);
