@@ -156,7 +156,17 @@ export async function persistTender(
   for (const field of candidateFields) {
     const value = extraData[field];
     if (value === null || value === undefined) continue;
+    // 等置信度、同源值时 shouldReplace 会拒绝覆盖，但如果新值只是旧值的「后缀补全」
+    // （如正则历史版本把「XX集团有限公司」截成「XX集团」），仍要替换，否则脏值永远修不回来。
+    const currentValue = (existing as unknown as Record<string, unknown>)[field];
+    const isSuffixCompletion =
+      field === "winningSupplier" &&
+      typeof currentValue === "string" &&
+      typeof value === "string" &&
+      value.length > currentValue.length &&
+      value.startsWith(currentValue);
     if (
+      isSuffixCompletion ||
       shouldReplace(
         currentConfidence[field] ?? 0,
         input.confidence[field] ?? 0,

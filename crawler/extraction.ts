@@ -39,10 +39,10 @@ export type AttachmentMeta = {
 export const BUILTIN_EXTRACTION: Record<ExtraFieldTarget, ExtractionSpec> = {
   projectNo: { regex: "(?:采购计划编号|项目编号|采购编号|招标编号|标段编号)(?:为|是)?[：:]?\\s*(?=[^\\s，,。；;：:]*\\d)([^\\s，,。；;：:]{4,40})" },
   budgetAmount: { regex: "(?:预算金额|采购预算|最高限价|控制价|预算|限价)[^，,。；;\\d]{0,14}?[：:]?\\s*(?:人民币)?\\s*([\\d,，.]+)\\s*(?:[（(]\\s*)?(万)?(?:元)?(?:\\s*[)）])?(?![折率%％倍个月日年点期第号])" },
-  awardAmount: { regex: "(?<!(?:代理费|服务费|收费标准|费率|收费)[\\s\\S]{0,6})(?:中标|成交)(?:[（(]\\s*(?:成交|中标)?\\s*[)）])?(?:金额|价格|总价|报价|价)\\s*(?:为|是)?\\s*[：:]?\\s*(?:人民币)?\\s*([\\d,，.]+)\\s*(万)?元?(?!\\s*元?\\s*(?:以下|以上|不超过|不足|超过))" },
+  awardAmount: { regex: "(?<!(?:代理费|服务费|收费标准|费率|收费)[\\s\\S]{0,6})(?:中标|成交)(?:[（(]\\s*(?:成交|中标)?\\s*[)）])?(?:金额|价格|总价|报价|价)(?:[（(]\\s*元\\s*[)）])?\\s*(?:为|是)?\\s*[：:]?\\s*(?:人民币)?\\s*([\\d,，.]+)\\s*(万)?元?(?!\\s*元?\\s*(?:以下|以上|不超过|不足|超过))" },
   openTime: { regex: "(?:开标|开启)[^，,。；;\\d]{0,10}?[：:]?\\s*(\\d{4}[-年/.]\\d{1,2}[-月./]\\d{1,2}日?(?:[^，,。；;\\s]{0,10})?)" },
   industryCode: { regex: "(医疗设备|信息化|软件开发|工程施工|办公物资|物业服务|维修保养|检验检测|教育装备|环保设备)" },
-  winningSupplier: { regex: "(?:中标|成交)(?:供应商|单位|人)\\s*(?:名称)?\\s*(?:为|是)?\\s*[：:]?\\s*([\\u4e00-\\u9fa5A-Za-z0-9（）()]{4,38}?(?:有限责任公司|股份有限公司|有限公司|集团|研究院|研究所|设计院|采购中心|交易中心|服务中心|医院|学院|大学|事务所|合作社|公司|中心|厂|部))|(?:中标|成交)(?:供应商|人)\\s*[：:]\\s*([^\\s，,。；;]{4,40})" },
+  winningSupplier: { regex: "(?:中标|成交)(?:[（(]\\s*(?:成交|中标)?\\s*[)）])?(?:供应商|单位|人)\\s*(?:名称)?\\s*(?:为|是)?\\s*[：:]?\\s*([\\u4e00-\\u9fa5A-Za-z0-9（）()]{4,38}?(?:有限责任公司|股份有限公司|有限公司|集团|研究院|研究所|设计院|采购中心|交易中心|服务中心|医院|学院|大学|事务所|合作社|公司|中心|厂|部)(?:有限责任公司|股份有限公司|有限公司|集团|公司|研究院|研究所|设计院|医院|学院|大学)*)|(?:中标|成交)(?:[（(]\\s*(?:成交|中标)?\\s*[)）])?(?:供应商|人)\\s*[：:]\\s*([^\\s，,。；;]{4,40})" },
   agency: { regex: "(?:采购代理机构|代理机构|集中采购机构)(?:[\\s\\S]{0,10}?名\\s*称\\s*[：:]|[：:])\\s*([^\\s，,。；;]{4,40})" },
   contactPhone: { regex: "(?:联系电话|联系方式|电\\s*话)[：:]\\s*([\\d\\-—()]{7,20})" },
   contactEmail: { regex: "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}" },
@@ -108,7 +108,12 @@ export function extractBuiltinFields(
 ): { fields: RawExtraFields; confidence: Record<string, number> } {
   const fields: RawExtraFields = {};
   const confidence: Record<string, number> = {};
-  const normalized = text.replace(/\u00a0/g, " ");
+  // 「中标（成交）金额」「中标（成交金额）」「中标（成交）供应商」是政采与工程结果公告的高频写法，
+  // 先归一成「中标金额」「中标供应商」，正则只保留一条主形态，避免括号组合爆炸。
+  const normalized = text
+    .replace(/\u00a0/g, " ")
+    .replace(/(中标|成交)\s*[（(]\s*(?:成交|中标)?\s*(金额|价格|总价|报价|价|供应商|单位|人)\s*[)）]/g, "$1$2")
+    .replace(/(中标|成交)\s*[（(]\s*(?:成交|中标)?\s*[)）]\s*(金额|价格|总价|报价|价|供应商|单位|人)/g, "$1$2");
 
   for (const [key, spec] of Object.entries(BUILTIN_EXTRACTION)) {
     const value = applyRegex(normalized, spec.regex);
@@ -181,11 +186,20 @@ export function extractPurchaser(text: string | null | undefined): string | unde
     const value = trimToOrgSuffix(match[1]);
     if (value) return value;
   }
+
+  // 「X 受 YY 的委托，代理…」是中标的候选人/结果公告的固定句式（YY 为招标人，X 为代理机构），
+  // 正文里往往只写「受 YY 的委托」，没有「招标人：」锚点，单独兜底一次。
+  const agentRegex = /受\s*([^\s，,。；;：:（()）]{4,40}?)\s*(?:[（(][^）)]{0,12}[）)])?\s*的委托/u;
+  for (const match of normalized.matchAll(new RegExp(agentRegex.source, "gu"))) {
+    const value = trimToOrgSuffix(match[1]);
+    if (value) return value;
+  }
   return undefined;
 }
 
 function trimToOrgSuffix(raw: string): string | undefined {
-  const value = raw.replace(/^[（(]|[)）]$/g, "").trim();
+  // 「A、B」多为「采购人、地址」或多个采购人并联，取第一段最接近机构名
+  const value = raw.split("、")[0].replace(/^[（(]|[)）]$/g, "").trim();
   if (value.length < 4) return undefined;
 
   // 取最后一个机构后缀位置，既裁掉紧跟的地址/电话，又保留「XX有限公司昆明分公司」这类全称

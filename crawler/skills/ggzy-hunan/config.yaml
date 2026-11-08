@@ -109,3 +109,317 @@ lists:
       request:
         method: GET
         url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/projectInformation/getAnnouncementBySectionId?sectionId={query:bidSectionId}"
+
+  # ── 工程建设：中标候选人公示（listByFile 的 notice=2 服务端有效过滤）──
+  # 详情不在 getBySectionId（那组只返回招标/澄清/更正），必须走
+  # selectWinningBidNotice/{sectionId}/0（0=候选人公示，1=中标结果公告）。
+  - type: RESULT
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=CONSTRUCTION&notice=2"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}&default=publicityInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: RESULT
+        map:
+          ZHONGBIAOHXR_NOTICE: RESULT
+          ZHONGBIAO_NOTICE: RESULT
+          GENGZHENG_NOTICE: CHANGE
+          ZHONGZHI_NOTICE: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.0.publicityContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/selectWinningBidNotice/{query:bidSectionId}/0"
+
+  # ── 工程建设：中标结果公告（notice=3）──
+  - type: RESULT
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=CONSTRUCTION&notice=3"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}&default=resultInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: RESULT
+        map:
+          ZHONGBIAO_NOTICE: RESULT
+          ZHONGBIAOHXR_NOTICE: RESULT
+          GENGZHENG_NOTICE: CHANGE
+          ZHONGZHI_NOTICE: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.0.publicityContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/selectWinningBidNotice/{query:bidSectionId}/1"
+
+  # ── 工程建设：水利工程（tenderProjectType=WATER_CONSERVANCY，与住建同构）──
+  - type: NOTICE
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=WATER_CONSERVANCY&notice=0"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: NOTICE
+        map:
+          ZHAOBIAO_NOTICE: NOTICE
+          CHONGXIN_ZHAOBIAO_NOTICE: NOTICE
+          GENGZHENG_NOTICE: CHANGE
+          CHENGQING_NOTICE: CHANGE
+          ZHONGZHI_NOTICE: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.noticeList.0.noticeContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/getBySectionId?sectionId={query:bidSectionId}"
+
+  # ── 工程建设：水利工程中标结果 ──
+  - type: RESULT
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=WATER_CONSERVANCY&notice=3"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}&default=resultInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: RESULT
+        map:
+          ZHONGBIAO_NOTICE: RESULT
+          ZHONGBIAOHXR_NOTICE: RESULT
+    detail:
+      contentSelector: body
+      jsonPath: data.0.publicityContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/selectWinningBidNotice/{query:bidSectionId}/1"
+
+  # ── 工程建设：交通工程（tenderProjectType=TRANSPORATATION，站点拼写如此）──
+  - type: NOTICE
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=TRANSPORATATION&notice=0"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: NOTICE
+        map:
+          ZHAOBIAO_NOTICE: NOTICE
+          CHONGXIN_ZHAOBIAO_NOTICE: NOTICE
+          GENGZHENG_NOTICE: CHANGE
+          CHENGQING_NOTICE: CHANGE
+          ZHONGZHI_NOTICE: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.noticeList.0.noticeContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/getBySectionId?sectionId={query:bidSectionId}"
+
+  # ── 工程建设：交通工程中标结果 ──
+  - type: RESULT
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=TRANSPORATATION&notice=3"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}&default=resultInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: RESULT
+        map:
+          ZHONGBIAO_NOTICE: RESULT
+          ZHONGBIAOHXR_NOTICE: RESULT
+    detail:
+      contentSelector: body
+      jsonPath: data.0.publicityContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/selectWinningBidNotice/{query:bidSectionId}/1"
+
+  # ── 政府采购：中标公告（selectAll 的 notice=4；正文不在 getAnnouncementBySectionId，
+  # 而在 procureResultAnnouncementInformation/getResultBySectionId 的 resultAnnouncementInformation）──
+  - type: RESULT
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/projectInformation/selectAll?current={page}&size=13&descs=noticeSendTime&tenderMode=%E5%85%AC%E5%BC%80%E6%8B%9B%E6%A0%87&notice=4"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: noticeName
+        url: "https://www.hnsggzy.com/resources/projectDetail/governmentPurchase?bidSectionId={bidSectionId}&regionCode={regionCode}&t=ZFCG&default=resultInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: regionName
+      typeMap:
+        field: noticeType
+        default: RESULT
+        map:
+          中标结果公告: RESULT
+          中标公告: RESULT
+          成交公告: RESULT
+          更正公告: CHANGE
+          终止公告: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.resultAnnouncementInformation.0.winBidBulletinContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/procureResultAnnouncementInformation/getResultBySectionId?sectionId={query:bidSectionId}"
+
+
+  # ── 工程建设：工业 / 农业 / 其他 三类工程的中标结果（与住建同构，仅 tenderProjectType 不同）──
+  - type: RESULT
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=INDUSTRY&notice=3"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}&default=resultInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: RESULT
+        map:
+          ZHONGBIAO_NOTICE: RESULT
+          ZHONGBIAOHXR_NOTICE: RESULT
+    detail:
+      contentSelector: body
+      jsonPath: data.0.publicityContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/selectWinningBidNotice/{query:bidSectionId}/1"
+
+  - type: RESULT
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=AGRICULTURAL_PROJECT&notice=3"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}&default=resultInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: RESULT
+        map:
+          ZHONGBIAO_NOTICE: RESULT
+          ZHONGBIAOHXR_NOTICE: RESULT
+    detail:
+      contentSelector: body
+      jsonPath: data.0.publicityContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/selectWinningBidNotice/{query:bidSectionId}/1"
+
+  - type: RESULT
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=OTHER&notice=3"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}&default=resultInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: RESULT
+        map:
+          ZHONGBIAO_NOTICE: RESULT
+          ZHONGBIAOHXR_NOTICE: RESULT
+    detail:
+      contentSelector: body
+      jsonPath: data.0.publicityContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/selectWinningBidNotice/{query:bidSectionId}/1"

@@ -62,6 +62,8 @@ export type RunResult = {
   skippedExisting: number;
   checkpointDate: string | null;
   checkpointHit: boolean;
+  /** 断点续采时因「该列表一页都没入库」而按正常页数上限回填的列表数 */
+  backfillLists: number;
   mode: "resume" | "timerange" | "normal";
   items?: DryRunItem[];
   errors?: string[];
@@ -70,7 +72,7 @@ export type RunResult = {
 function applyRegex(value: string, regex: string | undefined): string {
   if (!value || !regex) return value;
   const match = value.match(new RegExp(regex, "u"));
-  return match ? (match[1] ?? match[0]) : "";
+  return match ? (match[1] ?? match[2] ?? match[0]) : "";
 }
 
 function extractHtmlField(
@@ -677,6 +679,7 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
   let skippedFuture = 0;
   let skippedExisting = 0;
   let checkpointHit = false;
+  let backfillLists = 0;
   let httpOk = 0;
   let httpFail = 0;
   let latencyTotal = 0;
@@ -685,7 +688,21 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
     const startPage = list.startPage ?? 1;
     const maxPages = options.maxPages ?? (list.maxPages ? Math.min(list.maxPages, maxPagesLimit) : maxPagesLimit);
 
+    // 断点续采的断点按列表独立推断：列表第 1 页已入库条目的最新发布日期就是该列表的
+    // 水位。若第 1 页一条都没入库，说明该列表是新增/从未采过 —— 不能套用源级断点，
+    // 否则新列表会被整体当作「历史数据」跳过，永远回填不出来。这种情况改用正常模式的
+    // 页数上限做一次有界回填，之后该列表 1 页有数了就自动回到常规断点续采。
+    let listCheckpoint: Date | null = checkpointDate;
+    let listCheckpointResolved = false;
+    let listBackfilling = false;
+    const backfillPages = Math.max(
+      1,
+      Math.min(maxPagesLimit, list.maxPages ?? config.settings.maxPages ?? 3),
+    );
+
     for (let page = startPage; page < startPage + maxPages; page++) {
+      // 回填列表只翻正常模式的页数上限，避免在断点续采的 50 页上限下单轮翻过头
+      if (listBackfilling && page - startPage >= backfillPages) break;
       const startedAt = Date.now();
       let payload: string | unknown;
       try {
@@ -724,9 +741,29 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
         ? []
         : await prisma.tender.findMany({
             where: { sourceUrl: { in: urls } },
-            select: { sourceUrl: true },
+            select: { sourceUrl: true, publishDate: true },
           });
       const existingUrls = new Set(existingList.map((t) => t.sourceUrl));
+
+      // 用第 1 页已入库条目推断该列表的续采水位（同上注释）
+      if (!listCheckpointResolved) {
+        listCheckpointResolved = true;
+        if (isResumeMode && !options.dryRun && !options.file) {
+          const knownDates = existingList
+            .map((t) => t.publishDate)
+            .filter((d): d is Date => d instanceof Date);
+          if (knownDates.length === 0) {
+            listCheckpoint = null;
+            listBackfilling = true;
+            backfillLists += 1;
+          } else {
+            listCheckpoint = toDayStart(new Date(Math.max(...knownDates.map((d) => d.getTime()))));
+          }
+        }
+      }
+      const listSinceMs = isResumeMode
+        ? (listCheckpoint ? listCheckpoint.getTime() : null)
+        : sinceMs;
 
       for (const item of items) {
         if (item.date) {
@@ -735,15 +772,15 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
             skippedFuture++;
             continue;
           }
-          if (sinceMs !== null && itemMs < sinceMs) {
+          if (listSinceMs !== null && itemMs < listSinceMs) {
             skippedOld++;
             continue;
           }
         }
 
-        // 断点续采模式下的去重短路：数据库已存在且日期不晚于断点，无需重新拉取详情
-        if (isResumeMode && checkpointDate && existingUrls.has(item.url)) {
-          if (!item.date || item.date.getTime() <= checkpointDate.getTime()) {
+        // 断点续采模式下的去重短路：数据库已存在且日期不晚于该列表断点，无需重新拉取详情
+        if (isResumeMode && listCheckpoint && existingUrls.has(item.url)) {
+          if (!item.date || item.date.getTime() <= listCheckpoint.getTime()) {
             skippedExisting++;
             continue;
           }
@@ -838,14 +875,15 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
         }
       }
 
-      // 断点续采模式下：如果存在历史断点，且整页条目均早于断点，或者整页所有条目均已入库且日期不晚于断点，说明已触及断点，提前停止翻页
-      if (isResumeMode && checkpointDate !== null && items.length > 0) {
+      // 断点续采模式下：如果存在该列表的历史断点，且整页条目均早于断点，或者整页所有条目均已入库且日期不晚于断点，说明已触及断点，提前停止翻页
+      if (isResumeMode && listCheckpoint !== null && items.length > 0) {
+        const listCheckpointMs = listCheckpoint.getTime();
         const datedItems = items.filter((it) => it.date !== null);
         const allDatedBeforeCheckpoint =
-          datedItems.length > 0 && datedItems.every((it) => it.date!.getTime() < sinceMs!);
+          datedItems.length > 0 && datedItems.every((it) => it.date!.getTime() < listCheckpointMs);
         const allItemsAlreadyExisting =
           items.every((it) => existingUrls.has(it.url)) &&
-          items.every((it) => !it.date || it.date.getTime() <= checkpointDate!.getTime());
+          items.every((it) => !it.date || it.date.getTime() <= listCheckpointMs);
 
         if (allDatedBeforeCheckpoint || allItemsAlreadyExisting) {
           checkpointHit = true;
@@ -868,6 +906,7 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
     skippedExisting,
     checkpointDate: checkpointDate ? formatDate(checkpointDate) : null,
     checkpointHit,
+    backfillLists,
     mode,
     ...(options.dryRun ? { items: dryItems.slice(0, 20), errors } : { errors }),
   };
@@ -925,6 +964,8 @@ export async function runSourceWithLogging(
     } else if (result.mode === "resume") {
       message = `断点续采：抓取 ${result.fetched} 条，新增 ${result.newCount} 条，解析 ${result.itemsParsed} 条${
         result.skippedExisting > 0 ? `，跳过已入库历史数据 ${result.skippedExisting} 条` : ""
+      }${
+        result.backfillLists > 0 ? `，新列表回填 ${result.backfillLists} 个` : ""
       }${
         result.checkpointDate
           ? result.checkpointHit
