@@ -20,7 +20,7 @@ import {
 import { extractFidelityHtml } from "./fidelity";
 import { persistTender } from "./persist";
 import { formatJsonTenderContent, isJsonString } from "@/lib/tender-json-formatter";
-import type { FieldSpec, ListConfig, ParsedItem, SkillConfig } from "./types";
+import type { FieldSpec, HtmlDetail, ListConfig, ParsedItem, SkillConfig } from "./types";
 
 const MAX_CONTENT_LEN = 50_000;
 const MAX_HTML_LEN = 500_000;
@@ -116,11 +116,91 @@ function extractJsonField(item: Record<string, unknown>, spec: FieldSpec | undef
   return applyRegex(raw.trim(), spec.regex).trim();
 }
 
+/** 点分路径取值时的单段处理：数组段支持负数下标（如 `-1` 取最后一条） */
+function pickSegment(container: unknown, segment: string): unknown {
+  if (Array.isArray(container)) {
+    const index = Number.parseInt(segment, 10);
+    if (Number.isInteger(index)) {
+      return index < 0 ? container[container.length + index] : container[index];
+    }
+    return (container as unknown as Record<string, unknown>)[segment];
+  }
+  return (container as Record<string, unknown>)[segment];
+}
+
+/**
+ * 从「同一标段的公告数组」里按字段等值挑出目标公告并返回其正文 HTML。
+ * 湖南 `getBySectionId` 的 `noticeList` 会同时含招标/澄清/更正公告且顺序不保证，
+ * 只能按 `bulletinType` 这类枚举字段精确选取（配置见 detail.pick）。
+ */
+function pickNoticeByField(
+  candidates: unknown[],
+  pick: NonNullable<HtmlDetail["pick"]>,
+): unknown {
+  const contentField = pick.contentField ?? "noticeContent";
+  const objects = candidates.filter(
+    (item): item is Record<string, unknown> => item != null && typeof item === "object",
+  );
+  const read = (item: Record<string, unknown>) => item[contentField];
+  const textOf = (item: Record<string, unknown>) => String(read(item) ?? "").trim();
+  const mode = pick.match ?? "equals";
+  const matched = objects.filter((item) => {
+    const raw = item[pick.field];
+    if (raw == null) return false;
+    const value = String(raw);
+    return mode === "contains"
+      ? pick.values.some((needle) => value.includes(needle))
+      : pick.values.includes(value);
+  });
+  const fallback = pick.fallback ?? "first";
+  // 命中集合优先；一条都没命中才回退全量（站点常把同类型公告拆成多条、
+  // 其中有些是「详见更正公告」这类空壳，故候选池里再滤掉空正文）。
+  const pool = matched.length > 0 ? matched : fallback === "none" ? [] : objects;
+  if (pool.length === 0) return undefined;
+  const nonEmpty = pool.filter((item) => textOf(item) !== "");
+  const usable = nonEmpty.length > 0 ? nonEmpty : pool;
+  if (fallback === "last") return read(usable[usable.length - 1]);
+  if (fallback === "longest") {
+    let best: Record<string, unknown> | null = null;
+    let bestLen = -1;
+    for (const item of usable) {
+      const len = String(read(item) ?? "").length;
+      if (len > bestLen) {
+        best = item;
+        bestLen = len;
+      }
+    }
+    return best ? read(best) : undefined;
+  }
+  return read(usable[0]);
+}
+
+/**
+ * 正文兜底修正公告类型：站方把公告挂错分类时（如湖南把「终止公告」的 bulletinType
+ * 标成 CHONGXIN_ZHAOBIAO_NOTICE），列表侧识别不了，只能用正文关键词纠正。
+ * 配置见 parse.typeRules，首个命中生效。
+ */
+function resolveTypeByContent(
+  content: string,
+  rules: ListConfig["parse"]["typeRules"],
+): string | null {
+  if (!rules || rules.length === 0) return null;
+  const text = content.replace(/\s+/g, " ");
+  for (const rule of rules) {
+    try {
+      if (new RegExp(rule.pattern).test(text)) return rule.type;
+    } catch {
+      // 正则写错不影响采集，忽略该条规则
+    }
+  }
+  return null;
+}
+
 function getByPath(obj: unknown, dotPath: string): unknown {
   let current: unknown = obj;
   for (const segment of dotPath.split(".")) {
     if (current == null || typeof current !== "object") return undefined;
-    current = (current as Record<string, unknown>)[segment];
+    current = pickSegment(current, segment);
   }
   return current;
 }
@@ -146,7 +226,7 @@ function getByPathAuto(obj: unknown, dotPath: string): unknown {
       }
     }
     if (current == null || typeof current !== "object") return undefined;
-    current = (current as Record<string, unknown>)[segment];
+    current = pickSegment(current, segment);
   }
   return current;
 }
@@ -514,7 +594,10 @@ async function fetchDetail(
     } catch {
       parsed = undefined;
     }
-    const value = parsed === undefined ? undefined : getByPathAuto(parsed, detail.jsonPath);
+    let value = parsed === undefined ? undefined : getByPathAuto(parsed, detail.jsonPath);
+    if (Array.isArray(value) && detail.pick) {
+      value = pickNoticeByField(value, detail.pick);
+    }
     if (typeof value === "string" && value.trim()) {
       htmlToParse = value.trim();
     } else if (value != null) {
@@ -522,6 +605,10 @@ async function fetchDetail(
       htmlToParse = formatted.isJson && Object.keys(formatted.fields).length > 0
         ? formatted.htmlText
         : String(value);
+    } else {
+      // jsonPath 命中了 null/缺失字段（如湖南政采结果公告的 publicityContent 为 null）：
+      // 不能把整个响应体当正文，否则会存进 `{"code":200,…}` 原始 JSON
+      htmlToParse = "";
     }
   } else if (
     (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
@@ -833,10 +920,12 @@ export async function runSource(skillCode: string, options: RunOptions = {}): Pr
               item.province && /^\d{2}$/.test(item.province) ? item.province : null,
             );
 
+            const effectiveType =
+              resolveTypeByContent(detail.content, list.parse.typeRules) ?? item.type ?? list.type;
             const created = await persistTender(
               {
                 title: item.title,
-                type: item.type ?? list.type,
+                type: effectiveType,
                 publishDate: item.date ?? new Date(),
                 expireDate: extractExpireDate(detail.content),
                 provinceCode: region.provinceCode,

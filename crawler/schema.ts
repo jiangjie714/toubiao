@@ -100,6 +100,18 @@ const listConfigSchema = z
           })
           .strict()
           .optional(),
+        /** 正文兜底修正类型（站方挂错公告类型时用），首个命中的规则生效 */
+        typeRules: z
+          .array(
+            z
+              .object({
+                pattern: z.string().min(1).max(300),
+                type: z.enum(TENDER_TYPES),
+              })
+              .strict(),
+          )
+          .max(20)
+          .optional(),
       })
       .strict(),
     detail: z
@@ -107,6 +119,26 @@ const listConfigSchema = z
         contentSelector: z.string().min(1).max(200).optional(),
         /** JSON 详情接口：正文 HTML 在响应里的点分路径（如 data.noticeList.0.noticeContent） */
         jsonPath: z.string().min(1).max(200).optional(),
+        /**
+         * jsonPath 指向「同一标段的公告数组」时，按元素字段等值挑选目标公告。
+         * 例如湖南 `getBySectionId` 的 `noticeList` 混合了招标/澄清/更正公告，
+         * 顺序不保证，只能按 `bulletinType` 精确选取。
+         */
+        pick: z
+          .object({
+            /** 数组元素里用于比对的字段名，如 bulletinType */
+            field: z.string().min(1).max(80),
+            /** 命中的字段值（任一即可） */
+            values: z.array(z.string().min(1).max(80)).min(1),
+            /** 匹配方式：equals 精确等值（默认）/ contains 包含 */
+            match: z.enum(["equals", "contains"]).default("equals"),
+            /** 选中元素里承载正文的字段名，默认 noticeContent */
+            contentField: z.string().min(1).max(80).default("noticeContent"),
+            /** 全部未命中时的兜底：first / last / longest（正文最长）/ none */
+            fallback: z.enum(["first", "last", "longest", "none"]).default("first"),
+          })
+          .strict()
+          .optional(),
         removeSelector: z.string().min(1).max(500).optional(),
         urlTemplate: z.string().min(1).max(500).optional(),
         /** 详情接口与列表地址不同的站点（如安徽 POST /jsgc/newDetailSub 异步取正文） */

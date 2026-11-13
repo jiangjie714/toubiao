@@ -16,12 +16,12 @@ settings:
 # 列表接口用 `current`/`size` 分页（页码从 1 开始），详情接口用 `sectionId`/`id` 取正文，
 # 正文都是富文本 HTML 字符串，因此 detail 用 jsonPath 定位 + contentSelector: body 兜底。
 lists:
-  # ── 工程建设：listByFile 是「全部公告」混合流，靠 noticeType 字段区分类型 ──
+  # ── 工程建设：招标公告（notice=0 服务端过滤；正文取 noticeList 最后一条）──
   - type: NOTICE
     mode: json
     request:
       method: GET
-      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=CONSTRUCTION"
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=CONSTRUCTION&notice=0"
     startPage: 1
     parse:
       itemsPath: data.records
@@ -33,21 +33,25 @@ lists:
           const: "43"
         city: name
         purchaser: tendererName
-      # 混合流：按 noticeType 逐条映射，避免更正/澄清公告被错标成招标公告
       typeMap:
         field: noticeType
         default: NOTICE
         map:
           ZHAOBIAO_NOTICE: NOTICE
           CHONGXIN_ZHAOBIAO_NOTICE: NOTICE
-          GENGZHENG_NOTICE: CHANGE
-          CHENGQING_NOTICE: CHANGE
-          ZHONGZHI_NOTICE: CHANGE
-          ZANTING_NOTICE: CHANGE
-          REVIEW_NOTICE: CHANGE
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
     detail:
       contentSelector: body
-      jsonPath: data.noticeList.0.noticeContent
+      jsonPath: data.noticeList
+      pick:
+        field: bulletinType
+        values: ["ZHAOBIAO_NOTICE", "CHONGXIN_ZHAOBIAO_NOTICE"]
+        contentField: noticeContent
+        fallback: first
       request:
         method: GET
         url: "https://www.hnsggzy.com/tradeApi/constructionNotice/getBySectionId?sectionId={query:bidSectionId}"
@@ -77,11 +81,15 @@ lists:
         url: "https://www.hnsggzy.com/tradeApi/constructionTender/getConstructionTenderPlanById?id={query:id}"
 
   # ── 政府采购：selectAll 必须带 tenderMode，否则 noticeSendTime 全为 null（无法断点续采）──
+  # ── 政府采购：招标公告（notice=1 服务端过滤）──
+  # getAnnouncementBySectionId 返回「该标段全部公告」数组，元素无 noticeType，
+  # 只能按 noticeName 后缀（「…招标公告」/「…-澄清公告」/「…更正公告」）挑正文；
+  # 元素顺序不保证，且可能是正文为空的壳记录，故 fallback 取最长正文。
   - type: NOTICE
     mode: json
     request:
       method: GET
-      url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/projectInformation/selectAll?current={page}&size=13&descs=noticeSendTime&tenderMode=%E5%85%AC%E5%BC%80%E6%8B%9B%E6%A0%87"
+      url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/projectInformation/selectAll?current={page}&size=13&descs=noticeSendTime&tenderMode=%E5%85%AC%E5%BC%80%E6%8B%9B%E6%A0%87&notice=1"
     startPage: 1
     parse:
       itemsPath: data.records
@@ -92,23 +100,121 @@ lists:
         province:
           const: "43"
         city: regionName
-      typeMap:
-        field: noticeType
-        default: NOTICE
-        map:
-          ZHAOBIAO_NOTICE: NOTICE
-          GENGZHENG_NOTICE: CHANGE
-          CHENGQING_NOTICE: CHANGE
-          ZHONGZHI_NOTICE: CHANGE
-          CLOSURE_NOTICE: CHANGE
-          INVALID_TRANSACTION_NOTICE: CHANGE
-          ABORTIVE_NOTICE: CHANGE
     detail:
       contentSelector: body
-      jsonPath: data.governmentProcureAnnouncementInformation.0.noticeContent
+      jsonPath: data.governmentProcureAnnouncementInformation
+      pick:
+        field: noticeName
+        values: ["招标公告"]
+        match: contains
+        contentField: noticeContent
+        fallback: longest
       request:
         method: GET
         url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/projectInformation/getAnnouncementBySectionId?sectionId={query:bidSectionId}"
+
+  # ── 政府采购：澄清公告（notice=2）──
+  - type: CHANGE
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/projectInformation/selectAll?current={page}&size=13&descs=noticeSendTime&tenderMode=%E5%85%AC%E5%BC%80%E6%8B%9B%E6%A0%87&notice=2"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: noticeName
+        url: "https://www.hnsggzy.com/resources/projectDetail/governmentPurchase?bidSectionId={bidSectionId}&regionCode={regionCode}&t=ZFCG&default=clarifyInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: regionName
+    detail:
+      contentSelector: body
+      jsonPath: data.governmentProcureAnnouncementInformation
+      pick:
+        field: noticeName
+        # 站方常只把「澄清公告」登记在列表里、正文却只有「更正/变更公告」；
+        # 一条都没命中时才回退全量（会取到招标公告，故 values 必须覆盖变更类全部叫法）
+        values: ["澄清", "答疑", "更正", "变更"]
+        match: contains
+        contentField: noticeContent
+        fallback: longest
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/projectInformation/getAnnouncementBySectionId?sectionId={query:bidSectionId}"
+
+  # ── 政府采购：更正公告（notice=3）──
+  - type: CHANGE
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/projectInformation/selectAll?current={page}&size=13&descs=noticeSendTime&tenderMode=%E5%85%AC%E5%BC%80%E6%8B%9B%E6%A0%87&notice=3"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: noticeName
+        url: "https://www.hnsggzy.com/resources/projectDetail/governmentPurchase?bidSectionId={bidSectionId}&regionCode={regionCode}&t=ZFCG&default=changeInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: regionName
+    detail:
+      contentSelector: body
+      jsonPath: data.governmentProcureAnnouncementInformation
+      pick:
+        field: noticeName
+        values: ["更正", "变更", "澄清", "答疑"]
+        match: contains
+        contentField: noticeContent
+        fallback: longest
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/governmentPurchase/projectInformation/getAnnouncementBySectionId?sectionId={query:bidSectionId}"
+
+  # ── 工程建设：更正/澄清/终止公告（notice=1；正文取 noticeList 第 1 条 = 最新变更公告）──
+  - type: CHANGE
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=CONSTRUCTION&notice=1"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}&default=changeInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: CHANGE
+        map:
+          GENGZHENG_NOTICE: CHANGE
+          CHENGQING_NOTICE: CHANGE
+          ZHONGZHI_NOTICE: CHANGE
+          ZANTING_NOTICE: CHANGE
+          REVIEW_NOTICE: CHANGE
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.noticeList
+      pick:
+        field: bulletinType
+        values: ["GENGZHENG_NOTICE", "CHENGQING_NOTICE", "ZHONGZHI_NOTICE", "ZANTING_NOTICE", "REVIEW_NOTICE"]
+        contentField: noticeContent
+        fallback: first
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/getBySectionId?sectionId={query:bidSectionId}"
 
   # ── 工程建设：中标候选人公示（listByFile 的 notice=2 服务端有效过滤）──
   # 详情不在 getBySectionId（那组只返回招标/澄清/更正），必须走
@@ -137,6 +243,11 @@ lists:
           ZHONGBIAO_NOTICE: RESULT
           GENGZHENG_NOTICE: CHANGE
           ZHONGZHI_NOTICE: CHANGE
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
     detail:
       contentSelector: body
       jsonPath: data.0.publicityContent
@@ -169,6 +280,11 @@ lists:
           ZHONGBIAOHXR_NOTICE: RESULT
           GENGZHENG_NOTICE: CHANGE
           ZHONGZHI_NOTICE: CHANGE
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
     detail:
       contentSelector: body
       jsonPath: data.0.publicityContent
@@ -199,12 +315,19 @@ lists:
         map:
           ZHAOBIAO_NOTICE: NOTICE
           CHONGXIN_ZHAOBIAO_NOTICE: NOTICE
-          GENGZHENG_NOTICE: CHANGE
-          CHENGQING_NOTICE: CHANGE
-          ZHONGZHI_NOTICE: CHANGE
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
     detail:
       contentSelector: body
-      jsonPath: data.noticeList.0.noticeContent
+      jsonPath: data.noticeList
+      pick:
+        field: bulletinType
+        values: ["ZHAOBIAO_NOTICE", "CHONGXIN_ZHAOBIAO_NOTICE"]
+        contentField: noticeContent
+        fallback: first
       request:
         method: GET
         url: "https://www.hnsggzy.com/tradeApi/constructionNotice/getBySectionId?sectionId={query:bidSectionId}"
@@ -232,6 +355,11 @@ lists:
         map:
           ZHONGBIAO_NOTICE: RESULT
           ZHONGBIAOHXR_NOTICE: RESULT
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
     detail:
       contentSelector: body
       jsonPath: data.0.publicityContent
@@ -262,12 +390,19 @@ lists:
         map:
           ZHAOBIAO_NOTICE: NOTICE
           CHONGXIN_ZHAOBIAO_NOTICE: NOTICE
-          GENGZHENG_NOTICE: CHANGE
-          CHENGQING_NOTICE: CHANGE
-          ZHONGZHI_NOTICE: CHANGE
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
     detail:
       contentSelector: body
-      jsonPath: data.noticeList.0.noticeContent
+      jsonPath: data.noticeList
+      pick:
+        field: bulletinType
+        values: ["ZHAOBIAO_NOTICE", "CHONGXIN_ZHAOBIAO_NOTICE"]
+        contentField: noticeContent
+        fallback: first
       request:
         method: GET
         url: "https://www.hnsggzy.com/tradeApi/constructionNotice/getBySectionId?sectionId={query:bidSectionId}"
@@ -295,6 +430,11 @@ lists:
         map:
           ZHONGBIAO_NOTICE: RESULT
           ZHONGBIAOHXR_NOTICE: RESULT
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
     detail:
       contentSelector: body
       jsonPath: data.0.publicityContent
@@ -359,6 +499,11 @@ lists:
         map:
           ZHONGBIAO_NOTICE: RESULT
           ZHONGBIAOHXR_NOTICE: RESULT
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
     detail:
       contentSelector: body
       jsonPath: data.0.publicityContent
@@ -388,6 +533,11 @@ lists:
         map:
           ZHONGBIAO_NOTICE: RESULT
           ZHONGBIAOHXR_NOTICE: RESULT
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
     detail:
       contentSelector: body
       jsonPath: data.0.publicityContent
@@ -417,6 +567,166 @@ lists:
         map:
           ZHONGBIAO_NOTICE: RESULT
           ZHONGBIAOHXR_NOTICE: RESULT
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.0.publicityContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/selectWinningBidNotice/{query:bidSectionId}/1"
+
+  # ── 工程建设：生态环境 / 代建 两类（tenderProjectType 同构，公告 + 结果）──
+  # ── 工程建设：生态环境工程 · 招标公告（tenderProjectType=ENVIRONMENTAL_PROJECT，notice=0）──
+  - type: NOTICE
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=ENVIRONMENTAL_PROJECT&notice=0"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: NOTICE
+        map:
+          ZHAOBIAO_NOTICE: NOTICE
+          ZHONGBIAOHXR_NOTICE: RESULT
+          ZHONGBIAO_NOTICE: RESULT
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.noticeList
+      pick:
+        field: bulletinType
+        values: ["ZHAOBIAO_NOTICE", "CHONGXIN_ZHAOBIAO_NOTICE"]
+        contentField: noticeContent
+        fallback: first
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/getBySectionId?sectionId={query:bidSectionId}"
+
+  # ── 工程建设：生态环境工程 · 中标结果（tenderProjectType=ENVIRONMENTAL_PROJECT，notice=3）──
+  - type: RESULT
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=ENVIRONMENTAL_PROJECT&notice=3"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}&default=resultInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: RESULT
+        map:
+          ZHAOBIAO_NOTICE: NOTICE
+          ZHONGBIAOHXR_NOTICE: RESULT
+          ZHONGBIAO_NOTICE: RESULT
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.0.publicityContent
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/selectWinningBidNotice/{query:bidSectionId}/1"
+
+  # ── 工程建设：代建工程 · 招标公告（tenderProjectType=AGENCY_CONSTRUCTION，notice=0）──
+  - type: NOTICE
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=AGENCY_CONSTRUCTION&notice=0"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: NOTICE
+        map:
+          ZHAOBIAO_NOTICE: NOTICE
+          ZHONGBIAOHXR_NOTICE: RESULT
+          ZHONGBIAO_NOTICE: RESULT
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
+    detail:
+      contentSelector: body
+      jsonPath: data.noticeList
+      pick:
+        field: bulletinType
+        values: ["ZHAOBIAO_NOTICE", "CHONGXIN_ZHAOBIAO_NOTICE"]
+        contentField: noticeContent
+        fallback: first
+      request:
+        method: GET
+        url: "https://www.hnsggzy.com/tradeApi/constructionNotice/getBySectionId?sectionId={query:bidSectionId}"
+
+  # ── 工程建设：代建工程 · 中标结果（tenderProjectType=AGENCY_CONSTRUCTION，notice=3）──
+  - type: RESULT
+    mode: json
+    request:
+      method: GET
+      url: "https://www.hnsggzy.com/tradeApi/constructionTender/listByFile?current={page}&size=13&tenderProjectType=AGENCY_CONSTRUCTION&notice=3"
+    startPage: 1
+    parse:
+      itemsPath: data.records
+      fields:
+        title: bidSectionName
+        url: "https://www.hnsggzy.com/resources/transactionDetail/construction?bidSectionId={bidSectionId}&regionCode={regionCode}&default=resultInfo"
+        date: noticeSendTime
+        province:
+          const: "43"
+        city: name
+        purchaser: tendererName
+      typeMap:
+        field: noticeType
+        default: RESULT
+        map:
+          ZHAOBIAO_NOTICE: NOTICE
+          ZHONGBIAOHXR_NOTICE: RESULT
+          ZHONGBIAO_NOTICE: RESULT
+      # 站方会把「终止/暂停公告」挂成 CHONGXIN_ZHAOBIAO_NOTICE（列表侧看不出类型），
+      # 正文命中这些关键词就改判为 CHANGE，避免正文与类型错配
+      typeRules:
+        - pattern: "终止公告|暂停公告|废止公告"
+          type: CHANGE
     detail:
       contentSelector: body
       jsonPath: data.0.publicityContent

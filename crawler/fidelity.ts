@@ -339,6 +339,10 @@ export function extractFidelityHtml(html: string, options: FidelityOptions): Fid
   // 6. Generate rich plain text while preserving table cells
   const plainTextContainer = container.clone();
 
+  // 纯文本视图不保留样式/脚本等非正文节点：有些站点把整页 HTML 塞进公告正文
+  // （`<head><style>* { box-sizing…`），不清理会让 CSS 文本混进正文开头。
+  plainTextContainer.find("style, link, meta, title").remove();
+
   // Convert tables to clean formatted text blocks rather than deleting them
   plainTextContainer.find("table").each((_, tbl) => {
     const $tbl = $(tbl);
